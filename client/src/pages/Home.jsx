@@ -28,9 +28,20 @@ export default function Home() {
     setMessages(mockMessages[selectedUser] || []);
   }, [selectedUser]);
 
-  const sendMessage = (text) => {
+  const sendMessage = async (text) => {
     const newMessage = { sender: 'Me', text, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
     setMessages((prev) => [...prev, newMessage]);
+    
+    const response = await fetch("http://localhost:5001/api/message", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ message: newMessage }),
+    });
+
+    const data = await response.json();
+    console.log(data.message);
   };
 
   return (
