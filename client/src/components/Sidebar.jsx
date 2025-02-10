@@ -11,9 +11,9 @@ export default function Sidebar() {
 
         {/* Direct Messages Link */}
         <Link
-          to="/"
+          to="/home"
           className={`w-full text-left px-4 py-3 rounded-lg mb-2 transition ${
-            location.pathname === '/' ? 'bg-gray-200 font-semibold' : 'bg-transparent'
+            location.pathname === '/home' ? 'bg-gray-200 font-semibold' : 'bg-transparent'
           } hover:bg-gray-100`}
         >
           Direct Messages
