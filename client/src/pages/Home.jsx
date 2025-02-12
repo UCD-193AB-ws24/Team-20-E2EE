@@ -45,6 +45,17 @@ export default function Home() {
     }
     
     setMessages((prev) => [...prev, newMessage]);
+    
+    const response = await fetch("http://localhost:5001/api/message", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ message: newMessage }),
+    });
+
+    const data = await response.json();
+    console.log(data.message);
   };
 
   return (

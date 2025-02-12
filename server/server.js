@@ -3,7 +3,7 @@ const cors = require("cors");
 require("dotenv").config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 app.use(express.json());
 app.use(
@@ -14,8 +14,9 @@ app.use(
     })
   );
 
-app.post("/send-message", (req, res) => {
+app.post("/api/message", (req, res) => {
     const { message } = req.body;
+    console.log("Received message:", message);
     res.json({ response: `Message Received: ${message}` });
 });
 
