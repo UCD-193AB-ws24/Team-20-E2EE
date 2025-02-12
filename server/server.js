@@ -33,13 +33,26 @@ app.post("/signup", async (req, res) => {
     email: req.body.email,
     password: req.body.password
   }
-  const userResponse = await admin.auth().createUser({
-    email: user.email,
-    password: user.password,
-    emailVerified: false, 
-    disabled: false
-  });
-  res.json(userResponse);
+  try {
+    const userResponse = await admin.auth().createUser({
+      email: user.email,
+      password: user.password,
+      emailVerified: false, 
+      disabled: false
+    });
+
+    const emailVerificationLink = await admin.auth().generateEmailVerificationLink(user.email);
+
+    console.log("Email verification link:", emailVerificationLink);
+
+    res.json({
+      message: "User created successfully. Please check your email to verify your account.",
+      user: userResponse
+    });
+  } catch (error) {
+    console.error("Error creating user:", error);
+    res.status(500).json({ error: error.message });
+  }
 })
 
 app.listen(PORT, () => {
