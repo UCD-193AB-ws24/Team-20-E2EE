@@ -1,5 +1,6 @@
 // src/pages/Home.jsx
 import React, { useState, useEffect } from 'react';
+import axios from "axios";
 import Sidebar from '../components/Sidebar';
 import ChatList from '../components/ChatList'; 
 import ChatWindow from '../components/ChatWindow';
@@ -28,8 +29,21 @@ export default function Home() {
     setMessages(mockMessages[selectedUser] || []);
   }, [selectedUser]);
 
-  const sendMessage = (text) => {
+  const sendMessage = async (text) => {
     const newMessage = { sender: 'Me', text, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
+    
+    try {
+      const response = await axios.post("http://localhost:5000", {
+        message: text,
+      });
+
+      console.log("Server Response:", response.data); // Debugging log
+
+      setMessages((prev) => [...prev, newMessage]);
+    } catch (error) {
+      console.error("Error sending message:", error);
+    }
+    
     setMessages((prev) => [...prev, newMessage]);
   };
 

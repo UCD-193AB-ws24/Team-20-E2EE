@@ -6,9 +6,15 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(express.json());
-app.use(cors());
+app.use(
+    cors({
+      origin: "http://localhost:5173", // Replace with your frontend URL
+      methods: "GET,POST", // Allow GET and POST requests
+      allowedHeaders: "Content-Type",
+    })
+  );
 
-app.get("/", (req, res) => {
+app.post("/send-message", (req, res) => {
     const { message } = req.body;
     res.json({ response: `Message Received: ${message}` });
 });
