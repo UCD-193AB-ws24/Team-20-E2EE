@@ -1,18 +1,25 @@
-const express = require("express");
-const cors = require("cors");
-require("dotenv").config();
+import express from "express";
+import cors from "cors";
+import dotenv from 'dotenv';
+import authRoutes from "./routes/auth.routes.js";
+import messageRoutes from "./routes/message.routes.js";
+import admin from "./firebaseAdmin.js";
 
+dotenv.config();
 const app = express();
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
-app.use(cors());
+app.use(
+    cors({
+      origin: "http://localhost:5173", // Replace with your frontend URL
+      methods: "GET,POST", // Allow GET and POST requests
+      allowedHeaders: "Content-Type",
+    })
+  );
 
-app.post("/api/message", (req, res) => {
-    const { message } = req.body;
-    console.log("Received message:", message);
-    res.json({ response: `Message Received: ${message}` });
-});
+app.use("/api/message", messageRoutes);
+app.use("/api/auth", authRoutes);  
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
