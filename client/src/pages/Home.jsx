@@ -46,7 +46,7 @@ export default function Home() {
     
     setMessages((prev) => [...prev, newMessage]);
     
-    const response = await fetch("http://localhost:3000/api/message/send", {
+    const response = await fetch("http://localhost:5001/api/message/send", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

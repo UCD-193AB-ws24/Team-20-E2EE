@@ -3,13 +3,13 @@ import cors from "cors";
 import dotenv from 'dotenv';
 import authRoutes from "./routes/auth.routes.js";
 import messageRoutes from "./routes/message.routes.js";
-// const admin = require("firebase-admin");
-// const credentials = require("./firebase/serviceAccountKey.json");
+import admin from "firebase-admin";
+import fs from "fs";
+const credentials = JSON.parse(fs.readFileSync("./firebase/serviceAccountKey.json", "utf-8"));
 
-
-// admin.initializeApp({
-//   credential: admin.credential.cert(credentials)
-// });
+admin.initializeApp({
+  credential: admin.credential.cert(credentials)
+});
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
