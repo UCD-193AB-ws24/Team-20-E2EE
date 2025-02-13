@@ -2,8 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUser, faKey } from "@fortawesome/free-solid-svg-icons";
-import { auth } from "../firebaseConfig"; 
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { loginUser } from "../api/auth";
 
 export default function Login() {
     const navigate = useNavigate();
@@ -13,35 +12,11 @@ export default function Login() {
         const email = e.target[0].value;
         const password = e.target[1].value;
 
-        try {
-            // Sign in user using Firebase Auth
-            const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            const user = userCredential.user;
-
-            // 🔹 Get the Firebase ID Token
-            const idToken = await user.getIdToken();
-
-            // 🔹 Send the ID Token to the backend for verification
-            const response = await fetch("http://localhost:5001/api/auth/login", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ idToken }),  // ✅ Send the token to the backend
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                console.log("Login successful:", data);
-                navigate("/home"); // Redirect after login
-            } else {
-                console.error("Backend authentication failed:", data.error);
-                alert("Login failed: " + data.error);
-            }
-        } catch (error) {
-            console.error("Login error:", error.message);
-            alert("Login failed: " + error.message);
+        const result = await loginUser(email, password);
+        if (result.success) {
+            navigate("/home"); // Redirect after login
+        } else {
+            setError(result.error);
         }
     };
 
