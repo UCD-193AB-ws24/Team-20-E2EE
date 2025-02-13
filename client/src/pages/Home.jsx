@@ -5,6 +5,7 @@ import Sidebar from '../components/Sidebar';
 import ChatList from '../components/ChatList'; 
 import ChatWindow from '../components/ChatWindow';
 import MessageInput from '../components/MessageInput';
+import {BACKEND_URL} from '../config/config';
 
 const mockMessages = {
   Alice: [
@@ -46,7 +47,7 @@ export default function Home() {
     
     setMessages((prev) => [...prev, newMessage]);
     
-    const response = await fetch("http://localhost:5001/api/message/send", {
+    const response = await fetch(`${BACKEND_URL}/api/message/send`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

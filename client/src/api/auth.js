@@ -1,6 +1,6 @@
-import { auth } from "../firebaseConfig"; 
+import { auth } from "../config/firebaseConfig"; 
 import { signInWithEmailAndPassword } from "firebase/auth";
-
+import {BACKEND_URL} from "../config/config";
 export const loginUser = async (email, password) => {
     try {
         // Sign in user using Firebase Auth
@@ -11,7 +11,7 @@ export const loginUser = async (email, password) => {
         const idToken = await user.getIdToken();
 
         // Send the ID Token to the backend for verification
-        const response = await fetch("http://localhost:5001/api/auth/login", {
+        const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ idToken }),
