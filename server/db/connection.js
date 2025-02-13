@@ -1,5 +1,5 @@
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+import { MongoClient, ServerApiVersion } from 'mongodb';
 const uri = process.env.ATLAS_URI || "";
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
