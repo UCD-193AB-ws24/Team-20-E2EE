@@ -6,6 +6,7 @@ import Profile from './pages/Profile';
 import Friends from './pages/Friends';
 import Requests from './pages/Requests';
 import Archive from './pages/Archive';
+import SignUp from './pages/Signup';
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
       <Route path="/friends" element={<Friends />} />
       <Route path="/requests" element={<Requests />} />
       <Route path="/archive" element={<Archive />} />
+      <Route path="/signup" element={<SignUp />} />
     </Routes>
   );
 }
