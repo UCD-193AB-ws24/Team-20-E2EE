@@ -7,17 +7,23 @@ import Friends from './pages/Friends';
 import Requests from './pages/Requests';
 import Archive from './pages/Archive';
 import SignUp from './pages/Signup';
+import ProtectedRoute from './components/ProtectedRoute';
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Login />} />
-      <Route path="/home" element={<Home />} />
-      <Route path="/profile" element={<Profile />} />
-      <Route path="/friends" element={<Friends />} />
-      <Route path="/requests" element={<Requests />} />
-      <Route path="/archive" element={<Archive />} />
+      {/* Public Routes */}
+      <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<SignUp />} />
+
+      {/* Protected Routes - Only accessible to logged-in and verified users */}
+      <Route element={<ProtectedRoute />}>
+        <Route path="/" element={<Home />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/friends" element={<Friends />} />
+        <Route path="/requests" element={<Requests />} />
+        <Route path="/archive" element={<Archive />} />
+      </Route>
     </Routes>
   );
 }

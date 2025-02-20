@@ -1,14 +1,13 @@
 import { Navigate, Outlet } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-
+import { getCurrentUser } from "../api/auth"; // Get user from localStorage
+import EmailVerificationMessage from "./EmailVerificationMessage";
 const ProtectedRoute = () => {
-    const { currentUser } = useAuth();
+    const currentUser = getCurrentUser();
 
-    // Check if the user is logged in and email is verified
     if (!currentUser) {
-        return <Navigate to="/signin" />;
+        return <Navigate to="/login" />;
     } else if (!currentUser.emailVerified) {
-        return <Navigate to="/email-verification" />;
+        return (<EmailVerificationMessage />);
     }
 
     return <Outlet />;

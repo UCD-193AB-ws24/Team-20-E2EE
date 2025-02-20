@@ -1,17 +1,14 @@
 import { auth } from "../config/firebaseConfig"; 
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
-import {BACKEND_URL} from "../config/config";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
+import { BACKEND_URL } from "../config/config";
 
 export const loginUser = async (email, password) => {
     try {
-        // Sign in user using Firebase Auth
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        // Get the Firebase ID Token
         const idToken = await user.getIdToken();
 
-        // Send the ID Token to the backend for verification
         const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -22,11 +19,14 @@ export const loginUser = async (email, password) => {
 
         if (response.ok) {
             console.log("Login successful:", data);
+
+            // Store user info in localStorage (or sessionStorage)
+            localStorage.setItem("user", JSON.stringify(data.user));
+
             return { success: true, user: data.user };
         } else {
             console.error("Login failed:", data.error);
-            
-            // If the error is due to email verification, return a specific response
+
             if (data.error === "Email not verified. Please check your email.") {
                 return { success: false, error: "Email not verified. Please check your email and verify before logging in." };
             }
@@ -39,16 +39,14 @@ export const loginUser = async (email, password) => {
     }
 };
 
+// Sign up function remains the same
 export const signUpUser = async (email, password) => {
     try {
-        // Sign up user using Firebase Auth
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        // Get the Firebase ID Token
         const idToken = await user.getIdToken();
 
-        // Send the ID Token to the backend for verification
         const response = await fetch(`${BACKEND_URL}/api/auth/signup`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -68,5 +66,32 @@ export const signUpUser = async (email, password) => {
         console.error("Signup error:", error.message);
         return { success: false, error: error.message };
     }
-
 };
+
+// Logout function
+export const logoutUser = async () => {
+    try {
+        await signOut(auth);
+        localStorage.removeItem("user"); // Clear stored user data
+        return { success: true };
+    } catch (error) {
+        console.error("Logout error:", error.message);
+        return { success: false, error: error.message };
+    }
+};
+
+// Function to get the current user from localStorage
+export const getCurrentUser = () => {
+    const user = localStorage.getItem("user");
+    return user ? JSON.parse(user) : null;
+};
+
+// Listen for auth state changes and store user info
+onAuthStateChanged(auth, async (user) => {
+    if (user) {
+        const idToken = await user.getIdToken();
+        localStorage.setItem("user", JSON.stringify({ uid: user.uid, email: user.email, emailVerified: user.emailVerified, idToken }));
+    } else {
+        localStorage.removeItem("user");
+    }
+});

@@ -25,7 +25,7 @@ export const register = async (req, res) => {
 
 export const login = async (req, res) => {
   const { idToken } = req.body; // Receive ID Token from frontend
-  console.log(idToken);
+  // console.log(idToken);
 
   try {
       // Verify the Firebase ID Token
@@ -39,7 +39,7 @@ export const login = async (req, res) => {
       if (!userRecord.emailVerified) {
         return res.status(403).json({ error: "Email not verified. Please check your email." });
       } 
-      
+
       res.json({
           message: "User authenticated successfully",
           user: userRecord.toJSON(),
