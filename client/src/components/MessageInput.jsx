@@ -1,29 +1,28 @@
-// src/components/MessageInput.jsx
 import React, { useState } from 'react';
 
 export default function MessageInput({ sendMessage }) {
   const [text, setText] = useState('');
 
-  const handleSend = () => {
-    if (text.trim() !== '') {
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (text.trim()) {
       sendMessage(text);
       setText('');
     }
   };
 
   return (
-    <div className="border-t p-2 bg-gray-50 flex">
+    <form onSubmit={handleSubmit} className="p-4 bg-white rounded-lg shadow-lg m-4 flex">
       <input
         type="text"
-        className="flex-1 border rounded px-3 py-2 focus:outline-none"
-        placeholder="Type a message..."
         value={text}
         onChange={(e) => setText(e.target.value)}
-        onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+        className="flex-1 p-2 border border-ucd-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ucd-gold-600"
+        placeholder="Type your message..."
       />
-      <button className="ml-2 bg-blue-500 text-white px-4 py-2 rounded" onClick={handleSend}>
+      <button type="submit" className="ml-2 p-2 bg-ucd-gold-600 text-white rounded-lg">
         Send
       </button>
-    </div>
+    </form>
   );
 }
