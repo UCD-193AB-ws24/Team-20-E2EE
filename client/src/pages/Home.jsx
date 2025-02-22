@@ -1,4 +1,3 @@
-// src/pages/Home.jsx
 import React, { useState, useEffect } from 'react';
 import axios from "axios";
 import Sidebar from '../components/Sidebar';
@@ -8,26 +7,35 @@ import MessageInput from '../components/MessageInput';
 import {BACKEND_URL} from '../config/config';
 
 const mockMessages = {
-  Alice: [
-    { sender: 'Alice', text: 'Hey! How are you?', time: '10:00 AM' },
-    { sender: 'Me', text: 'I am good! How about you?', time: '10:02 AM' },
-  ],
-  Bob: [
-    { sender: 'Bob', text: 'Want to grab lunch?', time: '12:30 PM' },
-    { sender: 'Me', text: 'Sure, what time?', time: '12:35 PM' },
-  ],
-  Charlie: [
-    { sender: 'Charlie', text: 'Let’s catch up soon!', time: '5:45 PM' },
-    { sender: 'Me', text: 'Absolutely! Let me know when.', time: '5:47 PM' },
-  ],
+  Alice: {
+    messages: [
+      { sender: 'Alice', text: 'Hey! How are you?', time: '10:00 AM' },
+      { sender: 'Me', text: 'I am good! How about you?', time: '10:02 AM' },
+    ],
+    mostRecentMessage: 'I am good! How about you?',
+  },
+  Bob: {
+    messages: [
+      { sender: 'Bob', text: 'Want to grab lunch?', time: '12:30 PM' },
+      { sender: 'Me', text: 'Sure, what time?', time: '12:35 PM' },
+    ],
+    mostRecentMessage: 'Sure, what time?',
+  },
+  Charlie: {
+    messages: [
+      { sender: 'Charlie', text: 'Let’s catch up soon!', time: '5:45 PM' },
+      { sender: 'Me', text: 'Absolutely! Let me know when.', time: '5:47 PM' },
+    ],
+    mostRecentMessage: 'Absolutely! Let me know when.',
+  },
 };
 
 export default function Home() {
   const [selectedUser, setSelectedUser] = useState('Alice');
-  const [messages, setMessages] = useState(mockMessages[selectedUser]);
+  const [messages, setMessages] = useState(mockMessages[selectedUser].messages);
 
   useEffect(() => {
-    setMessages(mockMessages[selectedUser] || []);
+    setMessages(mockMessages[selectedUser].messages || []);
   }, [selectedUser]);
 
   const sendMessage = async (text) => {
@@ -59,18 +67,22 @@ export default function Home() {
     console.log(data.message);
   };
 
+  const recentMessages = Object.fromEntries(
+    Object.entries(mockMessages).map(([user, { mostRecentMessage }]) => [user, mostRecentMessage])
+  );
+
   return (
-    <div className="h-screen flex">
+    <div className="h-screen flex bg-ucd-blue-light">
       {/* Navigation Sidebar */}
       <Sidebar />
 
       {/* Chat List (List of Conversations) */}
-      <ChatList users={Object.keys(mockMessages)} selectedUser={selectedUser} setSelectedUser={setSelectedUser} />
+      <ChatList users={Object.keys(mockMessages)} selectedUser={selectedUser} setSelectedUser={setSelectedUser} recentMessages={recentMessages} />
 
       {/* Chat Window */}
-      <div className="flex-1 flex flex-col">
-        <div className="p-4 border-b border-gray-300">
-          <h2 className="text-xl font-bold">{selectedUser}</h2>
+      <div className="flex-1 flex flex-col bg-white shadow-lg rounded-lg m-4">
+        <div className="p-4">
+          <h2 className="text-xl font-bold text-ucd-blue-900">{selectedUser}</h2>
         </div>
         <ChatWindow messages={messages} />
         <MessageInput sendMessage={sendMessage} />
