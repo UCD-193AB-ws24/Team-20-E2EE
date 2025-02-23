@@ -1,14 +1,13 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { MdMessage, MdPerson, MdPeople, MdPersonAdd, MdArchive } from 'react-icons/md';
+import { MdMessage, MdPeople, MdPersonAdd, MdArchive, MdPerson } from 'react-icons/md';
 
-export default function Sidebar() {
-  const location = useLocation(); // Get current URL path
+export default function NavBar() {
+  const location = useLocation();
 
   return (
-    <div className="w-[15%] min-w-[100px] max-w-[250px] flex flex-col justify-between h-screen">
+    <div className="w-[145px] flex flex-col justify-between h-screen bg-ucd-blue-light">
       <div className="flex flex-col items-start mt-3 ml-3">
-
         {/* Direct Messages Link */}
         <Link
           to="/home"
@@ -55,7 +54,6 @@ export default function Sidebar() {
       </div>
 
       <div className="flex flex-col items-start p-4 mb-4">
-
         {/* Profile Link */}
         <Link
           to="/profile"

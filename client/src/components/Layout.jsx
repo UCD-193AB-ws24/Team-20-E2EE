@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import axios from "axios";
-import Sidebar from '../components/Sidebar';
-import ChatList from '../components/ChatList'; 
-import ChatWindow from '../components/ChatWindow';
-import MessageInput from '../components/MessageInput';
-import {BACKEND_URL} from '../config/config';
+import NavBar from './NavBar';
+import ChatWindow from './ChatWindow';
+import MessageInput from './MessageInput';
 
 const mockMessages = {
   Alice: {
@@ -30,7 +27,7 @@ const mockMessages = {
   },
 };
 
-export default function Home() {
+export default function Layout({ children }) {
   const [selectedUser, setSelectedUser] = useState('Alice');
   const [messages, setMessages] = useState(mockMessages[selectedUser].messages);
 
@@ -40,44 +37,18 @@ export default function Home() {
 
   const sendMessage = async (text) => {
     const newMessage = { sender: 'Me', text, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
-    
-    // try {
-    //   const response = await axios.post("http://localhost:5000", {
-    //     message: text,
-    //   });
-
-    //   console.log("Server Response:", response.data); // Debugging log
-
-    //   setMessages((prev) => [...prev, newMessage]);
-    // } catch (error) {
-    //   console.error("Error sending message:", error);
-    // }
-    
     setMessages((prev) => [...prev, newMessage]);
-    
-    const response = await fetch(`${BACKEND_URL}/api/message/send`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ message: newMessage }),
-    });
-
-    const data = await response.json();
-    console.log(data.message);
   };
-
-  const recentMessages = Object.fromEntries(
-    Object.entries(mockMessages).map(([user, { mostRecentMessage }]) => [user, mostRecentMessage])
-  );
 
   return (
     <div className="h-screen flex bg-ucd-blue-light">
-      {/* Navigation Sidebar */}
-      <Sidebar />
+      {/* Navigation Bar */}
+      <NavBar />
 
-      {/* Chat List (List of Conversations) */}
-      <ChatList users={Object.keys(mockMessages)} selectedUser={selectedUser} setSelectedUser={setSelectedUser} recentMessages={recentMessages} />
+      {/* Side Bar */}
+      <div className="min-w-[250px] flex flex-col bg-ucd-blue-light">
+        {React.cloneElement(children, { selectedUser, setSelectedUser })}
+      </div>
 
       {/* Chat Window */}
       <div className="flex-1 flex flex-col bg-white shadow-lg rounded-lg m-4">
