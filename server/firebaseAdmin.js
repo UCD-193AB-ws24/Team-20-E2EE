@@ -9,7 +9,6 @@ if (!admin.apps.length) {
         credential: admin.credential.cert(serviceAccount),
     });
 
-    console.log("Firebase Admin initialized");
 } else {
     console.log("Firebase Admin already initialized, skipping...");
 }
