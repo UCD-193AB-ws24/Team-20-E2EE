@@ -10,7 +10,7 @@ export default function NavBar() {
       <div className="flex flex-col items-start mt-3 ml-3">
         {/* Direct Messages Link */}
         <Link
-          to="/home"
+          to="/"
           className={`w-full text-left px-4 py-3 rounded-lg mb-2 transition flex items-center text-lg ${
             location.pathname === '/home' ? 'text-ucd-blue-800 bg-ucd-blue-100' : 'text-ucd-blue-600'
           } hover:text-ucd-blue-800 hover:bg-ucd-blue-100 hover:scale-105`}
