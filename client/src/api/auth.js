@@ -23,7 +23,7 @@ export const loginUser = async (email, password) => {
             // Store user info in localStorage (or sessionStorage)
             localStorage.setItem("user", JSON.stringify(data.user));
 
-            return { success: true, user: data.user };
+            return { success: true, user: data.user, warning: data.warning||null };
         } else {
             console.error("Login failed:", data.error);
 

@@ -10,6 +10,7 @@ export const register = async (req, res) => {
     const userRecord = await admin.auth().getUser(decodedToken.uid);
     const emailVerificationLink = await admin.auth().generateEmailVerificationLink(userRecord.email);
 
+    console.log("Email Link:", emailVerificationLink);
     // Get database instance
     const db = await connectDB();
     const usersCollection = db.collection("users");
@@ -21,8 +22,8 @@ export const register = async (req, res) => {
         uid: userId,
         friends: [],
         friendsRequests: [],
-        avatar: null,
-        username: null,
+        avatar: "",
+        username: "",
         createdAt: new Date(),
       });
       // console.log("User inserted into MongoDB");
@@ -58,6 +59,17 @@ export const login = async (req, res) => {
       if (!userRecord.emailVerified) {
         return res.status(403).json({ error: "Email not verified. Please check your email." });
       } 
+
+      // Check if username is null in MongoDB
+      const db = await connectDB();
+      const usersCollection = db.collection("users");
+      const existingUser = await usersCollection.findOne({ uid: userRecord.uid });
+      if (!existingUser.username) {
+        return res.json({
+          message: "User authenticated successfully",
+          warning: "Please set your username to continue",
+        });
+      }
 
       res.json({
           message: "User authenticated successfully",
