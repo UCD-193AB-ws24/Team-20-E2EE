@@ -3,6 +3,9 @@ import NavBar from './NavBar';
 import ChatWindow from './ChatWindow';
 import MessageInput from './MessageInput';
 import ProfileModal from './ProfileModal';
+import Archive from '../pages/Archive';
+import Friends from '../pages/Friends';
+import Requests from '../pages/Requests';
 
 const mockMessages = {
   Alice: {
@@ -28,14 +31,36 @@ const mockMessages = {
   },
 };
 
+const archivedMessages = {
+  Alice: {
+    messages: [
+      { sender: 'Alice', text: 'Archived message 1', time: '10:00 AM' },
+      { sender: 'Me', text: 'Archived reply 1', time: '10:02 AM' },
+    ],
+    mostRecentMessage: 'Archived reply 1',
+  },
+  Bob: {
+    messages: [
+      { sender: 'Bob', text: 'Archived message 2', time: '12:30 PM' },
+      { sender: 'Me', text: 'Archived reply 2', time: '12:35 PM' },
+    ],
+    mostRecentMessage: 'Archived reply 2',
+  },
+};
+
 export default function Layout({ children }) {
   const [selectedUser, setSelectedUser] = useState('Alice');
   const [messages, setMessages] = useState(mockMessages[selectedUser].messages);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [view, setView] = useState('chat');
 
   useEffect(() => {
-    setMessages(mockMessages[selectedUser].messages || []);
-  }, [selectedUser]);
+    if (view === 'archive') {
+      setMessages(archivedMessages[selectedUser]?.messages || []);
+    } else {
+      setMessages(mockMessages[selectedUser]?.messages || []);
+    }
+  }, [selectedUser, view]);
 
   const sendMessage = async (text) => {
     const newMessage = { sender: 'Me', text, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
@@ -45,17 +70,27 @@ export default function Layout({ children }) {
   return (
     <div className="h-screen flex bg-ucd-blue-light">
       {/* Navigation Bar */}
-      <NavBar onProfileClick={() => setShowProfileModal(true)} />
+      <NavBar onProfileClick={() => setShowProfileModal(true)} setView={setView} />
 
       {/* Side Bar */}
       <div className="min-w-[250px] flex flex-col bg-ucd-blue-light">
-        {React.cloneElement(children, { selectedUser, setSelectedUser })}
+        {view === 'archive' ? (
+          <Archive selectedUser={selectedUser} setSelectedUser={setSelectedUser} />
+        ) : view === 'friends' ? (
+          <Friends selectedUser={selectedUser} setSelectedUser={setSelectedUser} />
+        ) : view === 'requests' ? (
+          <Requests selectedUser={selectedUser} setSelectedUser={setSelectedUser} />
+        ) : (
+          React.cloneElement(children, { selectedUser, setSelectedUser })
+        )}
       </div>
 
       {/* Chat Window */}
       <div className="flex-1 flex flex-col bg-white shadow-lg rounded-lg m-4">
         <div className="p-4">
-          <h2 className="text-xl font-bold text-ucd-blue-900">{selectedUser}</h2>
+          <h2 className="text-xl font-bold text-ucd-blue-900">
+            {selectedUser} {view === 'archive' && '(Archive)'}
+          </h2>
         </div>
         <ChatWindow messages={messages} />
         <MessageInput sendMessage={sendMessage} />

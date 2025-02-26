@@ -26,6 +26,7 @@ export default function NavBar({ onProfileClick, setView }) {
           className={`w-full text-left px-4 py-3 rounded-lg mb-2 transition flex items-center text-lg ${
             location.pathname === '/friends' ? 'text-ucd-blue-800 bg-ucd-blue-100' : 'text-ucd-blue-600'
           } hover:text-ucd-blue-800 hover:bg-ucd-blue-100 hover:scale-105`}
+          onClick={() => setView('friends')}
         >
           <MdPeople className={`mr-3 ${location.pathname === '/friends' ? 'text-ucd-blue-800' : 'text-ucd-blue-600'}`} />
           <span className="pt-1 align-middle">Friends</span>
@@ -37,6 +38,7 @@ export default function NavBar({ onProfileClick, setView }) {
           className={`w-full text-left px-4 py-3 rounded-lg mb-2 transition flex items-center text-lg ${
             location.pathname === '/requests' ? 'text-ucd-blue-800 bg-ucd-blue-100' : 'text-ucd-blue-600'
           } hover:text-ucd-blue-800 hover:bg-ucd-blue-100 hover:scale-105`}
+          onClick={() => setView('requests')}
         >
           <MdPersonAdd className={`mr-3 ${location.pathname === '/requests' ? 'text-ucd-blue-800' : 'text-ucd-blue-600'}`} />
           <span className="pt-1 align-middle">Requests</span>
