@@ -1,25 +1,44 @@
 import admin from "../firebaseAdmin.js";
+import { connectDB } from "../mongo/connection.js";
 
 export const register = async (req, res) => {
-  const { idToken } = req.body;
+  const { idToken, userId } = req.body;
+  // console.log("User ID:", userId);
+
   try {
-      const decodedToken = await admin.auth().verifyIdToken(idToken);
-      const userRecord = await admin.auth().getUser(decodedToken.uid);
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const userRecord = await admin.auth().getUser(decodedToken.uid);
+    const emailVerificationLink = await admin.auth().generateEmailVerificationLink(userRecord.email);
 
-      // Generate an email verification link
-      const emailVerificationLink = await admin.auth().generateEmailVerificationLink(userRecord.email);
+    // Get database instance
+    const db = await connectDB();
+    const usersCollection = db.collection("users");
 
-      console.log("Email verification link:", emailVerificationLink);
-
-      res.json({
-          message: "User registered successfully. Please check your email to verify your account.",
-          user: userRecord.toJSON(),
-          emailVerificationLink,
+    // Insert user UID into MongoDB if not exists
+    const existingUser = await usersCollection.findOne({ uid: userId });
+    if (!existingUser) {
+      await usersCollection.insertOne({
+        uid: userId,
+        friends: [],
+        friendsRequests: [],
+        avatar: null,
+        username: null,
+        createdAt: new Date(),
       });
+      // console.log("User inserted into MongoDB");
+    } else {
+      console.log("User already exists in MongoDB");
+    }
+
+    res.json({
+      message: "User registered successfully. Please check your email to verify your account.",
+      user: userRecord.toJSON(),
+      emailVerificationLink,
+    });
 
   } catch (error) {
-      console.error("Error verifying ID token:", error);
-      res.status(401).json({ error: "Unauthorized - Invalid token" });
+    console.error("Error verifying ID token:", error);
+    res.status(401).json({ error: "Unauthorized - Invalid token" });
   }
 };
 

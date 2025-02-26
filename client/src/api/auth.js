@@ -6,6 +6,7 @@ export const loginUser = async (email, password) => {
     try {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
+        // console.log("User:", user.uid);
 
         const idToken = await user.getIdToken();
 
@@ -18,7 +19,6 @@ export const loginUser = async (email, password) => {
         const data = await response.json();
 
         if (response.ok) {
-            console.log("Login successful:", data);
 
             // Store user info in localStorage (or sessionStorage)
             localStorage.setItem("user", JSON.stringify(data.user));
@@ -44,13 +44,14 @@ export const signUpUser = async (email, password) => {
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
-
+        
+        const userId = user.uid;
         const idToken = await user.getIdToken();
 
         const response = await fetch(`${BACKEND_URL}/api/auth/signup`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ idToken }),
+            body: JSON.stringify({ idToken, userId }),
         });
 
         const data = await response.json();
