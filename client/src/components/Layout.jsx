@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import NavBar from './NavBar';
 import ChatWindow from './ChatWindow';
 import MessageInput from './MessageInput';
+import ProfileModal from './ProfileModal';
 
 const mockMessages = {
   Alice: {
@@ -30,6 +31,7 @@ const mockMessages = {
 export default function Layout({ children }) {
   const [selectedUser, setSelectedUser] = useState('Alice');
   const [messages, setMessages] = useState(mockMessages[selectedUser].messages);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   useEffect(() => {
     setMessages(mockMessages[selectedUser].messages || []);
@@ -43,7 +45,7 @@ export default function Layout({ children }) {
   return (
     <div className="h-screen flex bg-ucd-blue-light">
       {/* Navigation Bar */}
-      <NavBar />
+      <NavBar onProfileClick={() => setShowProfileModal(true)} />
 
       {/* Side Bar */}
       <div className="min-w-[250px] flex flex-col bg-ucd-blue-light">
@@ -58,6 +60,10 @@ export default function Layout({ children }) {
         <ChatWindow messages={messages} />
         <MessageInput sendMessage={sendMessage} />
       </div>
+
+      {showProfileModal && (
+        <ProfileModal onClose={() => setShowProfileModal(false)} />
+      )}
     </div>
   );
 }

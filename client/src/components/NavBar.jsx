@@ -2,20 +2,21 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { MdMessage, MdPeople, MdPersonAdd, MdArchive, MdPerson } from 'react-icons/md';
 
-export default function NavBar() {
+export default function NavBar({ onProfileClick, setView }) {
   const location = useLocation();
 
   return (
-    <div className="w-[145px] flex flex-col justify-between h-screen bg-ucd-blue-light">
+    <div className="w-[250px] flex flex-col justify-between h-screen bg-ucd-blue-light">
       <div className="flex flex-col items-start mt-3 ml-3">
         {/* Direct Messages Link */}
         <Link
           to="/"
           className={`w-full text-left px-4 py-3 rounded-lg mb-2 transition flex items-center text-lg ${
-            location.pathname === '/home' ? 'text-ucd-blue-800 bg-ucd-blue-100' : 'text-ucd-blue-600'
+            location.pathname === '/' ? 'text-ucd-blue-800 bg-ucd-blue-100' : 'text-ucd-blue-600'
           } hover:text-ucd-blue-800 hover:bg-ucd-blue-100 hover:scale-105`}
+          onClick={() => setView('chat')}
         >
-          <MdMessage className={`mr-3 ${location.pathname === '/home' ? 'text-ucd-blue-800' : 'text-ucd-blue-600'}`} />
+          <MdMessage className={`mr-3 ${location.pathname === '/' ? 'text-ucd-blue-800' : 'text-ucd-blue-600'}`} />
           <span className="pt-1 align-middle">Chat</span>
         </Link>
 
@@ -47,6 +48,7 @@ export default function NavBar() {
           className={`w-full text-left px-4 py-3 rounded-lg mb-2 transition flex items-center text-lg ${
             location.pathname === '/archive' ? 'text-ucd-blue-800 bg-ucd-blue-100' : 'text-ucd-blue-600'
           } hover:text-ucd-blue-800 hover:bg-ucd-blue-100 hover:scale-105`}
+          onClick={() => setView('archive')}
         >
           <MdArchive className={`mr-3 ${location.pathname === '/archive' ? 'text-ucd-blue-800' : 'text-ucd-blue-600'}`} />
           <span className="pt-1 align-middle">Archive</span>
@@ -55,15 +57,13 @@ export default function NavBar() {
 
       <div className="flex flex-col items-start p-4 mb-4">
         {/* Profile Link */}
-        <Link
-          to="/profile"
-          className={`w-full text-left px-4 py-3 rounded-lg transition flex items-center text-lg ${
-            location.pathname === '/profile' ? 'text-ucd-blue-800 bg-ucd-blue-100' : 'text-ucd-blue-600'
-          } hover:text-ucd-blue-800 hover:bg-ucd-blue-100 hover:scale-105`}
+        <button
+          onClick={onProfileClick}
+          className="w-full text-left px-4 py-3 rounded-lg transition flex items-center text-lg text-ucd-blue-600 hover:text-ucd-blue-800 hover:bg-ucd-blue-100 hover:scale-105"
         >
-          <MdPerson className={`mr-3 ${location.pathname === '/profile' ? 'text-ucd-blue-800' : 'text-ucd-blue-600'}`} />
+          <MdPerson className="mr-3 text-ucd-blue-600" />
           <span className="pt-1">Profile</span>
-        </Link>
+        </button>
       </div>
     </div>
   );
