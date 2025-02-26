@@ -115,9 +115,17 @@ export const getAvatar = async (req, res) => {
 
 export const getInfo = async (req, res) => {
     try {
-        const { email, newAvatar } = req.body;
+        const { email } = req.body;
 
         const user = await UserInfo.findOne({ email });
+
+        if (!user.username) {
+            user.username = "Guest";
+        }
+
+        if (!user.avatar) {
+            user.avatar = "https://via.placeholder.com/150/FFFFFF/FFFFFF?text=No+Avatar";
+        }
         
         if (!user) {
             throw new Error("User not found");
