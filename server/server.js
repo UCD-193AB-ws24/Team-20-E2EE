@@ -4,20 +4,22 @@ import dotenv from 'dotenv';
 import authRoutes from "./routes/auth.routes.js";
 import messageRoutes from "./routes/message.routes.js";
 import userInfoRoutes from "./routes/userinfo.routes.js";
-import { connectDB } from "./db/connection.js";
+import { connectDB } from "./mongo/connection.js";
 import admin from "./firebaseAdmin.js";
 
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-connectDB();
+connectDB.once("open", () => {
+  console.log("Connected to MongoDB");
+});
 
 app.use(express.json());
 app.use(
     cors({
       origin: "http://localhost:5173", // Replace with your frontend URL
-      methods: "GET,POST", // Allow GET and POST requests
+      methods: "GET,POST,PUT", // Allow GET and POST requests
       allowedHeaders: "Content-Type",
     })
   );
