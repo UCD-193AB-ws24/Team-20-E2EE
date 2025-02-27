@@ -15,7 +15,11 @@ export const updateUsername = async (req, res) => {
 
         const db = await connectDB();
         const usersCollection = db.collection("users");
-
+        
+        const existingUser = await usersCollection.findOne({ username: username });
+        if(existingUser){
+            return res.status(409).json({error: "Username already exists"});
+        }
         // Update username in MongoDB
         const result = await usersCollection.updateOne(
             { uid: uid },

@@ -14,10 +14,8 @@ import Welcome from './pages/Welcome';
 export default function App() {
   return (
     <Routes>
-      {/* Public Routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<SignUp />} />
-      <Route path="/welcome" element={<Welcome />} />
       
       {/* Protected Routes - Only accessible to logged-in and verified users */}
       <Route element={<ProtectedRoute />}>
