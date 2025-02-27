@@ -16,7 +16,11 @@ export default function Login() {
 
         const result = await loginUser(email, password);
         if (result.success) {
-            navigate("/"); // Redirect to home after successful login
+            if(result.warning === "Please set your username to continue") {
+                navigate("/welcome");
+            }else{
+                navigate("/"); 
+            }
         } else if (result.error === "Email not verified. Please check your email.") {
             setVerificationRequired(true); // Show email verification message
         } else {
