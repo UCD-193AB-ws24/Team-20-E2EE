@@ -79,23 +79,21 @@ export const sendFriendRequest = async (req, res) => {
         if (!currentUser) {
             return res.status(404).json({ error: "Current user not found" });
         }
-        const currentUsername = currentUser.username;
-
-        // Prevent self-friend request
-        if (currentUsername === friendUsername) {
-            return res.status(400).json({ error: "You cannot send a friend request to yourself" });
-        }
 
         // Find the friend in the database
         const friend = await usersCollection.findOne({ username: friendUsername });
         if (!friend) {
             return res.status(404).json({ error: "Friend not found" });
         }
-
+        
+        // Check if the friend is already in the `friends` array
+        if (currentUser.friends.includes(friend.uid)) {
+            return res.status(400).json({ error: "User is already a friend" });
+        }
         // Add friend request to friend's `friendRequests` array
         const result = await usersCollection.updateOne(
             { username: friendUsername },
-            { $addToSet: { friendsRequests: currentUsername } }
+            { $addToSet: { friendsRequests: uid } }
         );
 
         if (result.modifiedCount === 0) {
@@ -109,6 +107,32 @@ export const sendFriendRequest = async (req, res) => {
         res.status(500).json({ error: "Internal server error" });
     }
 };
+
+export const getFriendRequests = async (req, res) => {  
+    try{
+        const uid = req.user?.uid;
+
+        if(!uid){
+            return res.status(401).json({ error: "Unauthorized - No user ID found" });
+        }
+
+        const db = await connectDB();
+        const usersCollection = db.collection("users");
+
+        const currentUser = await usersCollection.findOne({ uid: uid });
+        if(!currentUser){
+            return res.status(404).json({ error: "Current user not found" });
+        }
+
+        const friendRequests = await usersCollection.find({ uid: { $in: currentUser.friendsRequests } }).toArray();
+
+        res.json({ friendRequests });
+
+    }catch(error){
+        console.error("Error getting friend requests:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+}
 
 
 export const acceptFriendRequest = async (req, res) => {

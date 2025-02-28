@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { MdSearch } from 'react-icons/md';
+import { BACKEND_URL } from '../config/config';
 
 const mockRequests = [
   { name: 'Eve', status: 'pending' },
@@ -20,23 +21,157 @@ export default function Requests() {
     try {
       // Placeholder for database integration
       console.log(`Accepted request from ${name}`);
+
       // Add your database integration code here
+      const user = JSON.parse(localStorage.getItem('user'));
+      const token = user?.idToken;
+      
+      if(!token){
+        console.error('No token found');
+        return;
+      }
+
+      const response = await fetch(`${BACKEND_URL}/api/user/accept-friend-request`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({friendUsername: name }),
+      });
+
+      if(response.ok){
+        console.log('Request accepted successfully');
+      }
+
     } catch (error) {
       console.error('Failed to accept request:', error);
     }
   };
+
 
   // Placeholder function for declining a friend request
   const declineRequest = async (name) => {
     try {
       // Placeholder for database integration
       console.log(`Declined request from ${name}`);
+
       // Add your database integration code here
+      const user = JSON.parse(localStorage.getItem('user'));
+      const token = user?.idToken;
+      if(!token){
+        console.error('No token found');
+        return;
+      }
+
+      const response = await fetch(`${BACKEND_URL}/api/user/delete-friend-request`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ friendUsername: name  }),
+      });
+
+      if(response.ok){
+        console.log('Request declined successfully');
+      }
+
     } catch (error) {
       console.error('Failed to decline request:', error);
     }
   };
 
+  const sendFriendRequest = async (name) => {
+    try{
+      // Placeholder for database integration
+      console.log(`Sent friend request to ${name}`);
+
+      // Add your database integration code here
+      const user = JSON.parse(localStorage.getItem('user'));
+      const token = user?.idToken;
+      if(!token){
+        console.error('No token found');
+        return;
+      }
+
+      const response = await fetch(`${BACKEND_URL}/api/user/send-friend-request`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ friendUsername: name  }),
+      });
+
+      if(response.ok){
+        console.log('Friend request sent successfully');
+      }
+
+    }catch(error){
+      console.error('Failed to send friend request:', error);
+    }
+  };
+
+  const getFriendRequests = async () => {
+    try{
+      const user = JSON.parse(localStorage.getItem('user'));
+      const token = user?.idToken;
+      if(!token){
+        console.error('No token found');
+        return;
+      }
+
+      const response = await fetch(`${BACKEND_URL}/api/user/friendRequestList`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if(response.ok){
+        const data = await response.json();
+        console.log('Friend requests:', data);
+      } 
+
+    }catch(error){
+      console.error('Failed to get friend requests:', error);
+    }
+  }
+
+  const findUser = async (name) => {
+    try{
+      // Placeholder for database integration
+      console.log(`Finding user ${name}`);
+
+      // Add your database integration code here
+      const user = JSON.parse(localStorage.getItem('user'));
+      const token = user?.idToken;
+      if(!token){
+        console.error('No token found');
+        return;
+      }
+
+      const response = await fetch(`${BACKEND_URL}/api/user/searchUser?username=${name}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ friendUsername: name  }),
+      });
+
+      if(response.ok){
+        const data = await response.json();
+        console.log('User found:', data);
+      }
+
+    }catch(error){
+      console.error('Failed to find user:', error);
+    }
+  }
+
+  
   return (
     <div className="flex-1 bg-white flex flex-col shadow-lg rounded-lg m-3 p-3 overflow-hidden">
       <div className="p-2">
