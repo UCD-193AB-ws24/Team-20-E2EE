@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUser, faKey } from "@fortawesome/free-solid-svg-icons";
 import { signUpUser } from "../api/auth";
@@ -62,7 +62,7 @@ export default function SignUp() {
                         </button>
 
                         {/* Login Link */}
-                        {/* <span>Already have an account? <Link to="/login" className="text-blue-500 underline">Login</Link></span> */}
+                        <span>Already have an account? <Link to="/login" className="text-blue-500 underline">Login</Link></span>
 
 
                         {/* Error Message (If Any) */}
