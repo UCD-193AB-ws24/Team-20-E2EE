@@ -3,13 +3,16 @@ import cors from "cors";
 import dotenv from 'dotenv';
 import authRoutes from "./routes/auth.routes.js";
 import messageRoutes from "./routes/message.routes.js";
-import userInfoRoutes from "./routes/userinfo.routes.js";
-import { connectDB } from "./mongo/connection.js";
 import admin from "./firebaseAdmin.js";
 import userRoutes from "./routes/user.routes.js";
-import mongoose from "mongoose";
 
 dotenv.config();
+console.log("MongoDB URI in server.js:", process.env.ATLAS_URI);
+
+
+import { connectDB } from "./mongo/connection.js";
+
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -21,16 +24,13 @@ app.use(express.json());
 app.use(
     cors({
       origin: "http://localhost:5173", // Replace with your frontend URL
-      methods: "GET,POST", // Allow GET and POST requests
+      methods: "GET, POST, PUT, DELETE", // Allow GET and POST requests
       allowedHeaders: "Content-Type,Authorization", // Allow Content-Type header
-      methods: "GET,POST,PUT", // Allow GET and POST requests
-      allowedHeaders: "Content-Type",
     })
   );
 
 app.use("/api/message", messageRoutes);
 app.use("/api/auth", authRoutes);  
-app.use("/api/userinfo", userInfoRoutes);
 app.use("/api/user", userRoutes);
 
 app.listen(PORT, () => {

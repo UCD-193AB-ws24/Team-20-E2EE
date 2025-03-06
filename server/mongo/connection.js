@@ -1,15 +1,15 @@
 import mongoose from "mongoose";
 import { GridFsStorage } from "multer-gridfs-storage";
+import { MongoClient, ServerApiVersion } from "mongodb";
 import Grid from "gridfs-stream";
 import multer from "multer";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-import { MongoClient, ServerApiVersion } from "mongodb";
-import dotenv from "dotenv";
-dotenv.config();
-const uri = process.env.ATLAS_URI || "";
+console.log("MongoDB URI:", process.env.ATLAS_URI);
+
+const uri = process.env.ATLAS_URI || "mongodb+srv://duonghyhenry:Popcornzeppeli12%21@capstonee2ee.ic1rz.mongodb.net/?retryWrites=true&w=majority&appName=CapstoneE2EE" ;
 
 const connectDB = mongoose.createConnection(uri, {
   useNewUrlParser: true,
@@ -49,13 +49,3 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   }
 });
-
-export async function connectDB() {
-  try {
-    await client.connect();
-    // console.log("Connected to MongoDB!");
-    return client.db("e2ee_database"); // Return the database instance
-  } catch (error) {
-    console.error("Error connecting to MongoDB:", error);
-  }
-}

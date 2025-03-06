@@ -12,7 +12,7 @@ export const register = async (req, res) => {
 
     console.log("Email Link:", emailVerificationLink);
     // Get database instance
-    const db = await connectDB();
+    const db = connectDB.db;
     const usersCollection = db.collection("users");
 
     // Insert user UID into MongoDB if not exists
@@ -24,6 +24,7 @@ export const register = async (req, res) => {
         friendsRequests: [],
         avatar: "",
         username: "",
+        description: "",
         createdAt: new Date(),
       });
       // console.log("User inserted into MongoDB");
@@ -44,6 +45,7 @@ export const register = async (req, res) => {
 };
 
 export const login = async (req, res) => {
+
   const { idToken } = req.body; // Receive ID Token from frontend
 
   try {
@@ -58,7 +60,7 @@ export const login = async (req, res) => {
       } 
 
       // Check if username is set in MongoDB
-      const db = await connectDB();
+      const db = connectDB.db;
       const usersCollection = db.collection("users");
       const existingUser = await usersCollection.findOne({ uid: userRecord.uid });
 
@@ -68,6 +70,7 @@ export const login = async (req, res) => {
         emailVerified: userRecord.emailVerified,
         displayName: userRecord.displayName || "",
         username: existingUser?.username || "", // Ensure we fetch username from MongoDB
+        description: userRecord.description,
         idToken,
       };
 
@@ -89,6 +92,7 @@ export const login = async (req, res) => {
       res.status(401).json({ error: "Unauthorized - Invalid token" });
   }
 };
+
 
 export const logout = (req, res) => {
 
