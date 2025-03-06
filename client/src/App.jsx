@@ -9,11 +9,21 @@ import Archive from './pages/Archive';
 import SignUp from './pages/Signup';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
+import { CorbadoProvider } from "@corbado/react";
+import PasskeyLogin from './pages/PasskeyLogin';
+// import PasskeyHome from './pages/PasskeyHome';
+import LoginSelection from './pages/LoginSelection';
+
+const CORBADO_PROJECT_ID = import.meta.env.VITE_REACT_APP_CORBADO_PROJECT_ID;
 
 export default function App() {
   return (
+    <CorbadoProvider projectId={CORBADO_PROJECT_ID} darkMode='on'>
+
     <Routes>
       {/* Public Routes */}
+      <Route path="/loginselection" element={<LoginSelection />} /> 
+      <Route path="/passkeylogin" element={<PasskeyLogin />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<SignUp />} />
 
@@ -26,5 +36,6 @@ export default function App() {
         <Route path="/archive" element={<Layout><Archive /></Layout>} />
       </Route>
     </Routes>
+    </CorbadoProvider>
   );
 }
