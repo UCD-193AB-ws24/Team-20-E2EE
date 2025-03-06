@@ -6,6 +6,8 @@ import messageRoutes from "./routes/message.routes.js";
 import userInfoRoutes from "./routes/userinfo.routes.js";
 import { connectDB } from "./mongo/connection.js";
 import admin from "./firebaseAdmin.js";
+import userRoutes from "./routes/user.routes.js";
+import mongoose from "mongoose";
 
 dotenv.config();
 const app = express();
@@ -19,6 +21,8 @@ app.use(express.json());
 app.use(
     cors({
       origin: "http://localhost:5173", // Replace with your frontend URL
+      methods: "GET,POST", // Allow GET and POST requests
+      allowedHeaders: "Content-Type,Authorization", // Allow Content-Type header
       methods: "GET,POST,PUT", // Allow GET and POST requests
       allowedHeaders: "Content-Type",
     })
@@ -27,6 +31,7 @@ app.use(
 app.use("/api/message", messageRoutes);
 app.use("/api/auth", authRoutes);  
 app.use("/api/userinfo", userInfoRoutes);
+app.use("/api/user", userRoutes);
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
