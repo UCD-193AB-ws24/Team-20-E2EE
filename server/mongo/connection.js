@@ -1,15 +1,16 @@
+import dotenv from "dotenv";
+dotenv.config();
+const uri = process.env.ATLAS_URI;
+
 import mongoose from "mongoose";
 import { GridFsStorage } from "multer-gridfs-storage";
 import { MongoClient, ServerApiVersion } from "mongodb";
 import Grid from "gridfs-stream";
 import multer from "multer";
-import dotenv from "dotenv";
 
-dotenv.config();
 
 console.log("MongoDB URI:", process.env.ATLAS_URI);
 
-const uri = process.env.ATLAS_URI || "mongodb+srv://duonghyhenry:Popcornzeppeli12%21@capstonee2ee.ic1rz.mongodb.net/?retryWrites=true&w=majority&appName=CapstoneE2EE" ;
 
 const connectDB = mongoose.createConnection(uri, {
   useNewUrlParser: true,
