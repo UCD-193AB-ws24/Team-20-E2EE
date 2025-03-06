@@ -61,6 +61,10 @@ export default function SignUp() {
                             Sign Up
                         </button>
 
+                        {/* Login Link */}
+                        {/* <span>Already have an account? <Link to="/login" className="text-blue-500 underline">Login</Link></span> */}
+
+
                         {/* Error Message (If Any) */}
                         {error && <p style={{ color: "red" }}>{error}</p>}
                     </form>

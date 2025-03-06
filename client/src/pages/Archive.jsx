@@ -4,8 +4,6 @@ import Sidebar from '../components/NavBar';
 export default function Archive() {
   return (
     <div className="h-screen flex">
-      {/* LEFT SIDEBAR */}
-      <Sidebar />
 
       {/* ARCHIVE CONTENT */}
       <div className="flex-1 flex flex-col items-center justify-center">
