@@ -9,9 +9,6 @@ import Grid from "gridfs-stream";
 import multer from "multer";
 
 
-console.log("MongoDB URI:", process.env.ATLAS_URI);
-
-
 const connectDB = mongoose.createConnection(uri, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
