@@ -7,8 +7,8 @@ const router = express.Router();
 router.post("/update-username", authenticateUser, updateUsername);
 router.get("/get-user", authenticateUser, getUser);
 router.put("/update-description", authenticateUser, updateDescription);
-router.post("/update-avatar", authenticateUser, updateAvatar);
-router.get("/get-avatar/:id", authenticateUser, getAvatar);
+router.put("/update-avatar", authenticateUser, updateAvatar);
+router.get("/get-avatar/:username", authenticateUser, getAvatar);
 
 
 export default router;

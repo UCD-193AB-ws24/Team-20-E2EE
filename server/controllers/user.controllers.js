@@ -110,19 +110,21 @@ export const updateAvatar = async (req, res) => {
                 return res.status(400).json({ error: "No avatar uploaded" });
             }
 
+            const fileUrl = `http://localhost:3000/api/users/get-avatar/${req.file.username}`;
+
+            const db = connectDB.db;
             const usersCollection = db.collection("users");
 
             const result = await usersCollection.updateOne(
                 { uid },
-                { $set: { avatar: req.file.id } }
+                { $set: { avatar: fileUrl } }
             );
 
             if (result.modifiedCount === 0) {
                 return res.status(404).json({ error: "User not found or avatar unchanged" });
             }
 
-            res.json({ message: "Avatar updated successfully", fileId: req.file.id });
-
+            res.json({ message: "Avatar updated successfully", fileId: req.file.id, avatarUrl: fileUrl });
         } catch (error) {
             console.error("Error updating avatar:", error);
             res.status(500).json({ error: "Internal server error" });
@@ -132,14 +134,15 @@ export const updateAvatar = async (req, res) => {
 
 export const getAvatar = async (req, res) => {
     try {
-        const { id } = req.params;
-        const file = await gfs.files.findOne({ _id: new mongoose.Types.ObjectId(id) });
+        const { username } = req.params;
+        const file = await gfs.files.findOne({ username: username });
 
         if (!file) {
             return res.status(404).json({ error: "File not found" });
         }
 
         const readStream = gfs.createReadStream(file._id);
+        res.set("Content-Type", file.contentType);
         readStream.pipe(res);
 
     } catch (error) {
