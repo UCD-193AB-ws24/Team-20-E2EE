@@ -1,22 +1,32 @@
-import { MongoClient, ServerApiVersion } from "mongodb";
-import dotenv from "dotenv";
+import { MongoClient } from 'mongodb';
+import dotenv from 'dotenv';
+
 dotenv.config();
-const uri = process.env.ATLAS_URI || "";
 
-const client = new MongoClient(uri, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  }
-});
+const uri = process.env.ATLAS_URI;
+const client = new MongoClient(uri);
 
-export async function connectDB() {
+let dbConnection;
+
+export const connectDB = async () => {
+  if (dbConnection) return dbConnection;
+  
   try {
     await client.connect();
-    // console.log("Connected to MongoDB!");
-    return client.db("e2ee_database"); // Return the database instance
+    console.log('Connected to MongoDB');
+    dbConnection = client.db("e2ee_database");
+    return dbConnection;
   } catch (error) {
-    console.error("Error connecting to MongoDB:", error);
+    console.error('MongoDB connection error:', error);
+    throw error;
   }
-}
+};
+
+// Helper function to get collections
+export const getCollections = async () => {
+  const db = await connectDB();
+  return {
+    users: db.collection("users"),
+    messages: db.collection("messages")
+  };
+};

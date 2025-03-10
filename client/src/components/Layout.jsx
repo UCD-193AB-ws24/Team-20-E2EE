@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import NavBar from './NavBar';
 import ChatWindow from './ChatWindow';
 import MessageInput from './MessageInput';
@@ -6,65 +6,175 @@ import ProfileModal from './ProfileModal';
 import Archive from '../pages/Archive';
 import Friends from '../pages/Friends';
 import Requests from '../pages/Requests';
+import { 
+  initializeSocket, disconnectSocket, sendPrivateMessage,
+  registerMessageListener, registerMessageSentListener,
+  removeListener, sendTypingStatus, registerTypingListener
+} from '../api/socket';
+import { getChatHistory } from '../api/messages';
 
-const mockMessages = {
-  Alice: {
-    messages: [
-      { sender: 'Alice', text: 'Hey! How are you?', time: '10:00 AM' },
-      { sender: 'Me', text: 'I am good! How about you?', time: '10:02 AM' },
-    ],
-    mostRecentMessage: 'I am good! How about you?',
-  },
-  Bob: {
-    messages: [
-      { sender: 'Bob', text: 'Want to grab lunch?', time: '12:30 PM' },
-      { sender: 'Me', text: 'Sure, what time?', time: '12:35 PM' },
-    ],
-    mostRecentMessage: 'Sure, what time?',
-  },
-  Charlie: {
-    messages: [
-      { sender: 'Charlie', text: 'Let’s catch up soon!', time: '5:45 PM' },
-      { sender: 'Me', text: 'Absolutely! Let me know when.', time: '5:47 PM' },
-    ],
-    mostRecentMessage: 'Absolutely! Let me know when.',
-  },
-};
-
-const archivedMessages = {
-  Alice: {
-    messages: [
-      { sender: 'Alice', text: 'Archived message 1', time: '10:00 AM' },
-      { sender: 'Me', text: 'Archived reply 1', time: '10:02 AM' },
-    ],
-    mostRecentMessage: 'Archived reply 1',
-  },
-  Bob: {
-    messages: [
-      { sender: 'Bob', text: 'Archived message 2', time: '12:30 PM' },
-      { sender: 'Me', text: 'Archived reply 2', time: '12:35 PM' },
-    ],
-    mostRecentMessage: 'Archived reply 2',
-  },
-};
+// Initialize with empty data structure
+const initialMessagesState = {};
 
 export default function Layout({ children }) {
-  const [selectedUser, setSelectedUser] = useState('Alice');
-  const [messages, setMessages] = useState(mockMessages[selectedUser].messages);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [messagesByUser, setMessagesByUser] = useState(initialMessagesState);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [view, setView] = useState('chat');
+  const [isTyping, setIsTyping] = useState({});
+  const [typingTimeout, setTypingTimeout] = useState(null);
 
+  // Initialize Socket.io connection
   useEffect(() => {
-    if (view === 'archive') {
-      setMessages(archivedMessages[selectedUser]?.messages || []);
-    } else {
-      setMessages(mockMessages[selectedUser]?.messages || []);
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (user?.idToken) {
+      initializeSocket(user.idToken);
+      
+      // Clean up socket connection on component unmount
+      return () => {
+        disconnectSocket();
+      };
     }
-  }, [selectedUser, view]);
+  }, []);
 
+  // Load chat history when selected user changes
+  useEffect(() => {
+    const loadChatHistory = async () => {
+      if (!selectedUser) return;
+      
+      try {
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (!user?.idToken) return;
+        
+        // Check if we already have messages for this user
+        if (!messagesByUser[selectedUser] || messagesByUser[selectedUser].length === 0) {
+          const { messages: chatHistory } = await getChatHistory(user.idToken, selectedUser);
+          
+          // Update messages for this user
+          setMessagesByUser(prev => ({
+            ...prev,
+            [selectedUser]: chatHistory || []
+          }));
+          
+          // Set current messages
+          setMessages(chatHistory || []);
+        } else {
+          // Use existing messages
+          setMessages(messagesByUser[selectedUser] || []);
+        }
+      } catch (error) {
+        console.error('Error loading chat history:', error);
+      }
+    };
+    
+    if (view === 'chat') {
+      loadChatHistory();
+    }
+  }, [selectedUser, view, messagesByUser]);
+
+  // Set up message listeners for real-time communication
+  useEffect(() => {
+    // Handle incoming messages
+    registerMessageListener((message) => {
+      const { sender, text, time } = message;
+      
+      // Add message to the appropriate user's message list
+      setMessagesByUser(prev => {
+        const userMessages = prev[sender] || [];
+        return {
+          ...prev,
+          [sender]: [...userMessages, { sender, text, time }]
+        };
+      });
+      
+      // If this is from the currently selected user, update current messages
+      if (sender === selectedUser) {
+        setMessages(prev => [...prev, { sender, text, time }]);
+      }
+    });
+    
+    // Handle confirmation of sent messages
+    registerMessageSentListener((message) => {
+      const { recipient, text, time } = message;
+      
+      // Add message to the appropriate user's message list
+      setMessagesByUser(prev => {
+        const userMessages = prev[recipient] || [];
+        return {
+          ...prev,
+          [recipient]: [...userMessages, { sender: 'Me', text, time }]
+        };
+      });
+      
+      // If this is for the currently selected user, update current messages
+      if (recipient === selectedUser) {
+        setMessages(prev => [...prev, { sender: 'Me', text, time }]);
+      }
+    });
+    
+    // Handle typing indicators
+    registerTypingListener((data) => {
+      const { username, isTyping: typing } = data;
+      setIsTyping(prev => ({
+        ...prev,
+        [username]: typing
+      }));
+      
+      // Clear typing indicator after 3 seconds of inactivity
+      if (typing) {
+        setTimeout(() => {
+          setIsTyping(prev => ({
+            ...prev,
+            [username]: false
+          }));
+        }, 3000);
+      }
+    });
+    
+    // Clean up listeners on unmount
+    return () => {
+      removeListener('receive_message');
+      removeListener('message_sent');
+      removeListener('user_typing');
+    };
+  }, [selectedUser]);
+
+  // Handle typing indicator
+  const handleTyping = useCallback(() => {
+    if (!selectedUser) return;
+    
+    // Clear previous timeout
+    if (typingTimeout) clearTimeout(typingTimeout);
+    
+    // Send typing indicator
+    sendTypingStatus(selectedUser, true);
+    
+    // Set timeout to stop typing indicator
+    const timeout = setTimeout(() => {
+      sendTypingStatus(selectedUser, false);
+    }, 3000);
+    
+    setTypingTimeout(timeout);
+  }, [selectedUser, typingTimeout]);
+
+  // Send message function
   const sendMessage = async (text) => {
-    const newMessage = { sender: 'Me', text, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
-    setMessages((prev) => [...prev, newMessage]);
+    if (!selectedUser || !text.trim()) return;
+    
+    // Send message via socket
+    const sent = sendPrivateMessage(selectedUser, text);
+    
+    if (!sent) {
+      console.error('Failed to send message: Socket not connected');
+      // You could implement a fallback here or show an error
+    }
+    
+    // Clear typing indicator
+    if (typingTimeout) {
+      clearTimeout(typingTimeout);
+      sendTypingStatus(selectedUser, false);
+    }
   };
 
   return (
@@ -81,7 +191,12 @@ export default function Layout({ children }) {
         ) : view === 'requests' ? (
           <Requests selectedUser={selectedUser} setSelectedUser={setSelectedUser} />
         ) : (
-          React.cloneElement(children, { selectedUser, setSelectedUser })
+          React.cloneElement(children, {
+            selectedUser,
+            setSelectedUser,
+            messagesByUser,
+            isTyping
+          })
         )}
       </div>
 
@@ -89,11 +204,19 @@ export default function Layout({ children }) {
       <div className="flex-1 flex flex-col bg-white shadow-lg rounded-lg m-4">
         <div className="p-4">
           <h2 className="text-xl font-bold text-ucd-blue-900">
-            {selectedUser} {view === 'archive' && '(Archive)'}
+            {selectedUser || 'Select a user to start chatting'}
+            {selectedUser && view === 'archive' && ' (Archive)'}
+            {selectedUser && isTyping[selectedUser] && 
+              <span className="ml-2 text-sm text-gray-500 italic">typing...</span>
+            }
           </h2>
         </div>
         <ChatWindow messages={messages} />
-        <MessageInput sendMessage={sendMessage} />
+        <MessageInput 
+          sendMessage={sendMessage}
+          onTyping={handleTyping}
+          disabled={!selectedUser || view === 'archive'}
+        />
       </div>
 
       {showProfileModal && (
