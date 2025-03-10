@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { MdSearch } from 'react-icons/md';
 import { getFriendList } from '../api/friends';
+import { getAllMessagePreviews } from '../api/messages'; // New import for message previews
 import { registerUserOnlineListener, registerUserOfflineListener, removeListener } from '../api/socket';
 
-export default function ChatList({ selectedUser, setSelectedUser, messagesByUser, isTyping }) {
+export default function ChatList({ selectedUser, setSelectedUser, messagesByUser, setMessagesByUser, isTyping }) {
   const [friends, setFriends] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState({});
+  const [messagePreviews, setMessagePreviews] = useState({});
 
   // Get the auth token from localStorage
   const getToken = () => {
@@ -23,8 +25,13 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
         const token = getToken();
         const data = await getFriendList(token);
         setFriends(data.friends || []);
+        
+        // Now load message previews for each friend
+        if (data.friends && data.friends.length > 0) {
+          await loadMessagePreviews(token, data.friends);
+        }
       } catch (err) {
-        console.error(err);
+        console.error("Error loading friends:", err);
       } finally {
         setIsLoading(false);
       }
@@ -32,6 +39,44 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
     
     loadFriends();
   }, []);
+
+// Function to load message previews for all friends
+const loadMessagePreviews = async (token, friendsList) => {
+  try {
+    // Get message previews for all friends in one API call
+    const previewsData = await getAllMessagePreviews(token);
+    
+    if (previewsData && previewsData.previews) {
+      // Create a new object to store messages by username
+      const newMessagesByUser = { ...messagesByUser };
+      const newPreviews = {};
+      
+      // Process each preview
+      previewsData.previews.forEach(preview => {
+        const { username, lastMessage } = preview;
+        
+        // Add to previews if there's a last message
+        if (lastMessage) {
+          newPreviews[username] = lastMessage;
+          
+          // If we don't already have messages for this user in state, initialize with the preview
+          if (!messagesByUser[username] || messagesByUser[username].length === 0) {
+            newMessagesByUser[username] = [lastMessage];
+          }
+        } else {
+          // No message yet for this friend
+          newPreviews[username] = { text: "No messages yet", time: "" };
+        }
+      });
+      
+      // Update both states
+      setMessagePreviews(newPreviews);
+      setMessagesByUser(newMessagesByUser);
+    }
+  } catch (err) {
+    console.error("Error loading message previews:", err);
+  }
+};
 
   // Set up online status listeners
   useEffect(() => {
@@ -61,15 +106,22 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
     friend.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Get last message for each friend
-  const getLastMessage = (username) => {
-    if (!messagesByUser[username] || messagesByUser[username].length === 0) {
-      return "No messages yet";
-    }
-    const messages = messagesByUser[username];
-    const lastMessage = messages[messages.length - 1];
-    return lastMessage.text;
-  };
+ // Get last message for each friend
+ const getLastMessage = (username) => {
+   // First check message previews for initial load
+   if (messagePreviews[username]) {
+     return messagePreviews[username].text || "No messages yet";
+   }
+  
+   // Then check active message state for updates during session
+   if (messagesByUser[username] && messagesByUser[username].length > 0) {
+     const messages = messagesByUser[username];
+     const lastMessage = messages[messages.length - 1];
+     return lastMessage.text;
+   }
+  
+   return "No messages yet";
+ };
 
   return (
     <div className="flex-1 bg-white flex flex-col shadow-lg rounded-lg m-3 p-3 overflow-hidden">
