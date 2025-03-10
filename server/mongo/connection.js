@@ -1,49 +1,85 @@
-import dotenv from "dotenv";
+import { MongoClient } from 'mongodb';
+import dotenv from 'dotenv';
+
 dotenv.config();
+
 const uri = process.env.ATLAS_URI;
+const client = new MongoClient(uri);
 
-import mongoose from "mongoose";
-import { GridFsStorage } from "multer-gridfs-storage";
-import { MongoClient, ServerApiVersion } from "mongodb";
-import Grid from "gridfs-stream";
-import multer from "multer";
+let dbConnection;
 
-
-const connectDB = mongoose.createConnection(uri, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
-
-let gfs, gridfsBucket;
-
-connectDB.once("open", () => {
-  gridfsBucket = new mongoose.mongo.GridFSBucket(connectDB.db, {
-    bucketName: "avatars",
-  });
-
-  gfs = Grid(connectDB.db, mongoose.mongo);
-  gfs.collection("avatars");
-
-  console.log("Connected to MongoDB and GridFS Initialized!");
-});
-
-const storage = new GridFsStorage({
-  url: uri,
-  file: (req, file) => {
-    return {
-      filename: `${Date.now()}-${file.originalname}`,
-      bucketName: "avatars",
-    };
-  },
-});
-
-const upload = multer({ storage });
-
-export { connectDB, gfs, gridfsBucket, upload };
-const client = new MongoClient(uri, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
+export const connectDB = async () => {
+  if (dbConnection) return dbConnection;
+  
+  try {
+    await client.connect();
+    console.log('Connected to MongoDB');
+    dbConnection = client.db("e2ee_database");
+    return dbConnection;
+  } catch (error) {
+    console.error('MongoDB connection error:', error);
+    throw error;
   }
-});
+};
+
+// Helper function to get collections
+export const getCollections = async () => {
+  const db = await connectDB();
+  return {
+    users: db.collection("users"),
+    messages: db.collection("messages")
+  };
+};
+
+// *** Connection to Test database ***
+
+// import dotenv from "dotenv";
+// dotenv.config();
+// const uri = process.env.ATLAS_URI;
+
+// import mongoose from "mongoose";
+// import { GridFsStorage } from "multer-gridfs-storage";
+// import { MongoClient, ServerApiVersion } from "mongodb";
+// import Grid from "gridfs-stream";
+// import multer from "multer";
+
+
+// const connectDB = mongoose.createConnection(uri, {
+//   useNewUrlParser: true,
+//   useUnifiedTopology: true,
+// });
+
+// let gfs, gridfsBucket;
+
+// connectDB.once("open", () => {
+//   gridfsBucket = new mongoose.mongo.GridFSBucket(connectDB.db, {
+//     bucketName: "avatars",
+//   });
+
+//   gfs = Grid(connectDB.db, mongoose.mongo);
+//   gfs.collection("avatars");
+
+//   console.log("Connected to MongoDB and GridFS Initialized!");
+// });
+
+// const storage = new GridFsStorage({
+//   url: uri,
+//   file: (req, file) => {
+//     return {
+//       filename: `${Date.now()}-${file.originalname}`,
+//       bucketName: "avatars",
+//     };
+//   },
+// });
+
+// const upload = multer({ storage });
+
+// export { connectDB, gfs, gridfsBucket, upload };
+// const client = new MongoClient(uri, {
+//   serverApi: {
+//     version: ServerApiVersion.v1,
+//     strict: true,
+//     deprecationErrors: true,
+//   }
+// });
+

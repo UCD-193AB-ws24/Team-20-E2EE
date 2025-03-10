@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import ChatList from './components/ChatList';
 import Login from './pages/Login';
@@ -10,8 +10,21 @@ import SignUp from './pages/Signup';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import Welcome from './pages/Welcome';
+import { initializeSocket, disconnectSocket } from './api/socket';
 
 export default function App() {
+  // Initialize Socket.io connection
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (user?.idToken) {
+      initializeSocket(user.idToken);
+    }
+    
+    return () => {
+      disconnectSocket();
+    };
+  }, []);
+
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
