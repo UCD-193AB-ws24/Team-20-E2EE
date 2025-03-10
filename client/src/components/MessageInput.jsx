@@ -39,7 +39,7 @@ export default function MessageInput({ sendMessage, onTyping, disabled = false }
       />
       <button 
         type="submit" 
-        className={`ml-2 p-2 ${disabled || isSending ? 'bg-gray-400' : 'bg-ucd-gold-600'} text-white rounded-lg`}
+        className={`ml-2 p-2 ${disabled || isSending ? 'bg-gray-400' : 'bg-ucd-gold-600'} text-black rounded-lg`}
         disabled={disabled || isSending}
       >
         {isSending ? 'Sending...' : 'Send'}

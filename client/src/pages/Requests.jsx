@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { MdSearch } from 'react-icons/md';
-import { getFriendRequests, acceptFriendRequest, deleteFriendRequest, searchUsers, sendFriendRequest } from '../api/friends';
+import { MdPersonAdd, MdClose } from 'react-icons/md';
+import { getFriendRequests, acceptFriendRequest, deleteFriendRequest, sendFriendRequest } from '../api/friends';
 
 export default function Requests() {
   const [friendRequests, setFriendRequests] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
+  const [username, setUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [searchMode, setSearchMode] = useState(false);
+  const [sendStatus, setSendStatus] = useState(null);
   const [error, setError] = useState(null);
+  const [showModal, setShowModal] = useState(false);
 
   // Get the auth token from localStorage
   const getToken = () => {
@@ -35,28 +35,6 @@ export default function Requests() {
     
     loadFriendRequests();
   }, []);
-
-  // Handle search
-  const handleSearch = async (e) => {
-    const value = e.target.value;
-    setSearchTerm(value);
-    
-    if (value.trim().length > 0) {
-      setSearchMode(true);
-      setIsLoading(true);
-      try {
-        const results = await searchUsers(value);
-        setSearchResults(results.users || []);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setIsLoading(false);
-      }
-    } else {
-      setSearchMode(false);
-      setSearchResults([]);
-    }
-  };
 
   // Handle accepting a friend request
   const handleAcceptRequest = async (username) => {
@@ -85,37 +63,161 @@ export default function Requests() {
   };
 
   // Send new friend request
-  const handleSendRequest = async (username) => {
+  const handleSendRequest = async (e) => {
+    e.preventDefault();
+    
+    if (!username.trim()) {
+      setSendStatus({
+        success: false,
+        message: "Please enter a username"
+      });
+      return;
+    }
+    
+    setIsLoading(true);
+    setSendStatus(null);
+    
     try {
       const token = getToken();
-      await sendFriendRequest(token, username);
-      alert(`Friend request sent to ${username}`);
+      const response = await sendFriendRequest(token, username);
       
-      // Clear search after sending request
-      setSearchTerm('');
-      setSearchMode(false);
-      setSearchResults([]);
+      setSendStatus({
+        success: true,
+        message: `Friend request sent to ${username}`
+      });
+      
+      // Clear input after sending
+      setUsername('');
+      
+      // Optional: close modal after a delay
+      setTimeout(() => {
+        setShowModal(false);
+        setSendStatus(null);
+      }, 2000);
+      
     } catch (err) {
-      alert(err.message || 'Failed to send friend request');
+      // Handle different error cases
+      if (err.message && err.message.includes("User not found")) {
+        setSendStatus({
+          success: false,
+          message: `No user named "${username}" was found`
+        });
+      } else if (err.message && err.message.includes("already friends")) {
+        setSendStatus({
+          success: false,
+          message: `You are already friends with ${username}`
+        });
+      } else if (err.message && err.message.includes("request already sent")) {
+        setSendStatus({
+          success: false,
+          message: `You already sent a request to ${username}`
+        });
+      } else if (err.message && err.message.includes("request from this user")) {
+        setSendStatus({
+          success: false,
+          message: `${username} has already sent you a friend request`
+        });
+      } else if (err.message && err.message.includes("yourself")) {
+        setSendStatus({
+          success: false,
+          message: `You cannot send a friend request to yourself`
+        });
+      } else {
+        setSendStatus({
+          success: false,
+          message: `Failed to send request: ${err.message || "Unknown error"}`
+        });
+      }
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  // User search modal
+  const AddFriendModal = () => {
+    if (!showModal) return null;
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-5">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-ucd-blue-900">Add a Friend</h2>
+            <button 
+              onClick={() => {
+                setShowModal(false);
+                setUsername('');
+                setSendStatus(null);
+              }}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <MdClose size={24} />
+            </button>
+          </div>
+          
+          <form onSubmit={handleSendRequest} className="space-y-4">
+            <div>
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+                Username
+              </label>
+              <input
+                id="username"
+                type="text"
+                placeholder="Enter a username (case-sensitive)"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ucd-gold-600"
+                autoFocus
+                disabled={isLoading}
+              />
+            </div>
+            
+            {sendStatus && (
+              <div className={`p-3 rounded-md ${sendStatus.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                {sendStatus.message}
+              </div>
+            )}
+            
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={isLoading || !username.trim()}
+                className={`px-4 py-2 rounded-lg text-white flex items-center ${
+                  isLoading || !username.trim() 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-ucd-blue-600 hover:bg-ucd-blue-700'
+                }`}
+              >
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <MdPersonAdd className="mr-2" />
+                    Send Request
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
   };
 
   return (
     <div className="flex-1 bg-white flex flex-col shadow-lg rounded-lg m-3 p-3 overflow-hidden">
+      {/* Header section with title on its own line */}
       <div className="p-2">
-        <h2 className="text-2xl font-bold text-ucd-blue-900">Friend Requests</h2>
-      </div>
-      
-      {/* Add search bar for finding users */}
-      <div className="px-2 pb-2 relative">
-        <MdSearch className="absolute left-6 top-4 transform -translate-y-1/2 text-ucd-blue-600" />
-        <input
-          type="text"
-          placeholder="Search users to add..."
-          value={searchTerm}
-          onChange={handleSearch}
-          className="w-full h-8 p-1 pl-10 bg-ucd-blue-light border border-ucd-blue-300 rounded-full focus:outline-none focus:ring-2 focus:ring-ucd-gold-600"
-        />
+        <h2 className="text-2xl font-bold text-ucd-blue-900 mb-3">Friend Requests</h2>
+        <button 
+          onClick={() => setShowModal(true)}
+          className="px-4 py-2 bg-ucd-gold-600 text-white rounded-lg hover:bg-ucd-gold-700 flex items-center w-fit"
+        >
+          <MdPersonAdd className="mr-2" />
+          Add a User
+        </button>
       </div>
       
       {error && (
@@ -124,91 +226,53 @@ export default function Requests() {
         </div>
       )}
       
-      {isLoading ? (
+      {/* Friend requests list */}
+      <div className="flex items-center mb-4 mt-4">
+        <h3 className="px-4 text-sm font-semibold text-gray-500">Pending Requests</h3>
+      </div>
+      
+      {isLoading && !showModal ? (
         <div className="flex justify-center p-5">
           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-ucd-blue-600"></div>
         </div>
-      ) : searchMode ? (
-        // Search results
-        <div className="flex-1 overflow-y-auto">
-          <h3 className="px-4 py-2 text-sm font-semibold text-gray-500">Search Results</h3>
-          {searchResults.length === 0 ? (
-            <p className="p-4 text-gray-500">No users found</p>
-          ) : (
-            <ul>
-              {searchResults.map((user, index) => (
-                <li 
-                  key={index}
-                  className="flex items-center justify-between p-4 mb-2 bg-white rounded-lg shadow-md"
-                >
-                  <div className="flex items-center">
-                    <div className="w-12 h-12 rounded-full bg-ucd-blue-600 text-white flex items-center justify-center mr-4">
-                      {user.username.charAt(0).toUpperCase()}
-                    </div>
-                    <span className="font-medium">{user.username}</span>
-                  </div>
-                  <button
-                    onClick={() => handleSendRequest(user.username)}
-                    className="px-4 py-2 bg-ucd-blue-600 text-white rounded-lg hover:bg-ucd-blue-700"
-                  >
-                    Add Friend
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
       ) : (
-        // Existing friend requests
-        <>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="px-4 text-sm font-semibold text-gray-500">Pending Requests</h3>
-            <button 
-              onClick={() => {
-                setSearchTerm('');
-                setSearchMode(!searchMode);
-              }}
-              className="text-sm text-ucd-blue-600 hover:text-ucd-blue-800"
-            >
-              {searchMode ? "Back to Requests" : "Find Friends"}
-            </button>
-          </div>
-          
-          <ul className="flex-1 overflow-y-auto">
-            {friendRequests.length === 0 ? (
-              <p className="p-4 text-gray-500">No friend requests</p>
-            ) : (
-              friendRequests.map((request, index) => (
-                <li
-                  key={index}
-                  className="flex items-center justify-between p-4 mb-2 bg-white rounded-lg shadow-md"
-                >
-                  <div className="flex items-center">
-                    <div className="w-12 h-12 rounded-full bg-ucd-blue-600 text-white flex items-center justify-center mr-4">
-                      {request.username.charAt(0).toUpperCase()}
-                    </div>
-                    <span className="font-medium">{request.username}</span>
+        <ul className="flex-1 overflow-y-auto">
+          {friendRequests.length === 0 ? (
+            <p className="p-4 text-gray-500">No friend requests</p>
+          ) : (
+            friendRequests.map((request, index) => (
+              <li
+                key={index}
+                className="flex items-center justify-between p-4 mb-2 bg-white rounded-lg shadow-md"
+              >
+                <div className="flex items-center">
+                  <div className="w-12 h-12 rounded-full bg-ucd-blue-600 text-white flex items-center justify-center mr-4">
+                    {request.username.charAt(0).toUpperCase()}
                   </div>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => handleAcceptRequest(request.username)}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                    >
-                      Accept
-                    </button>
-                    <button
-                      onClick={() => handleDeclineRequest(request.username)}
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                    >
-                      Decline
-                    </button>
-                  </div>
-                </li>
-              ))
-            )}
-          </ul>
-        </>
+                  <span className="font-medium">{request.username}</span>
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => handleAcceptRequest(request.username)}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  >
+                    Accept
+                  </button>
+                  <button
+                    onClick={() => handleDeclineRequest(request.username)}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                  >
+                    Decline
+                  </button>
+                </div>
+              </li>
+            ))
+          )}
+        </ul>
       )}
+      
+      {/* Add friend modal */}
+      <AddFriendModal />
     </div>
   );
 }
