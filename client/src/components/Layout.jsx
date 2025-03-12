@@ -47,22 +47,17 @@ export default function Layout({ children }) {
         const user = JSON.parse(localStorage.getItem('user'));
         if (!user?.idToken) return;
         
-        // Check if we already have messages for this user
-        if (!messagesByUser[selectedUser] || messagesByUser[selectedUser].length === 0) {
-          const { messages: chatHistory } = await getChatHistory(user.idToken, selectedUser);
-          
-          // Update messages for this user
-          setMessagesByUser(prev => ({
-            ...prev,
-            [selectedUser]: chatHistory || []
-          }));
-          
-          // Set current messages
-          setMessages(chatHistory || []);
-        } else {
-          // Use existing messages
-          setMessages(messagesByUser[selectedUser] || []);
-        }
+        // Always fetch the chat history from the server when a user is selected
+        const { messages: chatHistory } = await getChatHistory(user.idToken, selectedUser);
+        
+        // Update messages for this user
+        setMessagesByUser(prev => ({
+          ...prev,
+          [selectedUser]: chatHistory || []
+        }));
+        
+        // Set current messages
+        setMessages(chatHistory || []);
       } catch (error) {
         console.error('Error loading chat history:', error);
       }
@@ -71,7 +66,7 @@ export default function Layout({ children }) {
     if (view === 'chat') {
       loadChatHistory();
     }
-  }, [selectedUser, view, messagesByUser]);
+  }, [selectedUser, view]);
 
   // Set up message listeners for real-time communication
   useEffect(() => {
@@ -195,6 +190,7 @@ export default function Layout({ children }) {
             selectedUser,
             setSelectedUser,
             messagesByUser,
+            setMessagesByUser,
             isTyping
           })
         )}

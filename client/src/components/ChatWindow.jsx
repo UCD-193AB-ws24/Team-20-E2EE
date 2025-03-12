@@ -1,8 +1,34 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 
 export default function ChatWindow({ messages }) {
+  const messagesEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    // Use a flag to determine if this is an initial load
+    const isInitialLoad = chatContainerRef.current.scrollTop === 0 && 
+                          chatContainerRef.current.scrollHeight > chatContainerRef.current.clientHeight;
+    
+    if (isInitialLoad) {
+      // For initial load, instantly jump to the bottom without animation
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    } else {
+      // For new messages during conversation, use smooth scrolling
+      scrollToBottom();
+    }
+  }, [messages]);
+
+  // Function to scroll to bottom smoothly
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
-    <div className="flex-1 flex flex-col p-4 overflow-y-auto bg-white shadow-lg rounded-lg m-4">
+    <div 
+      ref={chatContainerRef}
+      className="flex-1 flex flex-col p-4 overflow-y-auto bg-white shadow-lg rounded-lg m-4"
+    >
       {messages.map((msg, index) => (
         <div
           key={index}
@@ -14,6 +40,8 @@ export default function ChatWindow({ messages }) {
           <span className="text-xs text-ucd-blue-700 block mt-1">{msg.time}</span>
         </div>
       ))}
+      {/* Empty div used as a reference to scroll to */}
+      <div ref={messagesEndRef} />
     </div>
   );
 }
