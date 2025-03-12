@@ -5,8 +5,10 @@ import { Link, useNavigate } from "react-router-dom";
 export default function Home() {
     const navigate = useNavigate()
     const onLoggedIn = () => {
-        navigate('/')
+        localStorage.setItem("authMethod", "passkey");
+        navigate('/');
     }
+    
 
     const emailLogin = () => {
         navigate("/login")

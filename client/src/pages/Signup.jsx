@@ -26,7 +26,7 @@ export default function SignUp() {
 
     return (
         <div className="flex justify-center items-center min-h-screen bg-gray-100">
-            <div className="w-[400px] bg-green-200 bg-opacity-30 text-black rounded-xl p-8 shadow-lg">
+            <div className="w-[400px] bg-white-200 bg-opacity-30 text-black rounded-xl p-8">
                 <h1 className="text-3xl font-bold text-center">Sign Up</h1>
 
                 {/* Email Verification Message (Displayed Only If Needed) */}
@@ -58,7 +58,7 @@ export default function SignUp() {
                         </div>
 
                         {/* Sign-Up Button */}
-                        <button type="submit" className="w-full h-12 bg-white text-gray-700 font-bold rounded-full shadow-md mt-4 hover:bg-gray-200 transition">
+                        <button type="submit" className="flex-3 w-full h-12 bg-[#002855] text-[#FFBF00] font-bold rounded-full shadow-md mt-4 hover:bg-[#0d3e73] transition">
                             Sign Up
                         </button>
 
