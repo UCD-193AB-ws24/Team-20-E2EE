@@ -71,25 +71,27 @@ export default function Login() {
                             <FontAwesomeIcon className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-600" icon={faKey} />
                         </div>
 
+                        {/* Buttons */}
                         <div className="flex gap-2 mt-4">
                             {/* Login Button */}
-                            <button type="submit" className="flex-3 w-full h-12 bg-[#002855] text-[#FFBF00] font-bold rounded-md shadow-md mt-4 hover:bg-[#0d3e73] transition">
+                            <button type="submit" className="flex-3 w-full h-12 bg-[#002855] text-[#FFBF00] font-bold rounded-2xl shadow-md mt-4 hover:bg-[#0d3e73] transition">
                                 Login
                             </button>
 
-
+                            {/* Use Passkey Button */}
                             <button
                                 onClick={passkeyLogin}
-                                className="flex-1 w-full h-12 bg-black text-gray-100 font-semibold rounded-md shadow-md mt-4 hover:bg-[#3d3d3d] transition"
+                                className="flex-1 w-full h-12 bg-black text-gray-100 font-semibold rounded-2xl shadow-md mt-4 hover:bg-[#3d3d3d] transition"
                             >
-                                Use Passkey
+                                Passkey
                             </button>
                         </div>
 
 
-
                         {/* Signup Link */}
-                        <span>Don't have an account? <Link to="/signup" className="text-blue-500 underline">Sign Up</Link></span>
+                        <div className="mt-5">
+                            <span>Don't have an account? <Link to="/signup" className="text-blue-500 underline">Sign Up</Link></span>
+                        </div>
 
                         {/* Error Message (If Any) */}
                         {verificationRequired ? (

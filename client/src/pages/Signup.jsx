@@ -62,22 +62,27 @@ export default function SignUp() {
                             <FontAwesomeIcon className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-600" icon={faKey} />
                         </div>
 
+                        {/* Buttons */}
                         <div className="flex gap-2 mt-4">
                             {/* Sign-Up Button */}
-                            <button type="submit" className="flex-3 w-full h-12 bg-[#002855] text-[#FFBF00] font-bold rounded-md shadow-md mt-4 hover:bg-[#0d3e73] transition">
+                            <button type="submit" className="flex-3 w-full h-12 bg-[#002855] text-[#FFBF00] font-bold rounded-2xl shadow-md mt-4 hover:bg-[#0d3e73] transition">
                                 Sign Up
                             </button>
 
+                            {/* Use Passkey Button */}
                             <button
                                 onClick={passkeyLogin}
-                                className="flex-1 w-full h-12 bg-black text-gray-100 font-semibold rounded-md shadow-md mt-4 hover:bg-[#3d3d3d] transition"
+                                className="flex-1 w-full h-12 bg-black text-gray-100 font-semibold rounded-2xl shadow-md mt-4 hover:bg-[#3d3d3d] transition"
                             >
-                                Use Passkey
+                                Passkey
                             </button>
                         </div>
 
                         {/* Login Link */}
-                        <span>Already have an account? <Link to="/login" className="text-blue-500 underline">Login</Link></span>
+                        <div className="mt-5">
+                            <span>Already have an account? <Link to="/login" className="text-blue-500 underline">Login</Link></span>
+
+                        </div>
 
                         {/* Error Message (If Any) */}
                         {error && <p style={{ color: "red" }}>{error}</p>}
