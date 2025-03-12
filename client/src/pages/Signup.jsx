@@ -41,7 +41,8 @@ export default function SignUp() {
         <div className="flex justify-center items-center h-screen bg-gray-100 w-full">
           <div className="w-[400px] text-black rounded-xl p-8 border-2 border-gray-300 shadow-lg bg-white">
             <h1 className="text-3xl font-bold text-center">Create an account</h1>
-  
+            {verificationRequired && <EmailVerificationMessage />}
+
             {/* Login Form */}
             {!verificationRequired && (
               <form onSubmit={handleSignUp}>
