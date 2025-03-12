@@ -90,6 +90,25 @@ export const deleteFriendRequest = async (token, friendUsername) => {
   return response.json();
 };
 
+// Remove a user from friends list
+export const unfriendUser = async (token, friendUsername) => {
+  const response = await fetch(`${BACKEND_URL}/api/user/unfriend`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ friendUsername }),
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to unfriend user');
+  }
+  
+  return response.json();
+};
+
 // Search for users by username
 export const searchUsers = async (query) => {
   const response = await fetch(`${BACKEND_URL}/api/user/searchUser?username=${query}`);

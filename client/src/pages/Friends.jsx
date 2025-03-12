@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { MdSearch } from 'react-icons/md';
-import { getFriendList, searchUsers, sendFriendRequest } from '../api/friends';
+import { MdSearch, MdPersonRemove } from 'react-icons/md';
+import { getFriendList, searchUsers, sendFriendRequest, unfriendUser } from '../api/friends';
 
 export default function Friends({ selectedUser, setSelectedUser }) {
   const [friends, setFriends] = useState([]);
@@ -9,6 +9,7 @@ export default function Friends({ selectedUser, setSelectedUser }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchMode, setSearchMode] = useState(false);
+  const [unfriendConfirm, setUnfriendConfirm] = useState(null);
 
   // Get the auth token from localStorage
   const getToken = () => {
@@ -20,7 +21,6 @@ export default function Friends({ selectedUser, setSelectedUser }) {
   useEffect(() => {
     const loadFriends = async () => {
       setIsLoading(true);
-      setError(null);
       try {
         const token = getToken();
         const data = await getFriendList(token);
@@ -63,6 +63,19 @@ export default function Friends({ selectedUser, setSelectedUser }) {
       alert(`Friend request sent to ${username}`);
     } catch (err) {
       alert(err.message || 'Failed to send friend request');
+    }
+  };
+  
+  // Unfriend user
+  const handleUnfriend = async (username) => {
+    try {
+      const token = getToken();
+      await unfriendUser(token, username);
+      // Remove friend from list without refetching
+      setFriends(friends.filter(friend => friend.username !== username));
+      setUnfriendConfirm(null);
+    } catch (err) {
+      alert(err.message || 'Failed to unfriend user');
     }
   };
 
@@ -136,17 +149,47 @@ export default function Friends({ selectedUser, setSelectedUser }) {
             filteredFriends.map((friend, index) => (
               <li
                 key={index}
-                className={`flex items-center p-4 mb-2 bg-white rounded-lg shadow-md cursor-pointer ${
+                className={`flex items-center justify-between p-4 mb-2 bg-white rounded-lg shadow-md ${
                   selectedUser === friend.username ? 'bg-ucd-blue-light' : ''
                 }`}
-                onClick={() => setSelectedUser(friend.username)}
               >
-                <div className="w-12 h-12 rounded-full bg-ucd-blue-600 text-white flex items-center justify-center mr-4">
-                  {friend.username.charAt(0).toUpperCase()}
+                <div 
+                  className="flex items-center flex-1 cursor-pointer" 
+                  onClick={() => setSelectedUser(friend.username)}
+                >
+                  <div className="w-12 h-12 rounded-full bg-ucd-blue-600 text-white flex items-center justify-center mr-4">
+                    {friend.username.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-medium">{friend.username}</h3>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-medium">{friend.username}</h3>
-                </div>
+                
+                {/* Unfriend button */}
+                {unfriendConfirm === friend.username ? (
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleUnfriend(friend.username)}
+                      className="px-3 py-1 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700"
+                    >
+                      Confirm
+                    </button>
+                    <button
+                      onClick={() => setUnfriendConfirm(null)}
+                      className="px-3 py-1 bg-gray-500 text-white text-sm rounded-lg hover:bg-gray-600"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setUnfriendConfirm(friend.username)}
+                    className="ml-2 p-2 text-gray-500 hover:text-red-500 rounded-full hover:bg-gray-100"
+                    title="Unfriend"
+                  >
+                    <MdPersonRemove size={20} />
+                  </button>
+                )}
               </li>
             ))
           )}
