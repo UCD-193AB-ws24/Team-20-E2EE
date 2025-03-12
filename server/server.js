@@ -35,6 +35,9 @@ const onlineUsers = new Map();
 // Track socket to user mapping: { socketId: uid }
 const socketToUser = new Map();
 
+// Export io and onlineUsers for use in other files
+export { io, onlineUsers };
+
 // Socket.io authentication middleware
 io.use(async (socket, next) => {
   try {
@@ -201,6 +204,29 @@ const initializeApp = async () => {
         console.error("Error in socket connection:", error);
       }
     });
+
+    // Set up interval to log online users every 5 seconds
+    setInterval(async () => {
+      const onlineUserCount = onlineUsers.size;
+      
+      if (onlineUserCount > 0) {
+        console.log(`\n---- Online Users (${onlineUserCount}) ----`);
+        
+        // Get usernames for logging
+        const db = await connectDB();
+        const usersCollection = db.collection("users");
+        
+        for (const [userId, socketId] of onlineUsers.entries()) {
+          try {
+            const user = await usersCollection.findOne({ uid: userId });
+            console.log(`User: ${user ? user.username : 'Unknown'} (${userId}) - Socket: ${socketId}`);
+          } catch (err) {
+            console.log(`User: Unknown (${userId}) - Socket: ${socketId}`);
+          }
+        }
+        console.log("----------------------------\n");
+      }
+    }, 5000); // Log every 5 seconds
 
   } catch (error) {
     console.error("Error connecting to MongoDB:", error);
