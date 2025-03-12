@@ -8,7 +8,7 @@ const ProtectedRoute = () => {
         return <Navigate to="/login" />;
     } else if (!currentUser.emailVerified) {
         return (<EmailVerificationMessage />);
-    }
+    } 
 
     return <Outlet />;
 };

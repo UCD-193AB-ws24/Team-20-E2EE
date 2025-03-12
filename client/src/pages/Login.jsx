@@ -3,11 +3,27 @@ import { Link, useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUser, faKey } from "@fortawesome/free-solid-svg-icons";
 import { loginUser } from "../api/auth";
+import { useCorbado } from "@corbado/react";
 
 export default function Login() {
     const navigate = useNavigate();
     const [error, setError] = useState("");
     const [verificationRequired, setVerificationRequired] = useState(false);
+
+    const { logout, isAuthenticated, user } = useCorbado();
+
+
+    const redirectToHome = () => {
+        navigate("/")
+    }
+    const handleLogout = () => {
+        logout()
+        redirectToHome()
+    }
+
+    const passkeyLogin = () => {
+        navigate("/passkeylogin")
+    }
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -34,10 +50,10 @@ export default function Login() {
                     <form onSubmit={handleLogin}>
                         {/* Email Input */}
                         <div className="relative w-full h-12 mt-6">
-                            <input 
-                                type="email" 
-                                placeholder="Email" 
-                                required 
+                            <input
+                                type="email"
+                                placeholder="Email"
+                                required
                                 className="w-full h-full bg-transparent border-2 border-gray-300 rounded-full px-6 text-lg outline-none focus:border-green-600 transition"
                             />
                             <FontAwesomeIcon className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-600" icon={faUser} />
@@ -45,10 +61,10 @@ export default function Login() {
 
                         {/* Password Input */}
                         <div className="relative w-full h-12 mt-6">
-                            <input 
-                                type="password" 
-                                placeholder="Password" 
-                                required 
+                            <input
+                                type="password"
+                                placeholder="Password"
+                                required
                                 className="w-full h-full bg-transparent border-2 border-gray-300 rounded-full px-6 text-lg outline-none focus:border-green-600 transition"
                             />
                             <FontAwesomeIcon className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-600" icon={faKey} />
@@ -61,6 +77,23 @@ export default function Login() {
 
                         {/* Signup Link */}
                         <span>Don't have an account? <Link to="/signup" className="text-blue-500 underline">Sign Up</Link></span>
+
+
+                        {/* <button
+                            onClick={handleLogout}
+                            className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-lg shadow-md transition duration-300"
+                        >
+                            Logout
+                        </button> */}
+
+
+                        <button 
+                            onClick={passkeyLogin} 
+                            className="w-full h-12 bg-black text-gray-100 font-bold rounded-full shadow-md mt-4 hover:bg-gray-600 transition"
+                        > 
+                            Passkey Login
+                        </button>
+
 
                         {/* Error Message (If Any) */}
                         {verificationRequired ? (

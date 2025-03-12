@@ -3,20 +3,9 @@ import Sidebar from '../components/NavBar';
 import { logoutUser
  } from '../api/auth';
 import { useCorbado} from "@corbado/react";
-// import {useNavigate} from "react-router-dom"
 
 export default function Profile() {
-  // const navigate = useNavigate()
   const {logout, isAuthenticated, user} = useCorbado();
-
-
-  // const redirectToHome = () => {
-  //   navigate("/")
-  // }
-  // const handleLogout = () => {
-  //   logout()
-  //   redirectToHome()
-  // }
 
   const handleLogout = async () => {
     const response = await logoutUser();

@@ -5,6 +5,7 @@ import { faUser, faKey } from "@fortawesome/free-solid-svg-icons";
 import { signUpUser } from "../api/auth";
 import EmailVerificationMessage from "../components/EmailVerificationMessage";
 
+
 export default function SignUp() {
     const navigate = useNavigate();
     const [error, setError] = useState("");
@@ -36,10 +37,10 @@ export default function SignUp() {
                     <form onSubmit={handleSignUp}>
                         {/* Email Input */}
                         <div className="relative w-full h-12 mt-6">
-                            <input 
-                                type="email" 
-                                placeholder="Email" 
-                                required 
+                            <input
+                                type="email"
+                                placeholder="Email"
+                                required
                                 className="w-full h-full bg-transparent border-2 border-gray-300 rounded-full px-6 text-lg outline-none focus:border-green-600 transition"
                             />
                             <FontAwesomeIcon className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-600" icon={faUser} />
@@ -47,10 +48,10 @@ export default function SignUp() {
 
                         {/* Password Input */}
                         <div className="relative w-full h-12 mt-6">
-                            <input 
-                                type="password" 
-                                placeholder="Password" 
-                                required 
+                            <input
+                                type="password"
+                                placeholder="Password"
+                                required
                                 className="w-full h-full bg-transparent border-2 border-gray-300 rounded-full px-6 text-lg outline-none focus:border-green-600 transition"
                             />
                             <FontAwesomeIcon className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-600" icon={faKey} />
@@ -63,7 +64,6 @@ export default function SignUp() {
 
                         {/* Login Link */}
                         <span>Already have an account? <Link to="/login" className="text-blue-500 underline">Login</Link></span>
-
 
                         {/* Error Message (If Any) */}
                         {error && <p style={{ color: "red" }}>{error}</p>}
