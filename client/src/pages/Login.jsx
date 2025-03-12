@@ -106,19 +106,12 @@ export default function Login() {
                             >
                                 Use Passkey
                             </button>
-                        </div>
+                      
 
 
 
                         {/* Signup Link */}
                         <span>Don't have an account? <Link to="/signup" className="text-blue-500 underline">Sign Up</Link></span>
-              {/* Signup Link */}
-              <span>
-                Don't have an account?{" "}
-                <Link to="/signup" className="text-blue-500 underline hover:text-blue-400">
-                  Sign Up
-                </Link>
-              </span>
 
               {/* Error Message (If Any) */}
               {verificationRequired ? (
