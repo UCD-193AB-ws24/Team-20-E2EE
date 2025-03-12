@@ -78,15 +78,6 @@ export default function Login() {
                         {/* Signup Link */}
                         <span>Don't have an account? <Link to="/signup" className="text-blue-500 underline">Sign Up</Link></span>
 
-
-                        {/* <button
-                            onClick={handleLogout}
-                            className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-lg shadow-md transition duration-300"
-                        >
-                            Logout
-                        </button> */}
-
-
                         <button 
                             onClick={passkeyLogin} 
                             className="w-full h-12 bg-black text-gray-100 font-bold rounded-full shadow-md mt-4 hover:bg-gray-600 transition"

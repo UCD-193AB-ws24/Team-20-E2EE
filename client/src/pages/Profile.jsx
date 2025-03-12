@@ -4,6 +4,8 @@ import { logoutUser
  } from '../api/auth';
 import { useCorbado} from "@corbado/react";
 
+import { PasskeyList } from "@corbado/react";
+
 export default function Profile() {
   const {logout, isAuthenticated, user} = useCorbado();
 
@@ -41,6 +43,12 @@ export default function Profile() {
             <br/>
             Email: {user.email}
           </p>
+
+          <div className="passkeyinfo">
+            <h1>Manage your passkeys</h1>
+            <PasskeyList />
+          </div>
+          
           <div className="mt-4">
             <button
               onClick={handleLogout}
