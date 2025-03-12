@@ -1,53 +1,48 @@
-import { MongoClient } from 'mongodb';
-import dotenv from 'dotenv';
 import mongoose from "mongoose";
 import { GridFsStorage } from "multer-gridfs-storage";
 import Grid from "gridfs-stream";
 import multer from "multer";
+import dotenv from "dotenv";
 
 dotenv.config();
 
 const uri = process.env.ATLAS_URI;
-const client = new MongoClient(uri);
-
 let dbConnection;
 let gfs;
 let gridfsBucket;
 
+// Connect to MongoDB using Mongoose
 export const connectDB = async () => {
   if (dbConnection) return dbConnection;
-  
+
   try {
-    await client.connect();
-    console.log('Connected to MongoDB');
-    dbConnection = client.db("e2ee_database");
-    
-    // Initialize GridFS
-    mongoose.connect(uri, {
+    await mongoose.connect(uri, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    
-    const connection = mongoose.connection;
-    connection.once('open', () => {
-      gridfsBucket = new mongoose.mongo.GridFSBucket(connection.db, {
+
+    dbConnection = mongoose.connection;
+    console.log("Connected to MongoDB");
+
+    dbConnection.once("open", () => {
+      gridfsBucket = new mongoose.mongo.GridFSBucket(dbConnection.db, {
         bucketName: "avatars",
       });
 
-      gfs = Grid(connection.db, mongoose.mongo);
+      gfs = Grid(dbConnection.db, mongoose.mongo);
       gfs.collection("avatars");
 
       console.log("GridFS Initialized!");
     });
-    
+
     return dbConnection;
   } catch (error) {
-    console.error('MongoDB connection error:', error);
+    console.error("MongoDB connection error:", error);
     throw error;
   }
 };
 
-// Create storage engine for file uploads
+// Create storage engine for file uploads (GridFS)
 const storage = new GridFsStorage({
   url: uri,
   file: (req, file) => {
@@ -65,8 +60,8 @@ export const getCollections = async () => {
   const db = await connectDB();
   return {
     users: db.collection("users"),
-    messages: db.collection("messages")
+    messages: db.collection("messages"),
   };
 };
 
-export { gfs, upload };
+export { gfs, upload, gridfsBucket };
