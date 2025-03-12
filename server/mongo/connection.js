@@ -1,37 +1,48 @@
-import dotenv from "dotenv";
-dotenv.config();
-const uri = process.env.ATLAS_URI;
-console.log("MongoDB URI:", process.env.ATLAS_URI);
-
-
-
 import mongoose from "mongoose";
 import { GridFsStorage } from "multer-gridfs-storage";
-import { MongoClient, ServerApiVersion } from "mongodb";
 import Grid from "gridfs-stream";
 import multer from "multer";
+import dotenv from "dotenv";
 
+dotenv.config();
 
+const uri = process.env.ATLAS_URI;
+let dbConnection;
+let gfs;
+let gridfsBucket;
 
+// Connect to MongoDB using Mongoose
+export const connectDB = async () => {
+  if (dbConnection) return dbConnection;
 
-const connectDB = mongoose.createConnection(uri, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
+  try {
+    await mongoose.connect(uri, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
 
-let gfs, gridfsBucket;
+    dbConnection = mongoose.connection;
+    console.log("Connected to MongoDB");
 
-connectDB.once("open", () => {
-  gridfsBucket = new mongoose.mongo.GridFSBucket(connectDB.db, {
-    bucketName: "avatars",
-  });
+    dbConnection.once("open", () => {
+      gridfsBucket = new mongoose.mongo.GridFSBucket(dbConnection.db, {
+        bucketName: "avatars",
+      });
 
-  gfs = Grid(connectDB.db, mongoose.mongo);
-  gfs.collection("avatars");
+      gfs = Grid(dbConnection.db, mongoose.mongo);
+      gfs.collection("avatars");
 
-  console.log("Connected to MongoDB and GridFS Initialized!");
-});
+      console.log("GridFS Initialized!");
+    });
 
+    return dbConnection;
+  } catch (error) {
+    console.error("MongoDB connection error:", error);
+    throw error;
+  }
+};
+
+// Create storage engine for file uploads (GridFS)
 const storage = new GridFsStorage({
   url: uri,
   file: (req, file) => {
@@ -44,11 +55,13 @@ const storage = new GridFsStorage({
 
 const upload = multer({ storage });
 
-export { connectDB, gfs, gridfsBucket, upload };
-const client = new MongoClient(uri, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  }
-});
+// Helper function to get collections
+export const getCollections = async () => {
+  const db = await connectDB();
+  return {
+    users: db.collection("users"),
+    messages: db.collection("messages"),
+  };
+};
+
+export { gfs, upload, gridfsBucket };
