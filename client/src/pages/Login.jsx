@@ -73,16 +73,16 @@ export default function Login() {
 
                         <div className="flex gap-2 mt-4">
                             {/* Login Button */}
-                            <button type="submit" className="flex-3 w-full h-12 bg-[#002855] text-[#FFBF00] font-bold rounded-full shadow-md mt-4 hover:bg-[#0d3e73] transition">
+                            <button type="submit" className="flex-3 w-full h-12 bg-[#002855] text-[#FFBF00] font-bold rounded-md shadow-md mt-4 hover:bg-[#0d3e73] transition">
                                 Login
                             </button>
 
 
                             <button
                                 onClick={passkeyLogin}
-                                className="flex-1 w-full h-12 bg-black text-gray-100 font-semibold rounded-full shadow-md mt-4 hover:bg-[#3d3d3d] transition"
+                                className="flex-1 w-full h-12 bg-black text-gray-100 font-semibold rounded-md shadow-md mt-4 hover:bg-[#3d3d3d] transition"
                             >
-                                Passkey Login
+                                Use Passkey
                             </button>
                         </div>
 

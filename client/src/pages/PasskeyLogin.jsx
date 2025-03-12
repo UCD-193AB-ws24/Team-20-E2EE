@@ -15,17 +15,17 @@ export default function Home() {
     }
 
     return (
-        <div className='Auth' style={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
-            <CorbadoAuth
-                onLoggedIn={onLoggedIn}
-            />
+        <div className='Auth flex flex-col items-center mt-5'>
+    <CorbadoAuth
+        onLoggedIn={onLoggedIn}
+    />
 
-            <button
-                onClick={emailLogin}
-                className="w-50 h-50 bg-black text-gray-100 font-bold rounded-full shadow-md mt-4 hover:bg-gray-600 transition"
-            >
-                Email Login
-            </button>
-        </div>
+    <button
+        onClick={emailLogin}
+        className="w-72 p-3 bg-[#002855] text-[#FFBF00] font-bold rounded-md shadow-md mt-4 hover:bg-gray-600 transition"
+    >
+        Login with Email
+    </button>
+</div>
     )
 }
