@@ -7,13 +7,13 @@ export default function Profile({ onClose }) {
   const [userInfo, setUserInfo] = useState(null);
   const [description, setDescription] = useState("");
   const [isEditing, setIsEditing] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState(null);
-  const [image, setImage] = useState(userInfo?.avatar ? `${BACKEND_URL}/api/get-avatar/${userInfo.username}` : "https://via.placeholder.com/150");
+  const [avatar, setAvatar] = useState(null);
 
   useEffect(() => {
     const fetchUserInfo = async () => {
       const user = JSON.parse(localStorage.getItem("user"));
       const token = user?.idToken;
+      console.log("user: ", user.username);
       const response = await fetch(`${BACKEND_URL}/api/user/get-user`, {
         method: "GET",
         headers: {
@@ -30,10 +30,11 @@ export default function Profile({ onClose }) {
 
       if (response.ok) {
         const data = await response.json();
+        console.log(data.user);
         setUserInfo(data.user);
 
         if (data.user.avatar) {
-          setAvatarUrl(userInfo.avatar);
+          setAvatar(`${BACKEND_URL}/api/user/get-avatar/${data.user.username}`);
         }
 
         if (data.user.description) {
@@ -60,6 +61,7 @@ export default function Profile({ onClose }) {
   };
 
   const handleSaveDescription = async () => {
+
     const user = JSON.parse(localStorage.getItem("user"));
     const token = user?.idToken;
 
@@ -82,14 +84,14 @@ export default function Profile({ onClose }) {
   };
 
   const handleImageUpload = async () => {
+    console.log("here");
+
     const fileInput = document.getElementById("file-input");
     const file = fileInput.files[0];
-  
-    if (file) {
-      setImage(URL.createObjectURL(file));  // Optionally preview the image
-    }
-  
+
     const formData = new FormData();
+    console.log("Form data: ", formData);
+
     formData.append("avatar", file);  // Append file to form data
   
     const user = JSON.parse(localStorage.getItem("user"));
@@ -109,13 +111,13 @@ export default function Profile({ onClose }) {
         body: formData,
       });
   
-      console.log(formData);
 
       if (response.ok) {
         const result = await response.json();
+        console.log("AvatarUrl: ", result);
         const { avatarUrl } = result;
   
-        setAvatarUrl(avatarUrl);
+        setAvatar(`${BACKEND_URL}/api/user/get-avatar/${userInfo.username}`);
         console.log("Avatar updated successfully:", avatarUrl);
       } else {
         console.error("Error uploading avatar:", await response.json());
@@ -140,11 +142,11 @@ export default function Profile({ onClose }) {
         <div className="flex flex-col items-center justify-center">
           <label htmlFor="file-input" className="cursor-pointer">
             <div className="w-32 h-32 rounded-full bg-gray-300 mb-4 flex items-center justify-center overflow-hidden">
-              {image ? (
-                <img src={image} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                <img src={avatarUrl || "https://via.placeholder.com/150"} alt="Avatar" className="w-full h-full object-cover" />
-              )}
+              <img 
+                src={avatar || "https://via.placeholder.com/150"} 
+                alt="Avatar" 
+                className="w-full h-full object-cover"
+              />
             </div>
           </label>
           <input id="file-input" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
@@ -201,7 +203,7 @@ export default function Profile({ onClose }) {
                 </button>
                 <button
                   onClick={() => {
-                    // Add logout function
+                    handleLogout()
                   }}
                   className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300"
                 >

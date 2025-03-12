@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MdSearch } from 'react-icons/md';
 import { getFriendList, searchUsers, sendFriendRequest } from '../api/friends';
+import { BACKEND_URL } from '../config/config';
 
 export default function Friends({ selectedUser, setSelectedUser }) {
   const [friends, setFriends] = useState([]);
@@ -9,6 +10,7 @@ export default function Friends({ selectedUser, setSelectedUser }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchMode, setSearchMode] = useState(false);
+  const [avatar, setAvatar] = useState(null);
 
   // Get the auth token from localStorage
   const getToken = () => {
@@ -24,7 +26,14 @@ export default function Friends({ selectedUser, setSelectedUser }) {
       try {
         const token = getToken();
         const data = await getFriendList(token);
-        setFriends(data.friends || []);
+        console.log(data);
+        const friendList = data.friends.map((friend) => {
+          return {
+              ...friend,
+              avatar: `${BACKEND_URL}/api/user/get-avatar/${friend.username}`
+          };
+      });
+        setFriends(friendList || []);
       } catch (err) {
         setError(err.message || 'Failed to load friends');
         console.error(err);
@@ -45,7 +54,13 @@ export default function Friends({ selectedUser, setSelectedUser }) {
       setSearchMode(true);
       try {
         const results = await searchUsers(value);
-        setSearchResults(results.users || []);
+        const userList = results.users.map((user) => {
+          return {
+            ...user,
+            avatar: `${BACKEND_URL}/api/user/get-avatar/${user.username}`
+          }
+        });
+        setSearchResults(userList || []);
       } catch (err) {
         console.error(err);
       }
@@ -111,11 +126,11 @@ export default function Friends({ selectedUser, setSelectedUser }) {
                   key={index}
                   className="flex items-center justify-between p-4 mb-2 bg-white rounded-lg shadow-md"
                 >
-                  <div className="flex items-center">
-                    <div className="w-12 h-12 rounded-full bg-ucd-blue-600 text-white flex items-center justify-center mr-4">
-                      {user.username.charAt(0).toUpperCase()}
-                    </div>
-                    <span className="font-medium">{user.username}</span>
+                  <div className="w-12 h-12 rounded-full bg-ucd-blue-600 text-white flex items-center justify-center mr-4 overflow-hidden">
+                    <img 
+                      src={user.avatar} 
+                      alt={user.username.charAt(0).toUpperCase()} 
+                    />
                   </div>
                   <button
                     onClick={() => handleSendRequest(user.username)}
@@ -141,8 +156,13 @@ export default function Friends({ selectedUser, setSelectedUser }) {
                 }`}
                 onClick={() => setSelectedUser(friend.username)}
               >
-                <div className="w-12 h-12 rounded-full bg-ucd-blue-600 text-white flex items-center justify-center mr-4">
-                  {friend.username.charAt(0).toUpperCase()}
+                <div className="flex items-center">
+                  <div className="w-12 h-12 rounded-full bg-ucd-blue-600 text-white flex items-center justify-center mr-4 overflow-hidden">
+                    <img 
+                      src={friend.avatar} 
+                      alt={friend.username.charAt(0).toUpperCase()} 
+                    />
+                  </div>
                 </div>
                 <div className="flex-1">
                   <h3 className="font-medium">{friend.username}</h3>
