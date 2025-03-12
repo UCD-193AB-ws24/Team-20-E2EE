@@ -21,32 +21,33 @@ export default function Profile({ onClose }) {
           "Authorization": `Bearer ${token}`,
         },
       });
-
+  
       if (token) {
         console.log("Token found:", token);
       } else {
         console.log("No token found.");
       }
-
+  
       if (response.ok) {
         const data = await response.json();
         setUserInfo(data.user);
         
-        if (data.user.avatar) {
-          setAvatarUrl(`/api/user/get-avatar/${data.user.avatar}`);
-        }
-
+        // Remove avatar fetching logic
+        // if (data.user.avatar) {
+        //   setAvatarUrl(`/api/user/get-avatar/${data.user.avatar}`);
+        // }
+  
         // Set the description (if available)
         if (data.user.description) {
           setDescription(data.user.description);
         }
       } else {
         console.error("Request failed with status:", response.status);
-        const errorText = await response.text(); // Read error response
+        const errorText = await response.text();
         throw new Error(`Server responded with ${response.status}: ${errorText}`);
       }
     };
-
+  
     fetchUserInfo();
   }, []);
 

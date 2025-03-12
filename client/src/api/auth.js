@@ -4,41 +4,86 @@ import { BACKEND_URL } from "../config/config";
 
 export const loginUser = async (email, password) => {
     try {
+        console.log("Attempting to sign in with Firebase...");
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
-        // console.log("User:", user.uid);
+        console.log("Firebase authentication successful for:", email);
 
+        // Get the ID token
+        console.log("Requesting ID token...");
         const idToken = await user.getIdToken();
+        console.log("ID token received with length:", idToken?.length);
 
-        const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ idToken }),
-        });
+        // Log API endpoint for debugging
+        console.log("Using backend URL:", BACKEND_URL);
+        console.log("Sending authentication request to:", `${BACKEND_URL}/api/auth/login`);
+        
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Accept": "application/json" 
+                },
+                body: JSON.stringify({ idToken }),
+                credentials: 'include' // Include cookies if your server uses them
+            });
 
-        const data = await response.json();
+            console.log("Backend response received with status:", response.status);
+            
+            const data = await response.json();
+            console.log("Response data:", data);
 
-        if (response.ok) {
+            if (response.ok) {
+                console.log("Login successful");
+                // Store user info in localStorage
+                localStorage.setItem("user", JSON.stringify(data.user));
+                return { success: true, user: data.user, warning: data.warning || null };
+            } else {
+                console.error("Login failed from backend:", data.error);
 
-            // Store user info in localStorage (or sessionStorage)
-            localStorage.setItem("user", JSON.stringify(data.user));
+                if (data.error === "Email not verified. Please check your email.") {
+                    return { success: false, error: "Email not verified. Please check your email and verify before logging in." };
+                }
 
-            return { success: true, user: data.user, warning: data.warning||null };
-        } else {
-            console.error("Login failed:", data.error);
-
-            if (data.error === "Email not verified. Please check your email.") {
-                return { success: false, error: "Email not verified. Please check your email and verify before logging in." };
+                return { success: false, error: `Backend error: ${data.error}` };
             }
-
-            return { success: false, error: data.error };
+        } catch (networkError) {
+            console.error("Network error details:", networkError);
+            
+            // Check if BACKEND_URL is correctly set
+            console.log("Checking BACKEND_URL:", {
+                isDefined: !!BACKEND_URL,
+                value: BACKEND_URL,
+                fromEnv: import.meta.env.VITE_BACKEND_URL
+            });
+            
+            return { 
+                success: false, 
+                error: "Cannot connect to the server. Please check your internet connection and make sure the server is running." 
+            };
         }
     } catch (error) {
-        console.error("Login error:", error.message);
-        return { success: false, error: error.message };
+        console.error("Firebase login error:", error);
+        
+        // Provide more specific error messages based on Firebase error codes
+        if (error.code === 'auth/user-not-found') {
+            return { success: false, error: "No user found with this email address." };
+        } else if (error.code === 'auth/wrong-password') {
+            return { success: false, error: "Incorrect password. Please try again." };
+        } else if (error.code === 'auth/invalid-credential') {
+            return { success: false, error: "Invalid login credentials. Please check your email and password." };
+        } else if (error.code === 'auth/too-many-requests') {
+            return { success: false, error: "Too many failed login attempts. Please try again later or reset your password." };
+        } else if (error.code === 'auth/network-request-failed') {
+            return { success: false, error: "Network error connecting to authentication service. Please check your internet connection." };
+        }
+        
+        return { success: false, error: `Authentication error: ${error.message}` };
     }
 };
 
+// Other functions remain the same...
 // Sign up function remains the same
 export const signUpUser = async (email, password) => {
     try {

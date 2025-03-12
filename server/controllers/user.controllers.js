@@ -1,4 +1,4 @@
-import { connectDB, upload, gfs } from "../mongo/connection.js";
+import { connectDB } from "../mongo/connection.js";
 import mongoose from "mongoose";
 
 export const updateUsername = async (req, res) => {
@@ -311,58 +311,9 @@ export const updateDescription = async (req, res) => {
 };
 
 export const updateAvatar = async (req, res) => {
-    upload.single("avatar")(req, res, async (err) => {
-        if (err) {
-            return res.status(500).json({ error: "File upload failed" });
-        }
 
-        try {
-            const uid = req.user?.uid;
-            if (!uid) {
-                return res.status(401).json({ error: "Unauthorized - No user ID found" });
-            }
-
-            if (!req.file) {
-                return res.status(400).json({ error: "No avatar uploaded" });
-            }
-
-            const db = await connectDB();
-            const usersCollection = db.collection("users");
-
-            const result = await usersCollection.updateOne(
-                { uid },
-                { $set: { avatar: req.file.id } }
-            );
-
-            if (result.modifiedCount === 0) {
-                return res.status(404).json({ error: "User not found or avatar unchanged" });
-            }
-
-            res.json({ message: "Avatar updated successfully", fileId: req.file.id });
-
-        } catch (error) {
-            console.error("Error updating avatar:", error);
-            res.status(500).json({ error: "Internal server error" });
-        }
-    });
 };
 
 export const getAvatar = async (req, res) => {
-    try {
-        const { id } = req.params;
-        
-        const db = await connectDB();
-        const file = await gfs.files.findOne({ _id: new mongoose.Types.ObjectId(id) });
 
-        if (!file) {
-            return res.status(404).json({ error: "File not found" });
-        }
-
-        const readStream = gfs.createReadStream(file._id);
-        readStream.pipe(res);
-
-    } catch (error) {
-        console.error("Error retrieving avatar:", error);
-        res.status(500).json({ error: "Internal server error" });
-    }
 };
