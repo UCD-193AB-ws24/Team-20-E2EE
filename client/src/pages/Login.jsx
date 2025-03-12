@@ -3,11 +3,26 @@ import { Link, useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUser, faKey } from "@fortawesome/free-solid-svg-icons";
 import { loginUser } from "../api/auth";
+import { useCorbado } from "@corbado/react";
 
 export default function Login() {
-  const navigate = useNavigate();
-  const [error, setError] = useState("");
-  const [verificationRequired, setVerificationRequired] = useState(false);
+    const navigate = useNavigate();
+    const [error, setError] = useState("");
+    const [verificationRequired, setVerificationRequired] = useState(false);
+
+    const { logout, isAuthenticated, user } = useCorbado();
+
+    const redirectToHome = () => {
+        navigate("/")
+    }
+    const handleLogout = () => {
+        logout()
+        redirectToHome()
+    }
+
+    const passkeyLogin = () => {
+        navigate("/passkeylogin")
+    }
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -84,6 +99,19 @@ export default function Login() {
                 Login
               </button>
 
+
+                            <button
+                                onClick={passkeyLogin}
+                                className="flex-1 w-full h-12 bg-black text-gray-100 font-semibold rounded-md shadow-md mt-4 hover:bg-[#3d3d3d] transition"
+                            >
+                                Use Passkey
+                            </button>
+                        </div>
+
+
+
+                        {/* Signup Link */}
+                        <span>Don't have an account? <Link to="/signup" className="text-blue-500 underline">Sign Up</Link></span>
               {/* Signup Link */}
               <span>
                 Don't have an account?{" "}

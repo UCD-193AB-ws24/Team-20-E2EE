@@ -5,10 +5,16 @@ import { faUser, faKey } from "@fortawesome/free-solid-svg-icons";
 import { signUpUser } from "../api/auth";
 import EmailVerificationMessage from "../components/EmailVerificationMessage";
 
+
 export default function SignUp() {
     const navigate = useNavigate();
     const [error, setError] = useState("");
     const [verificationRequired, setVerificationRequired] = useState(false);
+
+
+    const passkeyLogin = () => {
+        navigate("/passkeylogin")
+    }
 
     const handleSignUp = async (e) => {
         e.preventDefault();
