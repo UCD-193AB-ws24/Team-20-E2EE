@@ -1,6 +1,5 @@
 import { connectDB, upload, gfs } from "../mongo/connection.js";
 import mongoose from "mongoose";
-import { io, onlineUsers } from "../server.js"; // Import io and onlineUsers
 
 export const updateUsername = async (req, res) => {
     try {
@@ -102,14 +101,6 @@ export const sendFriendRequest = async (req, res) => {
             return res.status(400).json({ error: "Friend request already sent" });
         }
 
-        // Emit socket event to notify the recipient if they are online
-        if (onlineUsers.has(friend.uid)) {
-            io.to(onlineUsers.get(friend.uid)).emit("friend_request_received", {
-                senderUsername: currentUser.username,
-                senderUid: currentUser.uid
-            });
-        }
-
         res.json({ message: "Friend request sent successfully" });
 
     } catch (error) {
@@ -117,7 +108,6 @@ export const sendFriendRequest = async (req, res) => {
         res.status(500).json({ error: "Internal server error" });
     }
 };
-
 
 export const getUser = async (req, res) => {
     try {
