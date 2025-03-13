@@ -255,6 +255,54 @@ export const deleteFriendRequest = async (req, res) => {
     }
 };
 
+export const unfriendUser = async (req, res) => {
+    try {
+      const { friendUsername } = req.body;
+      const uid = req.user?.uid;
+  
+      if (!uid) {
+        return res.status(401).json({ error: "Unauthorized - No user ID found" });
+      }
+  
+      if (!friendUsername) {
+        return res.status(400).json({ error: "Friend username is required" });
+      }
+  
+      const db = await connectDB();
+      const usersCollection = db.collection("users");
+  
+      // Find the friend by username
+      const friend = await usersCollection.findOne({ username: friendUsername });
+      if (!friend) {
+        return res.status(404).json({ error: "Friend not found" });
+      }
+  
+      const friendUid = friend.uid;
+  
+      // Remove each other from friends list
+      const removeFromFriends = await Promise.all([
+        usersCollection.updateOne(
+          { uid: uid },
+          { $pull: { friends: friendUid } }
+        ),
+        usersCollection.updateOne(
+          { uid: friendUid },
+          { $pull: { friends: uid } }
+        )
+      ]);
+  
+      if (removeFromFriends[0].modifiedCount === 0 && removeFromFriends[1].modifiedCount === 0) {
+        return res.status(400).json({ error: "Users are not friends" });
+      }
+  
+      res.json({ message: "Friend removed successfully" });
+  
+    } catch (error) {
+      console.error("Error removing friend:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  };
+  
 export const getFriendlist = async (req, res) => {
     try{
         const uid = req.user?.uid;
