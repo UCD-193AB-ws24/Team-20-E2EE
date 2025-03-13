@@ -90,6 +90,17 @@ export const login = async (req, res) => {
 };
 
 
-export const logout = (req, res) => {
+export const logout = async (req, res) => {
+  const { idToken } = req.body;
 
+  try {
+    // Revoke the refresh tokens for the user
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    await admin.auth().revokeRefreshTokens(decodedToken.uid);
+
+    res.json({ message: "User logged out successfully" });
+  } catch (error) {
+    console.error("Error logging out:", error);
+    res.status(500).json({ error: "Failed to log out" });
+  }
 };
