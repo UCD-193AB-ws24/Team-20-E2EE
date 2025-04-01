@@ -11,14 +11,7 @@ export default function Requests() {
   const [sendStatus, setSendStatus] = useState(null);
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const { socketReady, socketError, reinitialize } = useSocket();
-
-  // Debug logging for socket state
-    useEffect(() => {
-      if (socketError) {
-        console.error('Socket error:', socketError);
-      }
-    }, [socketReady, socketError]);
+  const { socketReady } = useSocket();
 
   // Get the auth token from localStorage
   const getToken = () => {
