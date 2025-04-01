@@ -5,11 +5,10 @@ import { getAllMessagePreviews } from '../api/messages';
 import { 
   registerUserOnlineListener, 
   registerUserOfflineListener, 
-  removeListener,
   registerInitialStatusListener,
   requestInitialStatus,
 } from '../api/socket';
-import { useSocket } from './SocketContext';
+import { LoadingAnimation, useSocket } from './index';
 
 export default function ChatList({ selectedUser, setSelectedUser, messagesByUser, setMessagesByUser, isTyping }) {
   const [friends, setFriends] = useState([]);
@@ -17,12 +16,10 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
   const [isLoading, setIsLoading] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState({});
   const [messagePreviews, setMessagePreviews] = useState({});
-  const [initialStatusReceived, setInitialStatusReceived] = useState(false);
   const { socketReady, socketError, reinitialize } = useSocket();
 
   // Debug logging for socket state
   useEffect(() => {
-    console.log('ChatList: Socket state changed -', socketReady ? 'CONNECTED' : 'DISCONNECTED');
     if (socketError) {
       console.error('Socket error:', socketError);
     }
@@ -132,8 +129,6 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
         console.log('Updated online users with initial status:', newState);
         return newState;
       });
-      
-      setInitialStatusReceived(true);
     });
     
     // Now request the initial status
@@ -227,7 +222,7 @@ const loadMessagePreviews = async (token, friendsList) => {
       
       {isLoading ? (
         <div className="flex justify-center p-5">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-ucd-blue-600"></div>
+          <LoadingAnimation size="medium" color="ucd-blue" />
         </div>
       ) : (
         <ul className="flex-1 overflow-y-auto">
