@@ -1,8 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { MdSearch } from 'react-icons/md';
 import { getFriendList } from '../api/friends';
-import { getAllMessagePreviews } from '../api/messages'; // New import for message previews
-import { registerUserOnlineListener, registerUserOfflineListener, removeListener } from '../api/socket';
+import { getAllMessagePreviews } from '../api/messages';
+import { 
+  registerUserOnlineListener, 
+  registerUserOfflineListener, 
+  removeListener,
+  registerInitialStatusListener,
+  requestInitialStatus,
+} from '../api/socket';
+import { useSocket } from './SocketContext';
 
 export default function ChatList({ selectedUser, setSelectedUser, messagesByUser, setMessagesByUser, isTyping }) {
   const [friends, setFriends] = useState([]);
@@ -10,8 +17,18 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
   const [isLoading, setIsLoading] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState({});
   const [messagePreviews, setMessagePreviews] = useState({});
+  const [initialStatusReceived, setInitialStatusReceived] = useState(false);
+  const { socketReady, socketError, reinitialize } = useSocket();
 
-  // Get the auth token from localStorage
+  // Debug logging for socket state
+  useEffect(() => {
+    console.log('ChatList: Socket state changed -', socketReady ? 'CONNECTED' : 'DISCONNECTED');
+    if (socketError) {
+      console.error('Socket error:', socketError);
+    }
+  }, [socketReady, socketError]);
+
+  // Get auth token
   const getToken = () => {
     const user = JSON.parse(localStorage.getItem('user'));
     return user?.idToken;
@@ -39,6 +56,98 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
     
     loadFriends();
   }, []);
+
+  // Set up online status listeners - only when socket is ready
+  useEffect(() => {
+    if (!socketReady) {
+      console.log('Socket not ready, waiting to set up listeners');
+      return;
+    }
+    
+    console.log('Socket ready, setting up online status listeners');
+    
+    // First, set up all the listeners
+    const unsubscribeOnline = registerUserOnlineListener((data) => {
+      console.log('user_online event received:', data);
+      
+      const username = data.username;
+      
+      if (!username) {
+        console.error('Missing username in user_online event:', data);
+        return;
+      }
+      
+      setOnlineUsers(prev => {
+        console.log(`Setting ${username} to online. Previous state:`, prev);
+        return {
+          ...prev,
+          [username]: true
+        };
+      });
+    });
+    
+    const unsubscribeOffline = registerUserOfflineListener((data) => {
+      console.log('user_offline event received:', data);
+      
+      if (!data) {
+        console.error('Received empty data in user_offline event');
+        return;
+      }
+      
+      const { username } = data;
+      
+      if (!username) {
+        console.error('Missing username in user_offline event:', data);
+        return;
+      }
+      
+      setOnlineUsers(prev => {
+        console.log(`Setting ${username} to offline. Previous state:`, prev);
+        return {
+          ...prev,
+          [username]: false
+        };
+      });
+    });
+    
+    // Set up initial status listener
+    const unsubscribeInitialStatus = registerInitialStatusListener((data) => {
+      console.log('Initial status received:', data);
+      
+      if (!data || !data.friends) {
+        console.log('No friends in initial status data');
+        return;
+      }
+      
+      // Update all online friends at once
+      setOnlineUsers(prev => {
+        const newState = { ...prev };
+        
+        data.friends.forEach(friend => {
+          if (friend && friend.username) {
+            newState[friend.username] = true;
+          }
+        });
+        
+        console.log('Updated online users with initial status:', newState);
+        return newState;
+      });
+      
+      setInitialStatusReceived(true);
+    });
+    
+    // Now request the initial status
+    console.log('Requesting initial online status');
+    requestInitialStatus();
+    
+    // Clean up listeners on unmount
+    return () => {
+      console.log('Cleaning up listeners');
+      unsubscribeOnline();
+      unsubscribeOffline();
+      unsubscribeInitialStatus();
+    };
+  }, [socketReady]);
 
 // Function to load message previews for all friends
 const loadMessagePreviews = async (token, friendsList) => {
@@ -77,30 +186,6 @@ const loadMessagePreviews = async (token, friendsList) => {
     console.error("Error loading message previews:", err);
   }
 };
-
-  // Set up online status listeners
-  useEffect(() => {
-    registerUserOnlineListener((data) => {
-      const { username } = data;
-      setOnlineUsers(prev => ({
-        ...prev,
-        [username]: true
-      }));
-    });
-    
-    registerUserOfflineListener((data) => {
-      const { username } = data;
-      setOnlineUsers(prev => ({
-        ...prev,
-        [username]: false
-      }));
-    });
-    
-    return () => {
-      removeListener('user_online');
-      removeListener('user_offline');
-    };
-  }, []);
 
   const filteredFriends = friends.filter(friend =>
     friend.username.toLowerCase().includes(searchTerm.toLowerCase())

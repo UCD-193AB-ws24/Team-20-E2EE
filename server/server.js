@@ -68,6 +68,8 @@ const initializeApp = async () => {
         // Store user as online
         onlineUsers.set(userId, socket.id);
         socketToUser.set(socket.id, userId);
+
+        console.log(onlineUsers)
         
         console.log(`User ${userId} connected with socket ${socket.id}`);
         
@@ -80,8 +82,10 @@ const initializeApp = async () => {
           // Notify friends that user is online
           if (currentUser.friends && currentUser.friends.length > 0) {
             for (const friendId of currentUser.friends) {
+              console.log("Checking friend ID:", friendId);
               if (onlineUsers.has(friendId)) {
-                io.to(onlineUsers.get(friendId)).emit("user_online", {
+                console.log(onlineUsers.get(friendId), "is online (socket ID)");
+                io.to(onlineUsers.get(friendId)).emit("user_online",{
                   userId: currentUser.uid,
                   username: currentUser.username
                 });
@@ -89,6 +93,39 @@ const initializeApp = async () => {
             }
           }
         }
+
+        socket.on("get_initial_status", async () => {
+          console.log(`User ${userId} requested initial online status`);
+          
+          if (!currentUser || !currentUser.friends || currentUser.friends.length === 0) {
+            console.log(`User ${userId} has no friends to check status for`);
+            socket.emit("initial_status", { friends: [] });
+            return;
+          }
+          
+          // Get all online friends in a single database query (more efficient)
+          const onlineFriendIds = currentUser.friends.filter(id => onlineUsers.has(id));
+          
+          if (onlineFriendIds.length === 0) {
+            console.log(`User ${userId} has no online friends`);
+            socket.emit("initial_status", { friends: [] });
+            return;
+          }
+          
+          // Fetch all online friends' data in one database query
+          const onlineFriends = await usersCollection
+            .find({ uid: { $in: onlineFriendIds } })
+            .project({ uid: 1, username: 1, _id: 0 })
+            .toArray();
+          
+          const formattedFriends = onlineFriends.map(friend => ({
+            userId: friend.uid,
+            username: friend.username
+          }));
+          
+          console.log(`Sending initial status to ${userId}: ${formattedFriends.length} friends online`);
+          socket.emit("initial_status", { friends: formattedFriends });
+        });
 
         // Handle private messages
         socket.on("private_message", async (data) => {
