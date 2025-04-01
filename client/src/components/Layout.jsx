@@ -72,6 +72,7 @@ export default function Layout({ children }) {
   useEffect(() => {
     // Handle incoming messages
     registerMessageListener((message) => {
+      console.log('Received message:', message);
       const { sender, text, time } = message;
       
       // Add message to the appropriate user's message list
