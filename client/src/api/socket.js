@@ -9,6 +9,7 @@ const pendingListeners = {
   user_online: [],
   user_offline: [],
   message_sent: [],
+  friend_request: [],
   user_typing: [],
   receive_message: [],
   initial_status: []
@@ -84,7 +85,6 @@ export const disconnectSocket = () => {
   }
 };
 
-// Send a private message - maintaining your original function name
 export const sendPrivateMessage = (recipientUsername, text) => {
   if (!socket || !socket.connected) {
     console.error('Socket not connected');
@@ -95,10 +95,43 @@ export const sendPrivateMessage = (recipientUsername, text) => {
     recipientUsername,
     text
   });
-  return true;
 };
 
-// Send typing indicator - maintaining your original function name
+export const sendFriendRequest = (recipientUsername) => {
+  return new Promise((resolve, reject) => {
+    if (!socket || !socket.connected) {
+      reject(new Error('Socket not connected'));
+      return;
+    }
+    
+    // Set up one-time listeners for the response
+    const onSuccess = (data) => {
+      socket.off('friend_request_error', onError);
+      resolve(data);
+    };
+    
+    const onError = (error) => {
+      socket.off('friend_request_success', onSuccess);
+      reject(new Error(error.error || 'Failed to send friend request'));
+    };
+    
+    // Register temporary listeners
+    socket.once('friend_request_success', onSuccess);
+    socket.once('friend_request_error', onError);
+    
+    // Send the request
+    socket.emit('send_friend_request', recipientUsername);
+    
+    // Timeout to prevent hanging promises
+    setTimeout(() => {
+      socket.off('friend_request_success', onSuccess);
+      socket.off('friend_request_error', onError);
+      reject(new Error('Request timed out'));
+    }, 5000);
+  });
+};
+
+// Send typing indicator
 export const sendTypingStatus = (recipientUsername, isTyping) => {
   if (!socket || !socket.connected) return false;
   
@@ -109,7 +142,7 @@ export const sendTypingStatus = (recipientUsername, isTyping) => {
   return true;
 };
 
-// Register event listeners - with enhanced pending queue support
+// Register event listeners with pending queue support
 export const registerMessageListener = (callback) => {
   if (!socket) {
     console.warn("Socket not initialized, queuing receive_message listener");
@@ -154,6 +187,21 @@ export const registerTypingListener = (callback) => {
   socket.on('user_typing', callback);
   return () => socket.off('user_typing', callback);
 };
+
+export const registerFriendRequestListener = (callback) => {
+  if (!socket) {
+    console.warn("Socket not initialized, queuing friend_request listener");
+    pendingListeners.friend_request.push(callback);
+    return () => {
+      const index = pendingListeners.friend_request.indexOf(callback);
+      if (index !== -1) pendingListeners.friend_request.splice(index, 1);
+    };
+  }
+  
+  console.log('Registering friend_request listener');
+  socket.on('receive_friend_request', callback);
+  return () => socket.off('receive_friend_request', callback);
+}
 
 export const registerUserOnlineListener = (callback) => {
   if (!socket) {
@@ -234,8 +282,6 @@ export const isSocketConnected = () => {
   return socket?.connected || false;
 };
 
-
-// Export all functions to maintain compatibility with your existing code
 export default {
   initializeSocket,
   disconnectSocket,
@@ -244,6 +290,7 @@ export default {
   registerMessageListener,
   registerMessageSentListener,
   registerTypingListener,
+  registerFriendRequestListener,
   registerUserOnlineListener,
   registerInitialStatusListener,
   requestInitialStatus,

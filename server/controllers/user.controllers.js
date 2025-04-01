@@ -59,56 +59,6 @@ export const searchUser = async(req, res) => {
     }
 };
 
-export const sendFriendRequest = async (req, res) => {
-    try {
-        const { friendUsername } = req.body;
-        const uid = req.user?.uid; // Extract from Firebase token
-
-        if (!uid) {
-            return res.status(401).json({ error: "Unauthorized - No user ID found" });
-        }
-
-        if (!friendUsername) {
-            return res.status(400).json({ error: "Friend username is required" });
-        }
-
-        const db = await connectDB();
-        const usersCollection = db.collection("users");
-
-        // Find the current user's document
-        const currentUser = await usersCollection.findOne({ uid: uid });
-        if (!currentUser) {
-            return res.status(404).json({ error: "Current user not found" });
-        }
-
-        // Find the friend in the database
-        const friend = await usersCollection.findOne({ username: friendUsername });
-        if (!friend) {
-            return res.status(404).json({ error: "Friend not found" });
-        }
-        
-        // Check if the friend is already in the `friends` array
-        if (currentUser.friends && currentUser.friends.includes(friend.uid)) {
-            return res.status(400).json({ error: "User is already a friend" });
-        }
-        // Add friend request to friend's `friendRequests` array
-        const result = await usersCollection.updateOne(
-            { username: friendUsername },
-            { $addToSet: { friendsRequests: uid } }
-        );
-
-        if (result.modifiedCount === 0) {
-            return res.status(400).json({ error: "Friend request already sent" });
-        }
-
-        res.json({ message: "Friend request sent successfully" });
-
-    } catch (error) {
-        console.error("Error sending friend request:", error);
-        res.status(500).json({ error: "Internal server error" });
-    }
-};
-
 export const getUser = async (req, res) => {
     try {
         const uid = req.user?.uid;

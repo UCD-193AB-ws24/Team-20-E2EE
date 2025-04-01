@@ -61,9 +61,6 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
       return;
     }
     
-    console.log('Socket ready, setting up online status listeners');
-    
-    // First, set up all the listeners
     const unsubscribeOnline = registerUserOnlineListener((data) => {
       console.log('user_online event received:', data);
       

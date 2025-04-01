@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { MdPersonAdd, MdClose } from 'react-icons/md';
-import { getFriendRequests, acceptFriendRequest, deleteFriendRequest, sendFriendRequest } from '../api/friends';
+import { getFriendRequests, acceptFriendRequest, deleteFriendRequest } from '../api/friends';
+import { sendFriendRequest, registerFriendRequestListener } from '../api/socket';
+import { useSocket } from '../components';
 
 export default function Requests() {
   const [friendRequests, setFriendRequests] = useState([]);
@@ -9,12 +11,54 @@ export default function Requests() {
   const [sendStatus, setSendStatus] = useState(null);
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const { socketReady, socketError, reinitialize } = useSocket();
+
+  // Debug logging for socket state
+    useEffect(() => {
+      if (socketError) {
+        console.error('Socket error:', socketError);
+      }
+    }, [socketReady, socketError]);
 
   // Get the auth token from localStorage
   const getToken = () => {
     const user = JSON.parse(localStorage.getItem('user'));
     return user?.idToken;
   };
+
+  // Set up friend request listeners
+  useEffect(() => {
+    if (!socketReady) {
+      console.log('Socket not ready, waiting to set up listeners');
+      return;
+    }
+    
+    const unsubscribeFriendRequest = registerFriendRequestListener((data) => {
+      console.log('Friend request received:', data);
+      
+      // Reload friend requests when a new one comes in
+      const loadFriendRequests = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+          const token = getToken();
+          const data = await getFriendRequests(token);
+          setFriendRequests(data.friendRequests || []);
+        } catch (err) {
+          setError(err.message || 'Failed to load friend requests');
+          console.error(err);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      loadFriendRequests();
+    });
+    
+    return () => {
+      if (unsubscribeFriendRequest) unsubscribeFriendRequest();
+    };
+  }, [socketReady]);
 
   // Fetch friend requests on component mount
   useEffect(() => {
@@ -65,7 +109,7 @@ export default function Requests() {
   // Send new friend request
   const handleSendRequest = async (e) => {
     e.preventDefault();
-    
+
     if (!username.trim()) {
       setSendStatus({
         success: false,
@@ -78,61 +122,32 @@ export default function Requests() {
     setSendStatus(null);
     
     try {
-      const token = getToken();
-      const response = await sendFriendRequest(token, username);
+      const result = await sendFriendRequest(username);
       
       setSendStatus({
         success: true,
-        message: `Friend request sent to ${username}`
+        message: result.message || `Friend request sent to ${username}`
       });
       
       // Clear input after sending
       setUsername('');
       
-      // Optional: close modal after a delay
       setTimeout(() => {
         setShowModal(false);
         setSendStatus(null);
-      }, 2000);
+      }, 1500);
       
     } catch (err) {
-      // Handle different error cases
-      if (err.message && err.message.includes("User not found")) {
-        setSendStatus({
-          success: false,
-          message: `No user named "${username}" was found`
-        });
-      } else if (err.message && err.message.includes("already friends")) {
-        setSendStatus({
-          success: false,
-          message: `You are already friends with ${username}`
-        });
-      } else if (err.message && err.message.includes("request already sent")) {
-        setSendStatus({
-          success: false,
-          message: `You already sent a request to ${username}`
-        });
-      } else if (err.message && err.message.includes("request from this user")) {
-        setSendStatus({
-          success: false,
-          message: `${username} has already sent you a friend request`
-        });
-      } else if (err.message && err.message.includes("yourself")) {
-        setSendStatus({
-          success: false,
-          message: `You cannot send a friend request to yourself`
-        });
-      } else {
-        setSendStatus({
-          success: false,
-          message: `Failed to send request: ${err.message || "Unknown error"}`
-        });
-      }
+      setSendStatus({
+        success: false,
+        message: err.message
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
+  
   // User search modal
   const AddFriendModal = () => {
     if (!showModal) return null;
@@ -243,7 +258,7 @@ export default function Requests() {
             friendRequests.map((request, index) => (
               <li
                 key={index}
-                className="flex items-center justify-between p-4 mb-2 bg-white rounded-lg shadow-md"
+                className="flex flex-col items-center justify-between p-4 mb-2 bg-white rounded-lg shadow-md"
               >
                 <div className="flex items-center">
                   <div className="w-12 h-12 rounded-full bg-ucd-blue-600 text-white flex items-center justify-center mr-4">
@@ -251,7 +266,7 @@ export default function Requests() {
                   </div>
                   <span className="font-medium">{request.username}</span>
                 </div>
-                <div className="flex space-x-2">
+                <div className="flex mt-2 space-x-2">
                   <button
                     onClick={() => handleAcceptRequest(request.username)}
                     className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"

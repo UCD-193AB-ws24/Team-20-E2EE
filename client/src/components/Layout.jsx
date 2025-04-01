@@ -155,12 +155,7 @@ export default function Layout({ children }) {
     if (!selectedUser || !text.trim()) return;
     
     // Send message via socket
-    const sent = sendPrivateMessage(selectedUser, text);
-    
-    if (!sent) {
-      console.error('Failed to send message: Socket not connected');
-      // You could implement a fallback here or show an error
-    }
+    sendPrivateMessage(selectedUser, text);
     
     // Clear typing indicator
     if (typingTimeout) {
