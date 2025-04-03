@@ -2,6 +2,7 @@ import express from "express";
 import { 
   updateUsername, 
   searchUser, 
+  sendFriendRequest,
   acceptFriendRequest, 
   deleteFriendRequest, 
   getFriendlist, 
@@ -25,6 +26,7 @@ router.get("/get-avatar/:username", getAvatar); // Removed authentication as ava
 
 // Friend management routes
 router.get("/searchUser", searchUser);
+router.post("/send-friend-request", authenticateUser, sendFriendRequest);
 router.post("/accept-friend-request", authenticateUser, acceptFriendRequest);
 router.post("/delete-friend-request", authenticateUser, deleteFriendRequest);
 router.get("/friendList", authenticateUser, getFriendlist);

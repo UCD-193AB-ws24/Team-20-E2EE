@@ -139,107 +139,25 @@ const registerSocketEvents = (socket, usersCollection, currentUser) => {
             console.error("Error sending private message:", error);
             socket.emit("error", { message: "Failed to send message" });
         }
+    });
+    
+    // Handle typing events
+    socket.on("typing", async (data) => {
+    try {
+        const { recipientUsername, isTyping } = data;
+        
+        // Get recipient from database
+        const recipientUser = await usersCollection.findOne({ username: recipientUsername });
+        
+        if (recipientUser && onlineUsers.has(recipientUser.uid)) {
+        io.to(onlineUsers.get(recipientUser.uid)).emit("user_typing", {
+            username: currentUser.username,
+            isTyping
         });
-        
-        // Handle typing events
-        socket.on("typing", async (data) => {
-        try {
-            const { recipientUsername, isTyping } = data;
-            
-            // Get recipient from database
-            const recipientUser = await usersCollection.findOne({ username: recipientUsername });
-            
-            if (recipientUser && onlineUsers.has(recipientUser.uid)) {
-            io.to(onlineUsers.get(recipientUser.uid)).emit("user_typing", {
-                username: currentUser.username,
-                isTyping
-            });
-            }
-        } catch (error) {
-            console.error("Error with typing event:", error);
         }
-        });
-
-        // Handle friend requests
-        socket.on("send_friend_request", async (data) => {
-        try {
-            const friendUsername = data;
-            const uid = socket.user.uid;
-
-            console.log(friendUsername, "friendUsername");
-        
-            if (!uid) {
-            return socket.emit("friend_request_error", { error: "Unauthorized - No user ID found" });
-            }
-        
-            if (!friendUsername) {
-            return socket.emit("friend_request_error", { error: "Friend username is required" });
-            }
-        
-            const db = await connectDB();
-            const usersCollection = db.collection("users");
-        
-            // Find the current user's document
-            const currentUser = await usersCollection.findOne({ uid: uid });
-            if (!currentUser) {
-            return socket.emit("friend_request_error", { error: "Current user not found" });
-            }
-
-            if (currentUser.username === friendUsername) {
-            return socket.emit("friend_request_error", { error: "You cannot send a friend request to yourself" });
-            }
-        
-            // Find the friend in the database
-            const friend = await usersCollection.findOne({ username: friendUsername });
-            if (!friend) {
-            return socket.emit("friend_request_error", { error: "User not found" });
-            }
-            
-            // Check if attempting to add yourself
-            if (currentUser.uid === friend.uid) {
-            return socket.emit("friend_request_error", { error: "You cannot send a friend request to yourself" });
-            }
-            
-            // Check if the friend is already in the `friends` array
-            if (currentUser.friends && currentUser.friends.includes(friend.uid)) {
-            return socket.emit("friend_request_error", { error: "You are already friends with this user" });
-            }
-            
-            // Check if friend request already exists
-            if (friend.friendsRequests && friend.friendsRequests.includes(uid)) {
-            return socket.emit("friend_request_error", { error: "Friend request already sent" });
-            }
-            
-            // Check if the user has a pending request from this friend
-            if (currentUser.friendsRequests && currentUser.friendsRequests.includes(friend.uid)) {
-            return socket.emit("friend_request_error", { error: "You already have a friend request from this user" });
-            }
-        
-            // Add friend request to friend's `friendRequests` array
-            const result = await usersCollection.updateOne(
-            { username: friendUsername },
-            { $addToSet: { friendsRequests: uid } }
-            );
-        
-            if (result.modifiedCount === 0) {
-            return socket.emit("friend_request_error", { error: "Friend request already sent" });
-            }
-        
-            // Notify the client that the request was sent successfully
-            socket.emit("friend_request_success", { message: "Friend request sent successfully" });
-            
-            // If the friend is online, notify them about the new request
-            if (onlineUsers.has(friend.uid)) {
-            io.to(onlineUsers.get(friend.uid)).emit("receive_friend_request", {
-                from: currentUser.username,
-                type: "new_request"
-            });
-            }
-        
-        } catch (error) {
-            console.error("Error sending friend request:", error);
-            socket.emit("friend_request_error", { error: "Internal server error" });
-        }
+    } catch (error) {
+        console.error("Error with typing event:", error);
+    }
     });
 };
 

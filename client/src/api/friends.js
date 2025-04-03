@@ -34,16 +34,16 @@ export const getFriendRequests = async (token) => {
 };
 
 // Send a friend request to a user
-export const sendFriendRequest = async (token, friendUsername) => {
+export const sendFriendRequest = async (token, recipientUsername) => {
   const response = await fetch(`${BACKEND_URL}/api/user/send-friend-request`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ friendUsername }),
+    body: JSON.stringify({ recipientUsername }),
   });
-  
+
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to send friend request');

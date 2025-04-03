@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MdPersonAdd, MdClose } from 'react-icons/md';
-import { getFriendRequests, acceptFriendRequest, deleteFriendRequest } from '../api/friends';
-import { sendFriendRequest, registerFriendRequestListener } from '../api/socket';
+import { getFriendRequests, sendFriendRequest, acceptFriendRequest, deleteFriendRequest } from '../api/friends';
+import { registerFriendRequestListener } from '../api/socket';
 import { useSocket } from '../components';
 
 export default function Requests() {
@@ -102,45 +102,46 @@ export default function Requests() {
   // Send new friend request
   const handleSendRequest = async (e) => {
     e.preventDefault();
-
+  
     if (!username.trim()) {
       setSendStatus({
         success: false,
-        message: "Please enter a username"
+        message: "Please enter a username",
       });
       return;
     }
-    
+  
     setIsLoading(true);
     setSendStatus(null);
-    
+  
     try {
-      const result = await sendFriendRequest(username);
-      
+      // Get the auth token from localStorage
+      const token = getToken();
+
+      const result = await sendFriendRequest(token, username);
+  
       setSendStatus({
         success: true,
-        message: result.message || `Friend request sent to ${username}`
+        message: result.message || `Friend request sent to ${username}`,
       });
-      
+  
       // Clear input after sending
-      setUsername('');
-      
+      setUsername("");
+  
       setTimeout(() => {
         setShowModal(false);
         setSendStatus(null);
       }, 1500);
-      
     } catch (err) {
       setSendStatus({
         success: false,
-        message: err.message
+        message: err.message || "An error occurred",
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  
   // User search modal
   const AddFriendModal = () => {
     if (!showModal) return null;
