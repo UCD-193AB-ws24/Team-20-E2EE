@@ -1,11 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import NavBar from './NavBar';
-import ChatWindow from './ChatWindow';
-import MessageInput from './MessageInput';
-import ProfileModal from './ProfileModal';
-import Archive from '../pages/Archive';
-import Friends from '../pages/Friends';
-import Requests from '../pages/Requests';
+import { ChatWindow, MessageInput, ProfileModal } from './index';
+import { Archive, Friends, Requests } from '../pages';
 import { 
   initializeSocket, disconnectSocket, sendPrivateMessage,
   registerMessageListener, registerMessageSentListener,
@@ -159,12 +155,7 @@ export default function Layout({ children }) {
     if (!selectedUser || !text.trim()) return;
     
     // Send message via socket
-    const sent = sendPrivateMessage(selectedUser, text);
-    
-    if (!sent) {
-      console.error('Failed to send message: Socket not connected');
-      // You could implement a fallback here or show an error
-    }
+    sendPrivateMessage(selectedUser, text);
     
     // Clear typing indicator
     if (typingTimeout) {

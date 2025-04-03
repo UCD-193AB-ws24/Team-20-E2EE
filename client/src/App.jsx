@@ -1,19 +1,9 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import ChatList from './components/ChatList';
-import Login from './pages/Login';
-import Profile from './pages/Profile';
-import Friends from './pages/Friends';
-import Requests from './pages/Requests';
-import Archive from './pages/Archive';
-import SignUp from './pages/Signup';
-import ProtectedRoute from './components/ProtectedRoute';
-import Layout from './components/Layout';
-import Welcome from './pages/Welcome';
-import { SocketProvider } from './components/SocketContext';
+import { ChatList, Layout, ProtectedRoute, SocketProvider } from './components';
+import { Archive, Friends, Login, Profile, Requests, SignUp, Welcome } from './pages';
 
 export default function App() {
-  // No need for socket initialization here anymore, it's handled by SocketProvider
   return (
     <SocketProvider>
       <Routes>

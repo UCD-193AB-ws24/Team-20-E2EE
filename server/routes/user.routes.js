@@ -2,7 +2,7 @@ import express from "express";
 import { 
   updateUsername, 
   searchUser, 
-  sendFriendRequest, 
+  sendFriendRequest,
   acceptFriendRequest, 
   deleteFriendRequest, 
   getFriendlist, 
