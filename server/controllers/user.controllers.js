@@ -236,8 +236,12 @@ export const acceptFriendRequest = async (req, res) => {
             )
         ]);
 
-        res.json({ message: "Friend request accepted successfully" });
+        const io = getSocketInstance();
+        const onlineUsers = getOnlineUsers();
+        io.to(onlineUsers.get(uid)).emit('friend_request_handled');
 
+        res.json({ message: "Friend request accepted successfully" });
+        
     } catch (error) {
         console.error("Error accepting friend request:", error);
         res.status(500).json({ error: "Internal server error" });
@@ -245,6 +249,7 @@ export const acceptFriendRequest = async (req, res) => {
 };
 
 export const deleteFriendRequest = async (req, res) => {
+    console.log("Deleting friend request");
     try{
         const { friendUsername } = req.body;
         const uid = req.user?.uid;
@@ -275,6 +280,10 @@ export const deleteFriendRequest = async (req, res) => {
         if(result.modifiedCount === 0){
             return res.status(400).json({ error: "Friend request not found" });
         }
+
+        const io = getSocketInstance();
+        const onlineUsers = getOnlineUsers();
+        io.to(onlineUsers.get(uid)).emit('friend_request_handled');
 
         res.json({ message: "Friend request deleted successfully" });
 

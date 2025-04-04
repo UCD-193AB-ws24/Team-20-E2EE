@@ -10,6 +10,7 @@ const pendingListeners = {
   user_offline: [],
   message_sent: [],
   friend_request: [],
+  friend_request_handled: [],
   user_typing: [],
   receive_message: [],
   initial_status: []
@@ -39,7 +40,7 @@ export const initializeSocket = (token, callbacks = {}) => {
 
     // Connection handlers
     socket.on('connect', () => {
-      console.log('Socket connected:', socket.id);
+      console.log(`User connected, Socket ID: ${socket.id}`);
       
       // Apply any pending listeners
       Object.keys(pendingListeners).forEach(event => {
@@ -203,6 +204,21 @@ export const registerFriendRequestListener = (callback) => {
   return () => socket.off('receive_friend_request', callback);
 }
 
+export const registerFriendRequestHandledListener = (callback) => {
+  if (!socket) {
+    console.warn("Socket not initialized, queuing friend_request_handled listener");
+    pendingListeners.friend_request_handled.push(callback);
+    return() => {
+      const index = pendingListeners.friend_request_handled.indexOf(callback);
+      if (index !== -1) pendingListeners.friend_request_handled.splice(index, 1);
+    };
+  }
+
+  console.log('Registering friend_request_handled listener');
+  socket.on('friend_request_handled', callback);
+  return () => socket.off('friend_request_handled', callback);
+};
+
 export const registerUserOnlineListener = (callback) => {
   if (!socket) {
     console.warn("Socket not initialized, queuing user_online listener");
@@ -291,6 +307,7 @@ export default {
   registerMessageSentListener,
   registerTypingListener,
   registerFriendRequestListener,
+  registerFriendRequestHandledListener,
   registerUserOnlineListener,
   registerInitialStatusListener,
   requestInitialStatus,
