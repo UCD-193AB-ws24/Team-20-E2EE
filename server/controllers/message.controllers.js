@@ -1,5 +1,5 @@
 import { connectDB } from "../mongo/connection.js";
-import { ObjectId } from "mongodb";
+import { getSocketInstance, getOnlineUsers } from "../socketManager.js";
 
 export const messageController = async (req, res) => {
     const { message } = req.body;
@@ -7,7 +7,6 @@ export const messageController = async (req, res) => {
     res.json({ response: `Message Received: ${message}` });
 };
 
-// Get chat history between two users
 export const getChatHistory = async (req, res) => {
     try {
         const { username } = req.query;
@@ -72,7 +71,6 @@ export const getChatHistory = async (req, res) => {
     }
 };
 
-// Add this function to get message previews
 export const getMessagePreviews = async (req, res) => {
     try {
         const currentUserId = req.user?.uid;
@@ -139,3 +137,78 @@ export const getMessagePreviews = async (req, res) => {
         res.status(500).json({ error: "Internal server error" });
     }
 };
+
+export const sendPrivateMessage = async (req, res) => {
+    try {
+        // Check for current user
+        const uid = req.user?.uid;
+
+        if (!uid) {
+            return res.status(401).json({ error: "Unauthorized - No user ID found" })
+        }
+
+        const db = await connectDB();
+        const usersCollection = db.collection("users");
+
+        const senderUser = await usersCollection.findOne({ uid: uid });
+        if (!senderUser) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        const { recipientUsername, text } = req.body;
+
+        if (!recipientUsername || !text) {
+            return res.status(406).json({ error: "Invalid message format" });
+        }
+
+        const recipientUser = await usersCollection.findOne({ username: recipientUsername });
+        
+        if (!recipientUser) {
+            return res.status(404).json({ error: "Recipient not found" });
+        }
+
+        const recipientId = recipientUser.uid;
+
+        const message = {
+            sender: uid,
+            recipient: recipientId, 
+            senderUsername: senderUser.username,
+            recipientUsername,
+            text,
+            timestamp: new Date(),
+            read: false
+        }
+
+        const messagesCollection = db.collection("messages");
+        const result = await messagesCollection.insertOne(message);
+        
+        // Format message for sending
+        const formattedMessage = {
+            _id: result.insertedId,
+            sender: senderUser.username,
+            text,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        
+        const io = getSocketInstance();
+        const onlineUsers = getOnlineUsers();
+        console.log(senderUser.username);
+
+        // Send to recipient if online
+        if (onlineUsers.has(recipientId)) {
+            io.to(onlineUsers.get(recipientId)).emit("receive_message", {
+                ...formattedMessage,
+                sender: senderUser.username
+            });
+        }
+        
+        // Confirm to sender
+        io.to(onlineUsers.get(uid)).emit("message_sent", {
+            ...formattedMessage,
+            recipient: recipientUsername
+        });
+    } catch (error) {
+        console.error("Error sending message:", error);
+        res.status(500).json({ error: "Internal server error" })
+    }
+}

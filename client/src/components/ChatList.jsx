@@ -16,7 +16,7 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
   const [isLoading, setIsLoading] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState({});
   const [messagePreviews, setMessagePreviews] = useState({});
-  const { socketReady, socketError, reinitialize } = useSocket();
+  const { socketReady, socketError } = useSocket();
 
   // Debug logging for socket state
   useEffect(() => {

@@ -3,11 +3,11 @@ import NavBar from './NavBar';
 import { ChatWindow, MessageInput, ProfileModal } from './index';
 import { Archive, Friends, Requests } from '../pages';
 import { 
-  initializeSocket, disconnectSocket, sendPrivateMessage,
+  initializeSocket, disconnectSocket,
   registerMessageListener, registerMessageSentListener,
   removeListener, sendTypingStatus, registerTypingListener
 } from '../api/socket';
-import { getChatHistory } from '../api/messages';
+import { getChatHistory, sendPrivateMessage } from '../api/messages';
 
 // Initialize with empty data structure
 const initialMessagesState = {};
@@ -33,6 +33,12 @@ export default function Layout({ children }) {
       };
     }
   }, []);
+
+  // Get the auth token from localStorage
+  const getToken = () => {
+    const user = JSON.parse(localStorage.getItem('user'));
+    return user?.idToken;
+  };
 
   // Load chat history when selected user changes
   useEffect(() => {
@@ -68,7 +74,6 @@ export default function Layout({ children }) {
   useEffect(() => {
     // Handle incoming messages
     registerMessageListener((message) => {
-      console.log('Received message:', message);
       const { sender, text, time } = message;
       
       // Add message to the appropriate user's message list
@@ -153,9 +158,9 @@ export default function Layout({ children }) {
   // Send message function
   const sendMessage = async (text) => {
     if (!selectedUser || !text.trim()) return;
+    const token = getToken();
     
-    // Send message via socket
-    sendPrivateMessage(selectedUser, text);
+    sendPrivateMessage(token, selectedUser, text);
     
     // Clear typing indicator
     if (typingTimeout) {

@@ -74,40 +74,6 @@ export const sendPrivateMessage = (recipientUsername, text) => {
   });
 };
 
-export const sendFriendRequest = (recipientUsername) => {
-  return new Promise((resolve, reject) => {
-    if (!socket || !socket.connected) {
-      reject(new Error('Socket not connected'));
-      return;
-    }
-    
-    // Set up one-time listeners for the response
-    const onSuccess = (data) => {
-      socket.off('friend_request_error', onError);
-      resolve(data);
-    };
-    
-    const onError = (error) => {
-      socket.off('friend_request_success', onSuccess);
-      reject(new Error(error.error || 'Failed to send friend request'));
-    };
-    
-    // Register temporary listeners
-    socket.once('friend_request_success', onSuccess);
-    socket.once('friend_request_error', onError);
-    
-    // Send the request
-    socket.emit('send_friend_request', recipientUsername);
-    
-    // Timeout to prevent hanging promises
-    setTimeout(() => {
-      socket.off('friend_request_success', onSuccess);
-      socket.off('friend_request_error', onError);
-      reject(new Error('Request timed out'));
-    }, 5000);
-  });
-};
-
 // Send typing indicator
 export const sendTypingStatus = (recipientUsername, isTyping) => {
   if (!socket || !socket.connected) return false;
@@ -119,7 +85,6 @@ export const sendTypingStatus = (recipientUsername, isTyping) => {
   return true;
 };
 
-// Register event listeners with pending queue support
 export const registerMessageListener = (callback) => {  
   console.log('Registering receive_message listener');
   socket.on('receive_message', callback);
