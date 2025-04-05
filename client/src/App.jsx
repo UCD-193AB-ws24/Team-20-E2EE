@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { ChatList, Layout, ProtectedRoute, SocketProvider } from './components';
 import { Archive, Friends, Login, Profile, Requests, SignUp, Welcome } from './pages';
 

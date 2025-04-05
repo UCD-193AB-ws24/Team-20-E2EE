@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import NavBar from './NavBar';
-import { ChatWindow, MessageInput, ProfileModal } from './index';
+import { ChatWindow, MessageInput, ProfileModal, useSocket } from './index';
 import { Archive, Friends, Requests } from '../pages';
 import { 
-  initializeSocket, disconnectSocket,
   registerMessageListener, registerMessageSentListener,
   removeListener, sendTypingStatus, registerTypingListener
 } from '../api/socket';
@@ -20,19 +19,7 @@ export default function Layout({ children }) {
   const [view, setView] = useState('chat');
   const [isTyping, setIsTyping] = useState({});
   const [typingTimeout, setTypingTimeout] = useState(null);
-
-  // Initialize Socket.io connection
-  useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user'));
-    if (user?.idToken) {
-      initializeSocket(user.idToken);
-      
-      // Clean up socket connection on component unmount
-      return () => {
-        disconnectSocket();
-      };
-    }
-  }, []);
+  const { socketReady } = useSocket();
 
   // Get the auth token from localStorage
   const getToken = () => {
@@ -70,8 +57,12 @@ export default function Layout({ children }) {
     }
   }, [selectedUser, view]);
 
-  // Set up message listeners for real-time communication
+  // Set up message listeners
   useEffect(() => {
+    if (!socketReady) {
+      console.log('Socket not ready, waiting to set up listeners');
+      return;
+    }
     // Handle incoming messages
     registerMessageListener((message) => {
       const { sender, text, time } = message;

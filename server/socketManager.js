@@ -61,7 +61,6 @@ export const initializeSocket = (httpServer) => {
         }
       }
 
-      // Handle socket events
       registerSocketEvents(socket, usersCollection, currentUser);
 
       // Handle disconnection
@@ -79,23 +78,57 @@ export const initializeSocket = (httpServer) => {
 
 const registerSocketEvents = (socket, usersCollection, currentUser) => {
     // Handle typing events
+    console.log("Registering socket events for:", socket.id);
+
     socket.on("typing", async (data) => {
-    try {
-        const { recipientUsername, isTyping } = data;
-        
-        // Get recipient from database
-        const recipientUser = await usersCollection.findOne({ username: recipientUsername });
-        
-        if (recipientUser && onlineUsers.has(recipientUser.uid)) {
-        io.to(onlineUsers.get(recipientUser.uid)).emit("user_typing", {
-            username: currentUser.username,
-            isTyping
-        });
-        }
-    } catch (error) {
-        console.error("Error with typing event:", error);
-    }
+      console.log("Typing event received:", data);
+      try {
+          const { recipientUsername, isTyping } = data;
+          
+          // Get recipient from database
+          const recipientUser = await usersCollection.findOne({ username: recipientUsername });
+          
+          if (recipientUser && onlineUsers.has(recipientUser.uid)) {
+            io.to(onlineUsers.get(recipientUser.uid)).emit("user_typing", {
+                username: currentUser.username,
+                isTyping
+            });
+          }
+      } catch (error) {
+          console.error("Error with typing event:", error);
+      }
     });
+
+    socket.on('get_initial_status', async () => {
+      try {
+        const friends = currentUser?.friends || [];
+        const onlineFriends = [];
+
+        for (const friendId of friends) {
+          const isOnline = onlineUsers.has(friendId);    
+          const friendUser = await usersCollection.findOne({ uid: friendId });
+
+          if (!friendUser) {
+            console.error(`Friend user not found for ID: ${friendId}`);
+            continue;
+          }
+
+          const friendUsername = friendUser.username;
+
+          if (friendUsername) {
+            onlineFriends.push({
+              username: friendUsername,
+              online: isOnline,
+            });
+          }
+        }
+        socket.emit('initial_status', { friends: onlineFriends });
+      } catch (error) {
+        console.error("Error handling initial status request:", error);
+      }
+    });
+
+    socket.emit('socket_event_listeners_ready');
 };
 
 const handleDisconnection = async (socket, usersCollection) => {
