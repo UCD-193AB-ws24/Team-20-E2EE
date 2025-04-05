@@ -7,6 +7,7 @@ import {
   registerUserOfflineListener, 
   registerInitialStatusListener,
   requestInitialStatus,
+  removeListener,
 } from '../api/socket';
 import { LoadingAnimation, useSocket } from './index';
 
@@ -16,14 +17,7 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
   const [isLoading, setIsLoading] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState({});
   const [messagePreviews, setMessagePreviews] = useState({});
-  const { socketReady, socketError, reinitialize } = useSocket();
-
-  // Debug logging for socket state
-  useEffect(() => {
-    if (socketError) {
-      console.error('Socket error:', socketError);
-    }
-  }, [socketReady, socketError]);
+  const { socketReady } = useSocket();
 
   // Get auth token
   const getToken = () => {
@@ -61,9 +55,7 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
       return;
     }
     
-    const unsubscribeOnline = registerUserOnlineListener((data) => {
-      console.log('user_online event received:', data);
-      
+    registerUserOnlineListener((data) => {   
       const username = data.username;
       
       if (!username) {
@@ -72,7 +64,6 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
       }
       
       setOnlineUsers(prev => {
-        console.log(`Setting ${username} to online. Previous state:`, prev);
         return {
           ...prev,
           [username]: true
@@ -80,9 +71,7 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
       });
     });
     
-    const unsubscribeOffline = registerUserOfflineListener((data) => {
-      console.log('user_offline event received:', data);
-      
+    registerUserOfflineListener((data) => {      
       if (!data) {
         console.error('Received empty data in user_offline event');
         return;
@@ -96,7 +85,6 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
       }
       
       setOnlineUsers(prev => {
-        console.log(`Setting ${username} to offline. Previous state:`, prev);
         return {
           ...prev,
           [username]: false
@@ -105,39 +93,31 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
     });
     
     // Set up initial status listener
-    const unsubscribeInitialStatus = registerInitialStatusListener((data) => {
-      console.log('Initial status received:', data);
-      
+    registerInitialStatusListener((data) => {
       if (!data || !data.friends) {
         console.log('No friends in initial status data');
         return;
       }
-      
+    
       // Update all online friends at once
-      setOnlineUsers(prev => {
+      setOnlineUsers((prev) => {
         const newState = { ...prev };
-        
-        data.friends.forEach(friend => {
+    
+        data.friends.forEach((friend) => {
           if (friend && friend.username) {
-            newState[friend.username] = true;
+            newState[friend.username] = friend.online;
           }
         });
-        
-        console.log('Updated online users with initial status:', newState);
         return newState;
       });
     });
     
-    // Now request the initial status
-    console.log('Requesting initial online status');
     requestInitialStatus();
     
-    // Clean up listeners on unmount
     return () => {
-      console.log('Cleaning up listeners');
-      unsubscribeOnline();
-      unsubscribeOffline();
-      unsubscribeInitialStatus();
+      removeListener('user_online');
+      removeListener('user_offline');
+      removeListener('initial_status');
     };
   }, [socketReady]);
 

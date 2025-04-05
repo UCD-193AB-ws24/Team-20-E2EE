@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import NavBar from './NavBar';
-import { ChatWindow, MessageInput, ProfileModal } from './index';
+import { ChatWindow, MessageInput, ProfileModal, useSocket } from './index';
 import { Archive, Friends, Requests } from '../pages';
 import { 
-  initializeSocket, disconnectSocket, sendPrivateMessage,
   registerMessageListener, registerMessageSentListener,
   removeListener, sendTypingStatus, registerTypingListener
 } from '../api/socket';
-import { getChatHistory } from '../api/messages';
+import { getChatHistory, sendPrivateMessage } from '../api/messages';
 
 // Initialize with empty data structure
 const initialMessagesState = {};
@@ -20,19 +19,13 @@ export default function Layout({ children }) {
   const [view, setView] = useState('chat');
   const [isTyping, setIsTyping] = useState({});
   const [typingTimeout, setTypingTimeout] = useState(null);
+  const { socketReady } = useSocket();
 
-  // Initialize Socket.io connection
-  useEffect(() => {
+  // Get the auth token from localStorage
+  const getToken = () => {
     const user = JSON.parse(localStorage.getItem('user'));
-    if (user?.idToken) {
-      initializeSocket(user.idToken);
-      
-      // Clean up socket connection on component unmount
-      return () => {
-        disconnectSocket();
-      };
-    }
-  }, []);
+    return user?.idToken;
+  };
 
   // Load chat history when selected user changes
   useEffect(() => {
@@ -64,11 +57,14 @@ export default function Layout({ children }) {
     }
   }, [selectedUser, view]);
 
-  // Set up message listeners for real-time communication
+  // Set up message listeners
   useEffect(() => {
+    if (!socketReady) {
+      console.log('Socket not ready, waiting to set up listeners');
+      return;
+    }
     // Handle incoming messages
     registerMessageListener((message) => {
-      console.log('Received message:', message);
       const { sender, text, time } = message;
       
       // Add message to the appropriate user's message list
@@ -153,9 +149,9 @@ export default function Layout({ children }) {
   // Send message function
   const sendMessage = async (text) => {
     if (!selectedUser || !text.trim()) return;
+    const token = getToken();
     
-    // Send message via socket
-    sendPrivateMessage(selectedUser, text);
+    sendPrivateMessage(token, selectedUser, text);
     
     // Clear typing indicator
     if (typingTimeout) {
