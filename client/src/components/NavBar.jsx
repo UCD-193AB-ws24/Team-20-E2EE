@@ -5,6 +5,7 @@ import { TbLayoutSidebarLeftExpandFilled, TbLayoutSidebarRightExpand } from "rea
 import { registerFriendRequestListener, registerFriendRequestHandledListener } from '../api/socket';
 import { getFriendRequests } from '../api/friends';
 import { useSocket } from './index';
+import { motion } from "motion/react";
 
 export default function NavBar({ onProfileClick, setView }) {
   const location = useLocation();
@@ -59,6 +60,11 @@ export default function NavBar({ onProfileClick, setView }) {
   }, []);
 
   return (
+    <motion.div 
+    initial={{ width: 150 }}
+    animate={{ width: isCollapsed ? 60 : 150 }}
+    transition={{ duration: 0.2, ease: "easeOut"}}
+  >
     <div className={`flex flex-col justify-between h-screen bg-ucd-blue-light ${isCollapsed ? 'w-[60px]' : 'w-[150px]'}`}>
       <div className="flex flex-col items-start mt-[25px] ml-[10px]">
         {/* Direct Messages Link */}
@@ -141,5 +147,6 @@ export default function NavBar({ onProfileClick, setView }) {
         </button>
       </div>
     </div>
+    </motion.div>
   );
 }
