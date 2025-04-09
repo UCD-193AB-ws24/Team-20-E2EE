@@ -42,11 +42,12 @@ export default function Profile({ onClose }) {
     };
     fetchUserInfo();
   }, []);
+  
+  // Retrieve login method and stored email (if available)
+  const authMethod = localStorage.getItem("authMethod");
 
-  const handleLogout = async () => {
-    localStorage.removeItem("authMethod");
-    localStorage.removeItem("userEmail");
-
+  const handleNormalLogout = async () => {
+    localStorage.clear();
     const response = await logoutUser();
     if (response.success) {
       window.location.href = "/login";
@@ -120,7 +121,48 @@ export default function Profile({ onClose }) {
             <p className="text-lg text-gray-600 mt-4">Email: {storedEmail}</p>
             <button onClick={handleLogout} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-lg shadow-md transition duration-300">Logout</button>
           </div>
+  const handleCorbadoLogout = async () => {
+    localStorage.clear();
+    const response = await logout();
+    if (response.success) {
+      console.log("Logout successful");
+      window.location.href = "/login";
+    } else {
+      console.error("Logout failed:", response.error);
+    }
+  };
+
+  if (authMethod === "traditional") {
+    return (
+      <div className="h-screen flex">
+        <div className="flex-1 flex flex-col items-center justify-center">
+          <h1 className="text-3xl font-bold text-blue-500">Profile Page</h1>
+          <p className="text-lg text-gray-600 mt-4">
+            User-ID: Not Available
+            <br/>
+            {/* Email: with Redux*/}
+          </p>
+          <button onClick={handleNormalLogout} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-lg shadow-md transition duration-300">
+            Logout
+          </button>
         </div>
+      </div>
+    );
+  } else if (isAuthenticated && user) {
+    return (
+      <div className="h-screen flex">
+        <div className="flex-1 flex flex-col items-center justify-center">
+          <h1 className="text-3xl font-bold text-blue-500">Profile Page</h1>
+          <p className="text-lg text-gray-600 mt-4">
+            Email: {user.email}
+          </p>
+          <div className="passkeyinfo">
+            <h1>Manage your passkeys</h1>
+            <PasskeyList />
+          </div>
+          <button onClick={handleCorbadoLogout} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-lg shadow-md transition duration-300">
+            Logout
+          </button>
       ) : isAuthenticated && user ? (
         <div className="h-screen flex">
           <div className="flex-1 flex flex-col items-center justify-center">

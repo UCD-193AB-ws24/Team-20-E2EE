@@ -3,22 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUser, faKey } from "@fortawesome/free-solid-svg-icons";
 import { loginUser } from "../api/auth";
-import { useCorbado } from "@corbado/react";
 
 export default function Login() {
     const navigate = useNavigate();
     const [error, setError] = useState("");
     const [verificationRequired, setVerificationRequired] = useState(false);
 
-    const { logout, isAuthenticated, user } = useCorbado();
-
-    const redirectToHome = () => {
-        navigate("/")
-    }
-    const handleLogout = () => {
-        logout()
-        redirectToHome()
-    }
 
     const passkeyLogin = () => {
         navigate("/passkeylogin")

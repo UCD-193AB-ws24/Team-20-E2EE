@@ -90,6 +90,39 @@ export const login = async (req, res) => {
 };
 
 
+export const loginWithCorbado = async (req, res) => {
+  const { idToken } = req.body; // Receive ID Token from frontend
+  // console.log(idToken);
+
+  try {
+      // Verify the Firebase ID Token
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+
+      // Get user details from Firebase
+      const userRecord = await admin.auth().getUser(decodedToken.uid);
+
+      // console.log("User authenticated:", userRecord.toJSON());
+
+      if (!userRecord.emailVerified) {
+        return res.status(403).json({ error: "Email not verified. Please check your email." });
+      } 
+
+      res.json({
+          message: "User authenticated successfully",
+          user: userRecord.toJSON(),
+      });
+
+    res.json({
+      message: "User authenticated successfully",
+      user: userData,
+    });
+  } catch (error) {
+    console.error("Error verifying ID token:", error);
+    res.status(401).json({ error: "Unauthorized - Invalid token" });
+  }
+};
+
+
 export const logout = async (req, res) => {
   const { idToken } = req.body;
 

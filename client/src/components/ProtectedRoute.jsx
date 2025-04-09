@@ -4,8 +4,8 @@ import EmailVerificationMessage from "./EmailVerificationMessage";
 import { useCorbado } from "@corbado/react"; // Corbado (Passkey) auth
 
 const ProtectedRoute = () => {
-    const currentUser = getCurrentUser(); // Check Traditional Login
-    const { isAuthenticated } = useCorbado(); // Check Passkey Login
+    const currentUser = getCurrentUser();
+    const { isAuthenticated } = useCorbado();
 
     // If the user is NOT logged in via EITHER method, redirect to login selection
     if (!currentUser && !isAuthenticated) {
