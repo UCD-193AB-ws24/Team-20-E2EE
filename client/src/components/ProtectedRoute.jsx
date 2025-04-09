@@ -1,10 +1,10 @@
 import { Navigate, Outlet } from "react-router-dom";
-import { getCurrentUser } from "../api/auth"; // Get user from localStorage
 import EmailVerificationMessage from "./EmailVerificationMessage";
 import { useCorbado } from "@corbado/react"; // Corbado (Passkey) auth
+import { useSelector } from "react-redux";
 
 const ProtectedRoute = () => {
-    const currentUser = getCurrentUser();
+    const { userInfo: currentUser } = useSelector((state) => state.auth);
     const { isAuthenticated } = useCorbado();
 
     // If the user is NOT logged in via EITHER method, redirect to login selection

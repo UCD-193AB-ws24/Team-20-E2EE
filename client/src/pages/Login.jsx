@@ -3,16 +3,18 @@ import { Link, useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUser, faKey } from "@fortawesome/free-solid-svg-icons";
 import { loginUser } from "../api/auth";
+import { useDispatch } from "react-redux";
+import { setCredentials } from "../state/slices/authSlice.js";
 
 export default function Login() {
-    const navigate = useNavigate();
-    const [error, setError] = useState("");
-    const [verificationRequired, setVerificationRequired] = useState(false);
+  const navigate = useNavigate();
+  const [error, setError] = useState("");
+  const [verificationRequired, setVerificationRequired] = useState(false);
+  const dispatch = useDispatch();
 
-
-    const passkeyLogin = () => {
-        navigate("/passkeylogin")
-    }
+  const passkeyLogin = () => {
+    navigate("/passkeylogin");
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -20,14 +22,17 @@ export default function Login() {
     const password = e.target[1].value;
 
     const result = await loginUser(email, password);
+    console.log(result)
     if (result.success) {
       if (result.warning === "Please set your username to continue") {
+        dispatch(setCredentials(result.user));
         navigate("/welcome");
       } else {
+        dispatch(setCredentials(result.user));
         navigate("/");
       }
     } else if (
-      result.error === "Email not verified. Please check your email."
+      result.warning === "Email not verified. Please check your email."
     ) {
       setVerificationRequired(true); // Show email verification message
     } else {
@@ -89,19 +94,20 @@ export default function Login() {
                 Login
               </button>
 
+              <button
+                onClick={passkeyLogin}
+                className="flex-1 w-full h-12 bg-black text-gray-100 font-semibold rounded-md shadow-md mt-4 hover:bg-[#3d3d3d] transition"
+              >
+                Use Passkey
+              </button>
 
-                            <button
-                                onClick={passkeyLogin}
-                                className="flex-1 w-full h-12 bg-black text-gray-100 font-semibold rounded-md shadow-md mt-4 hover:bg-[#3d3d3d] transition"
-                            >
-                                Use Passkey
-                            </button>
-                      
-
-
-
-                        {/* Signup Link */}
-                        <span>Don't have an account? <Link to="/signup" className="text-blue-500 underline">Sign Up</Link></span>
+              {/* Signup Link */}
+              <span>
+                Don't have an account?{" "}
+                <Link to="/signup" className="text-blue-500 underline">
+                  Sign Up
+                </Link>
+              </span>
 
               {/* Error Message (If Any) */}
               {verificationRequired ? (

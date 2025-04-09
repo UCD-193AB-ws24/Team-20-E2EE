@@ -17,14 +17,11 @@ export const loginUser = async (email, password) => {
         });
 
         const data = await response.json();
-
         if (response.ok) {
 
             // Store user info in localStorage (or sessionStorage)
-            localStorage.setItem("userInfo", JSON.stringify(data.user));
             localStorage.setItem("authMethod", "traditional");
-            
-            return { success: true, user: data.user };
+            return { success: true, user: data.user , warning: data.warning || null};
         } else {
             console.error("Login failed:", data.error);
 
@@ -92,8 +89,8 @@ export const getCurrentUser = () => {
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         const idToken = await user.getIdToken();
-        localStorage.setItem("user", JSON.stringify({ uid: user.uid, email: user.email, emailVerified: user.emailVerified, idToken }));
+        localStorage.setItem("userInfo", JSON.stringify({ uid: user.uid, email: user.email, emailVerified: user.emailVerified, idToken}));
     } else {
-        localStorage.removeItem("user");
+        localStorage.removeItem("userInfo");
     }
 });

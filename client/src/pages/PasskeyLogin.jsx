@@ -14,6 +14,7 @@ export default function Home() {
                 const userInfo = {
                     email: identifier.value,
                     loginType: identifier.type,
+                    emailVerified: true,
                 };
                 localStorage.setItem("userInfo", JSON.stringify(userInfo));
             } catch (error) {
