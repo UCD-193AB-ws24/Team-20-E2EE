@@ -3,30 +3,34 @@ import { Link, useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUser, faKey } from "@fortawesome/free-solid-svg-icons";
 import { loginUser } from "../api/auth";
+import { useAppContext } from '../components';
 
 export default function Login() {
   const navigate = useNavigate();
   const [error, setError] = useState("");
   const [verificationRequired, setVerificationRequired] = useState(false);
+  const { login } = useAppContext();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     const email = e.target[0].value;
     const password = e.target[1].value;
-
-    const result = await loginUser(email, password);
+  
+    // Use the login function from AppContext
+    const result = await login(email, password);
+  
     if (result.success) {
       if (result.warning === "Please set your username to continue") {
-        navigate("/welcome");
+        navigate("/welcome"); // Navigate to the welcome page if username setup is required
       } else {
-        navigate("/");
+        navigate("/"); // Navigate to the home page after successful login
       }
     } else if (
       result.error === "Email not verified. Please check your email."
     ) {
       setVerificationRequired(true); // Show email verification message
     } else {
-      setError(result.error);
+      setError(result.error); // Display other errors
     }
   };
 

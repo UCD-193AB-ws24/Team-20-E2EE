@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { initializeSocket, disconnectSocket, isSocketConnected } from '../api/socket';
+import { useAppContext } from './AppContext';
 
 // Create the context
 const SocketContext = createContext();
@@ -8,13 +9,14 @@ export const SocketProvider = ({ children }) => {
   const [socketReady, setSocketReady] = useState(false);
   const [socketError, setSocketError] = useState(null);
   const [pendingListeners, setPendingListeners] = useState([]);
+  const { currentUser } = useAppContext();
   
   // Initialize socket when the provider mounts
   useEffect(() => {
     console.log('SocketProvider initializing');
     const user = JSON.parse(localStorage.getItem('user'));
-    
-    if (user?.idToken) {
+
+    if (currentUser) {
       try {
         // Initialize the socket connection
         console.log('Initializing socket from context');
@@ -58,9 +60,8 @@ export const SocketProvider = ({ children }) => {
       console.log('No user token found, socket not initialized');
       setSocketError('No authentication token available');
     }
-  }, []);
-  
-  // Provide connection status and helper functions
+  }, [currentUser]);
+
   const value = {
     socketReady,
     socketError,

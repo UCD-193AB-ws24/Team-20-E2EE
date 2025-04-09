@@ -7,10 +7,10 @@ import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <BrowserRouter>
-    <SocketProvider>
-      <AppProvider>
+    <AppProvider>
+      <SocketProvider>
         <App />
-      </AppProvider>
-    </SocketProvider>
+      </SocketProvider>
+    </AppProvider>
   </BrowserRouter>
 )

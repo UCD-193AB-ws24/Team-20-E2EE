@@ -1,71 +1,80 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { getAvatar } from '../api/user';
 import { getFriendList } from '../api/friends';
+import { getAvatar } from '../api/user';
+import { loginUser, getCurrentUser } from '../api/auth';
 
 const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
-  const [avatarCache, setAvatarCache] = useState({}); 
-  const [loadingAvatars, setLoadingAvatars] = useState(true); 
-  const [currentUser, setCurrentUser] = useState(null); 
-  const [appReady, setAppReady] = useState(false); 
+  const [currentUser, setCurrentUser] = useState(null);
+  const [avatarCache, setAvatarCache] = useState({});
+  const [appReady, setAppReady] = useState(false);
+  const [loading, setLoading] = useState(true);
 
+  // Check for an existing user on app load
   useEffect(() => {
-    const preloadAvatars = async () => {
-      try {
-        const user = JSON.parse(localStorage.getItem('user'));
-        if (user) {
-          setCurrentUser(user);
-  
-          // Fetch the friend list
-          const response = await getFriendList(user.idToken);
-  
-          // Extract usernames from the friends array
-          const friends = response.friends || [];
-          const usernames = [user.username, ...friends.map((friend) => friend.username)];
-  
-          // Fetch and preload avatar images as Blobs
-          const avatarPromises = usernames.map(async (username) => {
-            const avatarUrl = await getAvatar(username); // Get the avatar URL
-            const response = await fetch(avatarUrl); // Fetch the image data
-            if (!response.ok) {
-              throw new Error(`Failed to fetch avatar for ${username}`);
-            }
-            const blob = await response.blob(); // Convert to Blob
-            const blobUrl = URL.createObjectURL(blob); // Create a Blob URL
-            return { username, blobUrl };
-          });
-  
-          const avatarResults = await Promise.all(avatarPromises);
-  
-          const avatarMap = avatarResults.reduce((acc, { username, blobUrl }) => {
-            acc[username] = blobUrl; // Store the Blob URL
-            return acc;
-          }, {});
-  
-          console.log('avatarmap', avatarMap);
-  
-          setAvatarCache(avatarMap);
-        }
-      } catch (error) {
-        console.error('Error preloading avatars:', error);
-      } finally {
-        setLoadingAvatars(false);
-      }
-    };
-  
-    preloadAvatars();
-    console.log('avatars fetched');
+    const storedUser = getCurrentUser(); // Retrieve user from localStorage or session
+    if (storedUser) {
+      setCurrentUser(storedUser);
+    }
+    setLoading(false); // Mark loading as complete
   }, []);
 
+  // Preload avatars after the user logs in
   useEffect(() => {
-    if (!loadingAvatars) {
-        setAppReady(true);
+    if (!currentUser?.idToken) return;
+
+    const preloadAvatars = async () => {
+      try {
+        const response = await getFriendList(currentUser.idToken);
+        const friends = response.friends || [];
+        const usernames = [currentUser.username, ...friends.map((friend) => friend.username)];
+
+        // Fetch and preload avatar images as Blobs
+        const avatarPromises = usernames.map(async (username) => {
+          const avatarUrl = await getAvatar(username);
+          const response = await fetch(avatarUrl);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch avatar for ${username}`);
+          }
+          const blob = await response.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          return { username, blobUrl };
+        });
+
+        const avatarResults = await Promise.all(avatarPromises);
+
+        // Build the avatarCache
+        const avatarMap = avatarResults.reduce((acc, { username, blobUrl }) => {
+          acc[username] = blobUrl;
+          return acc;
+        }, {});
+
+        setAvatarCache(avatarMap);
+        setAppReady(true); // Mark the app as ready
+      } catch (error) {
+        console.error('Error preloading avatars:', error);
+      }
+    };
+
+    preloadAvatars();
+  }, [currentUser]);
+
+  // Login function to update the currentUser state
+  const login = async (email, password) => {
+    const result = await loginUser(email, password);
+    if (result.success) {
+      setCurrentUser(result.user); // Update the user state
     }
-  }, [loadingAvatars]);
+    return result; // Return the result to handle errors in the UI
+  };
+
+  if (loading) {
+    return <div>Loading...</div>; // Show a loading state while checking for an existing user
+  }
 
   return (
-    <AppContext.Provider value={{ avatarCache, appReady, currentUser }}>
+    <AppContext.Provider value={{ avatarCache, appReady, currentUser, login }}>
       {children}
     </AppContext.Provider>
   );
