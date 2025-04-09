@@ -40,6 +40,11 @@ export default function ChatWindow({ messages, selectedUser }) {
     };
   });
 
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
   return (
     <div
       ref={chatContainerRef}
