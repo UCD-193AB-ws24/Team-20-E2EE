@@ -7,6 +7,7 @@ import {
   removeListener, sendTypingStatus, registerTypingListener
 } from '../api/socket';
 import { getChatHistory, sendPrivateMessage } from '../api/messages';
+import { useAppContext } from './AppContext';
 
 // Initialize with empty data structure
 const initialMessagesState = {};
@@ -20,6 +21,7 @@ export default function Layout({ children }) {
   const [isTyping, setIsTyping] = useState({});
   const [typingTimeout, setTypingTimeout] = useState(null);
   const { socketReady } = useSocket();
+  const { avatarCache, appReady, currentUser } = useAppContext();
 
   // Get the auth token from localStorage
   const getToken = () => {
@@ -160,6 +162,14 @@ export default function Layout({ children }) {
     }
   };
 
+  if (!appReady) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-100">
+        <h1 className="text-lg text-gray-600">Loading...</h1>
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen flex bg-ucd-blue-light">
       {/* Navigation Bar */}
@@ -195,7 +205,10 @@ export default function Layout({ children }) {
             }
           </h2>
         </div>
-        <ChatWindow messages={messages} />
+        <ChatWindow 
+          messages={messages}
+          selectedUser={selectedUser}
+        />
         <MessageInput 
           sendMessage={sendMessage}
           onTyping={handleTyping}

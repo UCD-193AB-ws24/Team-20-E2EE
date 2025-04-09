@@ -91,7 +91,18 @@ export const getCurrentUser = () => {
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         const idToken = await user.getIdToken();
-        localStorage.setItem("user", JSON.stringify({ uid: user.uid, email: user.email, emailVerified: user.emailVerified, idToken }));
+
+        const existingUserData = JSON.parse(localStorage.getItem("user")) || {};
+
+        const updatedUserData = {
+            ...existingUserData,
+            uid: user.uid,
+            email: user.email,
+            emailVerified: user.emailVerified,
+            idToken,
+        };
+
+        localStorage.setItem("user", JSON.stringify(updatedUserData));
     } else {
         localStorage.removeItem("user");
     }

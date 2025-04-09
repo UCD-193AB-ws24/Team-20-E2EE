@@ -11,3 +11,4 @@ export { default as ProtectedRoute } from './ProtectedRoute';
 
 // Context
 export { SocketProvider, useSocket } from './SocketContext';
+export { AppProvider, useAppContext } from './AppContext';
