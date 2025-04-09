@@ -1,14 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { getAvatar } from '../api/user';
-import { useAppContext } from './AppContext';
 
 export default function ChatWindow({ messages, selectedUser }) {
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
-  const { avatarCache } = useAppContext();
   const [avatars, setAvatars] = useState({});
   const currentUsername = JSON.parse(localStorage.getItem('user'))?.username;
 
+  // Load avatars when selectedUser changes
   useEffect(() => {
     const loadAvatars = async () => {
       try {
@@ -30,6 +29,7 @@ export default function ChatWindow({ messages, selectedUser }) {
     loadAvatars();
   }, [selectedUser, currentUsername]);
 
+  // Auto-scroll to bottom on initial load
   useEffect(() => {
     const isInitialLoad = 
       chatContainerRef.current.scrollTop === 0 && 
@@ -61,7 +61,7 @@ export default function ChatWindow({ messages, selectedUser }) {
                 <div className="flex items-center">
                   {showAvatar ? (
                     <img
-                      src={avatarCache[selectedUser] || avatars[selectedUser] || 'https://via.placeholder.com/40'}
+                      src={avatars[selectedUser] || 'https://via.placeholder.com/40'}
                       className="w-8 h-8 rounded-full mr-2"
                       alt={`${selectedUser}'s avatar`}
                     />
@@ -89,7 +89,7 @@ export default function ChatWindow({ messages, selectedUser }) {
                 <div className="flex items-center">
                   {showAvatar ? (
                     <img
-                      src={avatarCache[currentUsername] || avatars[currentUsername] || 'https://via.placeholder.com/40'}
+                      src={avatars[currentUsername] || 'https://via.placeholder.com/40'}
                       className="w-8 h-8 rounded-full ml-2"
                       alt="My avatar"
                     />

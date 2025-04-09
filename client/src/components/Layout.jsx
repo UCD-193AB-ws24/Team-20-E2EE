@@ -176,7 +176,7 @@ export default function Layout({ children }) {
       <NavBar onProfileClick={() => setShowProfileModal(true)} setView={setView} />
 
       {/* Side Bar */}
-      <div className="min-w-[250px] flex flex-col bg-ucd-blue-light">
+      <div className="min-w-[250px] w-[25%] m-3 flex flex-col bg-ucd-blue-light">
         {view === 'archive' ? (
           <Archive selectedUser={selectedUser} setSelectedUser={setSelectedUser} />
         ) : view === 'friends' ? (
@@ -195,7 +195,7 @@ export default function Layout({ children }) {
       </div>
 
       {/* Chat Window */}
-      <div className="flex-1 flex flex-col bg-white shadow-lg rounded-lg m-4">
+      <div className="flex-1 flex flex-col bg-white shadow-lg rounded-lg m-3 ml-0">
         <div className="p-4">
           <h2 className="text-xl font-bold text-ucd-blue-900">
             {selectedUser || 'Select a user to start chatting'}

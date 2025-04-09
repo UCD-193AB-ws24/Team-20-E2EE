@@ -194,7 +194,7 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
   };
 
   return (
-    <div className="flex-1 bg-white flex flex-col shadow-lg rounded-lg m-3 p-3 overflow-hidden">
+    <div className="flex-1 bg-white flex flex-col shadow-lg rounded-lg p-3 overflow-hidden">
       <div className="p-2">
         <h2 className="text-2xl font-bold text-ucd-blue-900">Chats</h2>
       </div>
