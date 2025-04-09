@@ -48,9 +48,9 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
         setFriends(friendsWithAvatars);
         
         // Now load message previews for each friend
-        if (data.friends && data.friends.length > 0) {
-          await loadMessagePreviews(token, data.friends);
-        }
+        // if (data.friends && data.friends.length > 0) {
+        //   await loadMessagePreviews(token, data.friends);
+        // }
       } catch (err) {
         console.error("Error loading friends:", err);
       } finally {
