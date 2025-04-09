@@ -28,7 +28,7 @@ export default function MessageInput({ sendMessage, onTyping, disabled = false }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 bg-white rounded-lg shadow-lg m-4 flex">
+    <form onSubmit={handleSubmit} className="p-4 bg-white rounded-lg m-4 flex">
       <input
         type="text"
         value={text}

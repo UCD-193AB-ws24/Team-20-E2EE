@@ -7,6 +7,7 @@ import {
   removeListener, sendTypingStatus, registerTypingListener
 } from '../api/socket';
 import { getChatHistory, sendPrivateMessage } from '../api/messages';
+import { useAppContext } from './AppContext';
 
 // Initialize with empty data structure
 const initialMessagesState = {};
@@ -20,6 +21,7 @@ export default function Layout({ children }) {
   const [isTyping, setIsTyping] = useState({});
   const [typingTimeout, setTypingTimeout] = useState(null);
   const { socketReady } = useSocket();
+  const { appReady } = useAppContext();
 
   // Get the auth token from localStorage
   const getToken = () => {
@@ -160,13 +162,21 @@ export default function Layout({ children }) {
     }
   };
 
+  if (!appReady) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-100">
+        <h1 className="text-lg text-gray-600">Loading...</h1>
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen flex bg-ucd-blue-light">
       {/* Navigation Bar */}
       <NavBar onProfileClick={() => setShowProfileModal(true)} setView={setView} />
 
       {/* Side Bar */}
-      <div className="min-w-[250px] flex flex-col bg-ucd-blue-light">
+      <div className="min-w-[250px] w-[25%] m-3 flex flex-col bg-ucd-blue-light">
         {view === 'archive' ? (
           <Archive selectedUser={selectedUser} setSelectedUser={setSelectedUser} />
         ) : view === 'friends' ? (
@@ -185,7 +195,7 @@ export default function Layout({ children }) {
       </div>
 
       {/* Chat Window */}
-      <div className="flex-1 flex flex-col bg-white shadow-lg rounded-lg m-4">
+      <div className="flex-1 flex flex-col bg-white shadow-lg rounded-lg m-3 ml-0">
         <div className="p-4">
           <h2 className="text-xl font-bold text-ucd-blue-900">
             {selectedUser || 'Select a user to start chatting'}
@@ -195,7 +205,10 @@ export default function Layout({ children }) {
             }
           </h2>
         </div>
-        <ChatWindow messages={messages} />
+        <ChatWindow 
+          messages={messages}
+          selectedUser={selectedUser}
+        />
         <MessageInput 
           sendMessage={sendMessage}
           onTyping={handleTyping}

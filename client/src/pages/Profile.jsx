@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { logoutUser } from '../api/auth';
 import { BACKEND_URL } from '../config/config';
+import { getAvatar } from '../api/user';
 
 export default function Profile({ onClose }) {
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
@@ -34,7 +35,8 @@ export default function Profile({ onClose }) {
         setUserInfo(data.user);
 
         if (data.user.avatar) {
-          setAvatar(`${BACKEND_URL}/api/user/get-avatar/${data.user.username}`);
+          const avatarUrl = await getAvatar(data.user.username);
+          setAvatar(avatarUrl);
         }
 
         if (data.user.description) {

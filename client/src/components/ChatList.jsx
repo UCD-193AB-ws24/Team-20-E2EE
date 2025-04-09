@@ -9,6 +9,7 @@ import {
   requestInitialStatus,
   removeListener,
 } from '../api/socket';
+import { getAvatar } from '../api/user';
 import { LoadingAnimation, useSocket } from './index';
 
 export default function ChatList({ selectedUser, setSelectedUser, messagesByUser, setMessagesByUser, isTyping }) {
@@ -16,7 +17,7 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState({});
-  const [messagePreviews, setMessagePreviews] = useState({});
+  // const [messagePreviews, setMessagePreviews] = useState({});
   const { socketReady } = useSocket();
 
   // Get auth token
@@ -32,12 +33,24 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
       try {
         const token = getToken();
         const data = await getFriendList(token);
-        setFriends(data.friends || []);
+        
+        // Load avatars for each friend
+        const friendsWithAvatars = await Promise.all((data.friends || []).map(async (friend) => {
+          try {
+            const avatar = await getAvatar(friend.username);
+            return { ...friend, avatar };
+          } catch (err) {
+            console.error(`Error loading avatar for ${friend.username}:`, err);
+            return friend;
+          }
+        }));
+        
+        setFriends(friendsWithAvatars);
         
         // Now load message previews for each friend
-        if (data.friends && data.friends.length > 0) {
-          await loadMessagePreviews(token, data.friends);
-        }
+        // if (data.friends && data.friends.length > 0) {
+        //   await loadMessagePreviews(token, data.friends);
+        // }
       } catch (err) {
         console.error("Error loading friends:", err);
       } finally {
@@ -121,71 +134,71 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
     };
   }, [socketReady]);
 
-// Function to load message previews for all friends
-const loadMessagePreviews = async (token, friendsList) => {
-  try {
-    // Get message previews for all friends in one API call
-    const previewsData = await getAllMessagePreviews(token);
-    
-    if (previewsData && previewsData.previews) {
-      // Create a new object to store messages by username
-      const newMessagesByUser = { ...messagesByUser };
-      const newPreviews = {};
+  // // Function to load message previews for all friends
+  // const loadMessagePreviews = async (token) => {
+  //   try {
+  //     // Get message previews for all friends in one API call
+  //     const previewsData = await getAllMessagePreviews(token);
       
-      // Process each preview
-      previewsData.previews.forEach(preview => {
-        const { username, lastMessage } = preview;
+  //     if (previewsData && previewsData.previews) {
+  //       // Create a new object to store messages by username
+  //       const newMessagesByUser = { ...messagesByUser };
+  //       const newPreviews = {};
         
-        // Add to previews if there's a last message
-        if (lastMessage) {
-          newPreviews[username] = lastMessage;
+  //       // Process each preview
+  //       previewsData.previews.forEach(preview => {
+  //         const { username, lastMessage } = preview;
           
-          // If we don't already have messages for this user in state, initialize with the preview
-          if (!messagesByUser[username] || messagesByUser[username].length === 0) {
-            newMessagesByUser[username] = [lastMessage];
-          }
-        } else {
-          // No message yet for this friend
-          newPreviews[username] = { text: "No messages yet", time: "" };
-        }
-      });
-      
-      // Update both states
-      setMessagePreviews(newPreviews);
-      setMessagesByUser(newMessagesByUser);
-    }
-  } catch (err) {
-    console.error("Error loading message previews:", err);
-  }
-};
+  //         // Add to previews if there's a last message
+  //         if (lastMessage) {
+  //           newPreviews[username] = lastMessage;
+            
+  //           // If we don't already have messages for this user in state, initialize with the preview
+  //           if (!messagesByUser[username] || messagesByUser[username].length === 0) {
+  //             newMessagesByUser[username] = [lastMessage];
+  //           }
+  //         } else {
+  //           // No message yet for this friend
+  //           newPreviews[username] = { text: "No messages yet", time: "" };
+  //         }
+  //       });
+        
+  //       // Update both states
+  //       setMessagePreviews(newPreviews);
+  //       setMessagesByUser(newMessagesByUser);
+  //     }
+  //   } catch (err) {
+  //     console.error("Error loading message previews:", err);
+  //   }
+  // };
 
   const filteredFriends = friends.filter(friend =>
     friend.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
- // Get last message for each friend
- const getLastMessage = (username) => {
-   // First check message previews for initial load
-   if (messagePreviews[username]) {
-     return messagePreviews[username].text || "No messages yet";
-   }
-  
-   // Then check active message state for updates during session
-   if (messagesByUser[username] && messagesByUser[username].length > 0) {
-     const messages = messagesByUser[username];
-     const lastMessage = messages[messages.length - 1];
-     return lastMessage.text;
-   }
-  
-   return "No messages yet";
- };
+  // // Get last message for each friend
+  // const getLastMessage = (username) => {
+  //   // First check message previews for initial load
+  //   if (messagePreviews[username]) {
+  //     return messagePreviews[username].text || "No messages yet";
+  //   }
+   
+  //   // Then check active message state for updates during session
+  //   if (messagesByUser[username] && messagesByUser[username].length > 0) {
+  //     const messages = messagesByUser[username];
+  //     const lastMessage = messages[messages.length - 1];
+  //     return lastMessage.text;
+  //   }
+   
+  //   return "No messages yet";
+  // };
 
   return (
-    <div className="flex-1 bg-white flex flex-col shadow-lg rounded-lg m-3 p-3 overflow-hidden">
+    <div className="flex-1 bg-white flex flex-col shadow-lg rounded-lg p-3 overflow-hidden">
       <div className="p-2">
         <h2 className="text-2xl font-bold text-ucd-blue-900">Chats</h2>
       </div>
-      
+  
       <div className="px-2 pb-2 relative">
         <MdSearch className="absolute left-6 top-4 transform -translate-y-1/2 text-ucd-blue-600" />
         <input
@@ -196,7 +209,7 @@ const loadMessagePreviews = async (token, friendsList) => {
           className="w-full h-8 p-1 pl-10 bg-ucd-blue-light border border-ucd-blue-300 rounded-full focus:outline-none focus:ring-2 focus:ring-ucd-gold-600"
         />
       </div>
-      
+  
       {isLoading ? (
         <div className="flex justify-center p-5">
           <LoadingAnimation size="medium" color="ucd-blue" />
@@ -215,29 +228,26 @@ const loadMessagePreviews = async (token, friendsList) => {
                 onClick={() => setSelectedUser(friend.username)}
               >
                 <div className="relative">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center overflow-hidden ${
                     selectedUser === friend.username ? 'bg-ucd-blue-200 text-ucd-blue-900' : 'bg-ucd-blue-600 text-white'
                   }`}>
-                    {friend.username.charAt(0).toUpperCase()}
+                    {friend.avatar ? (
+                      <img
+                        src={friend.avatar}
+                        alt={friend.username.charAt(0).toUpperCase()}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      friend.username.charAt(0).toUpperCase()
+                    )}
                   </div>
                   {/* Online indicator */}
                   {onlineUsers[friend.username] && (
                     <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
                   )}
                 </div>
-                <div className="flex flex-col flex-1 overflow-hidden">
-                  <div className="flex justify-between">
-                    <span className="font-semibold truncate">{friend.username}</span>
-                  </div>
-                  <span className={`text-sm ${
-                    selectedUser === friend.username ? 'text-ucd-blue-700' : 'text-ucd-blue-700'
-                  }`} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {isTyping[friend.username] ? (
-                      <span className="italic">typing...</span>
-                    ) : (
-                      getLastMessage(friend.username)
-                    )}
-                  </span>
+                <div className="flex flex-col justify-center flex-1 overflow-hidden">
+                  <span className="font-semibold truncate">{friend.username}</span>
                 </div>
               </li>
             ))

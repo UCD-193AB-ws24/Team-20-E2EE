@@ -5,21 +5,19 @@ import { Archive, Friends, Login, Profile, Requests, SignUp, Welcome } from './p
 
 export default function App() {
   return (
-    <SocketProvider>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<SignUp />} />
-        
-        {/* Protected Routes - Only accessible to logged-in and verified users */}
-        <Route element={<ProtectedRoute />}>
-          <Route path="/" element={<Layout><ChatList /></Layout>} />
-          <Route path="/profile" element={<Layout><Profile /></Layout>} />
-          <Route path="/friends" element={<Layout><Friends /></Layout>} />
-          <Route path="/requests" element={<Layout><Requests /></Layout>} />
-          <Route path="/archive" element={<Layout><Archive /></Layout>} />
-          <Route path="/welcome" element={<Welcome />} />
-        </Route>
-      </Routes>
-    </SocketProvider>
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<SignUp />} />
+      
+      {/* Protected Routes - Only accessible to logged-in and verified users */}
+      <Route element={<ProtectedRoute />}>
+        <Route path="/" element={<Layout><ChatList /></Layout>} />
+        <Route path="/profile" element={<Layout><Profile /></Layout>} />
+        <Route path="/friends" element={<Layout><Friends /></Layout>} />
+        <Route path="/requests" element={<Layout><Requests /></Layout>} />
+        <Route path="/archive" element={<Layout><Archive /></Layout>} />
+        <Route path="/welcome" element={<Welcome />} />
+      </Route>
+    </Routes>
   );
 }

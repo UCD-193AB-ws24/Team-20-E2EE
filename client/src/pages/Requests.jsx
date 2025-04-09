@@ -3,6 +3,7 @@ import { MdPersonAdd, MdClose } from 'react-icons/md';
 import { getFriendRequests, sendFriendRequest, acceptFriendRequest, deleteFriendRequest } from '../api/friends';
 import { registerFriendRequestListener } from '../api/socket';
 import { useSocket } from '../components';
+import { getAvatar } from '../api/user';
 
 export default function Requests() {
   const [friendRequests, setFriendRequests] = useState([]);
@@ -13,38 +14,15 @@ export default function Requests() {
   const [showModal, setShowModal] = useState(false);
   const { socketReady } = useSocket();
 
-  // Get the auth token from localStorage
   const getToken = () => {
     const user = JSON.parse(localStorage.getItem('user'));
     return user?.idToken;
   };
 
-  // Set up friend request listeners
   useEffect(() => {
-    if (!socketReady) {
-      console.log('Socket not ready, waiting to set up listeners');
-      return;
-    }
+    if (!socketReady) return;
     
     const unsubscribeFriendRequest = registerFriendRequestListener((data) => {
-      console.log('Friend request received:', data);
-      
-      // Reload friend requests when a new one comes in
-      const loadFriendRequests = async () => {
-        setIsLoading(true);
-        setError(null);
-        try {
-          const token = getToken();
-          const data = await getFriendRequests(token);
-          setFriendRequests(data.friendRequests || []);
-        } catch (err) {
-          setError(err.message || 'Failed to load friend requests');
-          console.error(err);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      
       loadFriendRequests();
     });
     
@@ -53,32 +31,40 @@ export default function Requests() {
     };
   }, [socketReady]);
 
-  // Fetch friend requests on component mount
+  const loadFriendRequests = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const token = getToken();
+      const data = await getFriendRequests(token);
+      const requests = data.friendRequests || [];
+      
+      const requestsWithAvatars = await Promise.all(requests.map(async (request) => {
+        try {
+          const avatar = await getAvatar(request.username);
+          return { ...request, avatar };
+        } catch (err) {
+          return request;
+        }
+      }));
+      
+      setFriendRequests(requestsWithAvatars);
+    } catch (err) {
+      setError(err.message || 'Failed to load friend requests');
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadFriendRequests = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const token = getToken();
-        const data = await getFriendRequests(token);
-        setFriendRequests(data.friendRequests || []);
-      } catch (err) {
-        setError(err.message || 'Failed to load friend requests');
-        console.error(err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
     loadFriendRequests();
   }, []);
 
-  // Handle accepting a friend request
   const handleAcceptRequest = async (username) => {
     try {
       const token = getToken();
       await acceptFriendRequest(token, username);
-      // Remove from list after accepting
       setFriendRequests(friendRequests.filter(request => request.username !== username));
       alert(`Friend request from ${username} accepted`);
     } catch (err) {
@@ -86,12 +72,10 @@ export default function Requests() {
     }
   };
 
-  // Handle declining a friend request
   const handleDeclineRequest = async (username) => {
     try {
       const token = getToken();
       await deleteFriendRequest(token, username);
-      // Remove from list after declining
       setFriendRequests(friendRequests.filter(request => request.username !== username));
       alert(`Friend request from ${username} declined`);
     } catch (err) {
@@ -99,7 +83,6 @@ export default function Requests() {
     }
   };
 
-  // Send new friend request
   const handleSendRequest = async (e) => {
     e.preventDefault();
   
@@ -115,9 +98,7 @@ export default function Requests() {
     setSendStatus(null);
   
     try {
-      // Get the auth token from localStorage
       const token = getToken();
-
       const result = await sendFriendRequest(token, username);
   
       setSendStatus({
@@ -125,7 +106,6 @@ export default function Requests() {
         message: result.message || `Friend request sent to ${username}`,
       });
   
-      // Clear input after sending
       setUsername("");
   
       setTimeout(() => {
@@ -142,7 +122,6 @@ export default function Requests() {
     }
   };
 
-  // User search modal
   const AddFriendModal = () => {
     if (!showModal) return null;
     
@@ -216,8 +195,7 @@ export default function Requests() {
   };
 
   return (
-    <div className="flex-1 bg-white flex flex-col shadow-lg rounded-lg m-3 p-3 overflow-hidden">
-      {/* Header section with title on its own line */}
+    <div className="flex-1 bg-white flex flex-col shadow-lg rounded-lg p-3 overflow-hidden">
       <div className="p-2">
         <h2 className="text-2xl font-bold text-ucd-blue-900 mb-3">Friend Requests</h2>
         <button 
@@ -235,7 +213,6 @@ export default function Requests() {
         </div>
       )}
       
-      {/* Friend requests list */}
       <div className="flex items-center mb-4 mt-4">
         <h3 className="px-4 text-sm font-semibold text-gray-500">Pending Requests</h3>
       </div>
@@ -255,8 +232,12 @@ export default function Requests() {
                 className="flex flex-col items-center justify-between p-4 mb-2 bg-white rounded-lg shadow-md"
               >
                 <div className="flex items-center">
-                  <div className="w-12 h-12 rounded-full bg-ucd-blue-600 text-white flex items-center justify-center mr-4">
-                    {request.username.charAt(0).toUpperCase()}
+                  <div className="w-12 h-12 rounded-full bg-ucd-blue-600 text-white flex items-center justify-center mr-4 overflow-hidden">
+                    <img 
+                      src={request.avatar || 'https://via.placeholder.com/40'} 
+                      alt={request.username.charAt(0).toUpperCase()}
+                      className="w-full h-full object-cover" 
+                    />
                   </div>
                   <span className="font-medium">{request.username}</span>
                 </div>
@@ -280,7 +261,6 @@ export default function Requests() {
         </ul>
       )}
       
-      {/* Add friend modal */}
       <AddFriendModal />
     </div>
   );
