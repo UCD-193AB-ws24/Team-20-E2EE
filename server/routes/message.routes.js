@@ -1,11 +1,11 @@
 import express from 'express';
-import { messageController, getChatHistory, getMessagePreviews } from '../controllers/message.controllers.js';
+import { getChatHistory, getMessagePreviews, sendPrivateMessage } from '../controllers/message.controllers.js';
 import { authenticateUser } from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
-router.post('/send', messageController);
+router.post('/send', authenticateUser, sendPrivateMessage);
 router.get('/history', authenticateUser, getChatHistory);
-router.get('/previews', authenticateUser, getMessagePreviews); // Add this line
+router.get('/previews', authenticateUser, getMessagePreviews);
 
 export default router;

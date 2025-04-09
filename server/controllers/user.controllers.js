@@ -1,5 +1,6 @@
 import { connectDB, upload, gfs, storeFileInGridFS, gridfsBucket, connectToGridFS, disconnectFromGridFS} from "../mongo/connection.js";
 import mongoose from "mongoose";
+import { getSocketInstance, getOnlineUsers } from "../socketManager.js";
 
 export const updateUsername = async (req, res) => {
     try {
@@ -59,56 +60,6 @@ export const searchUser = async(req, res) => {
     }
 };
 
-export const sendFriendRequest = async (req, res) => {
-    try {
-        const { friendUsername } = req.body;
-        const uid = req.user?.uid; // Extract from Firebase token
-
-        if (!uid) {
-            return res.status(401).json({ error: "Unauthorized - No user ID found" });
-        }
-
-        if (!friendUsername) {
-            return res.status(400).json({ error: "Friend username is required" });
-        }
-
-        const db = await connectDB();
-        const usersCollection = db.collection("users");
-
-        // Find the current user's document
-        const currentUser = await usersCollection.findOne({ uid: uid });
-        if (!currentUser) {
-            return res.status(404).json({ error: "Current user not found" });
-        }
-
-        // Find the friend in the database
-        const friend = await usersCollection.findOne({ username: friendUsername });
-        if (!friend) {
-            return res.status(404).json({ error: "Friend not found" });
-        }
-        
-        // Check if the friend is already in the `friends` array
-        if (currentUser.friends && currentUser.friends.includes(friend.uid)) {
-            return res.status(400).json({ error: "User is already a friend" });
-        }
-        // Add friend request to friend's `friendRequests` array
-        const result = await usersCollection.updateOne(
-            { username: friendUsername },
-            { $addToSet: { friendsRequests: uid } }
-        );
-
-        if (result.modifiedCount === 0) {
-            return res.status(400).json({ error: "Friend request already sent" });
-        }
-
-        res.json({ message: "Friend request sent successfully" });
-
-    } catch (error) {
-        console.error("Error sending friend request:", error);
-        res.status(500).json({ error: "Internal server error" });
-    }
-};
-
 export const getUser = async (req, res) => {
     try {
         const uid = req.user?.uid;
@@ -130,6 +81,84 @@ export const getUser = async (req, res) => {
 
     } catch (error) {
         console.error("Error retrieving user:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const sendFriendRequest = async (req, res) => {
+    try {
+        const { recipientUsername } = req.body; // Extract recipient's username from the request body
+        const uid = req.user?.uid; // Extract sender's UID from the Firebase token
+
+        if (!uid) {
+            return res.status(401).json({ error: "Unauthorized - No user ID found" });
+        }
+
+        if (!recipientUsername) {
+            return res.status(400).json({ error: "Recipient username is required" });
+        }
+
+        const db = await connectDB();
+        const usersCollection = db.collection("users");
+
+        // Find the sender's document
+        const currentUser = await usersCollection.findOne({ uid: uid });
+        if (!currentUser) {
+            return res.status(404).json({ error: "Current user not found" });
+        }
+
+        if (currentUser.username === recipientUsername) {
+            return res.status(400).json({ error: "You cannot send a friend request to yourself" });
+        }
+
+        // Find the recipient's document
+        const recipient = await usersCollection.findOne({ username: recipientUsername });
+        if (!recipient) {
+            return res.status(404).json({ error: "Recipient not found" });
+        }
+
+        const recipientUid = recipient.uid;
+
+        // Check if the recipient is already a friend
+        if (currentUser.friends && currentUser.friends.includes(recipientUid)) {
+            return res.status(400).json({ error: "You are already friends with this user" });
+        }
+
+        // Check if a friend request has already been sent
+        if (recipient.friendsRequests && recipient.friendsRequests.includes(uid)) {
+            return res.status(400).json({ error: "Friend request already sent" });
+        }
+
+        // Check if the user has a pending request from the recipient
+        if (currentUser.friendsRequests && currentUser.friendsRequests.includes(recipientUid)) {
+            return res.status(400).json({ error: "You already have a friend request from this user" });
+        }
+
+        // Add the sender's UID to the recipient's `friendsRequests` array
+        const result = await usersCollection.updateOne(
+            { uid: recipientUid },
+            { $addToSet: { friendsRequests: uid } } // Prevent duplicate requests
+        );
+
+        if (result.modifiedCount === 0) {
+            return res.status(500).json({ error: "Failed to send friend request" });
+        }
+
+        // Notify the recipient in real-time if they are online
+        const onlineUsers = getOnlineUsers();
+        const io = getSocketInstance();
+
+        if (onlineUsers.has(recipientUid)) {
+            io.to(onlineUsers.get(recipientUid)).emit("receive_friend_request", {
+                from: currentUser.username,
+                type: "new_request",
+            });
+        }
+
+        res.json({ message: "Friend request sent successfully" });
+
+    } catch (error) {
+        console.error("Error sending friend request:", error);
         res.status(500).json({ error: "Internal server error" });
     }
 };
@@ -207,8 +236,12 @@ export const acceptFriendRequest = async (req, res) => {
             )
         ]);
 
-        res.json({ message: "Friend request accepted successfully" });
+        const io = getSocketInstance();
+        const onlineUsers = getOnlineUsers();
+        io.to(onlineUsers.get(uid)).emit('friend_request_handled');
 
+        res.json({ message: "Friend request accepted successfully" });
+        
     } catch (error) {
         console.error("Error accepting friend request:", error);
         res.status(500).json({ error: "Internal server error" });
@@ -216,6 +249,7 @@ export const acceptFriendRequest = async (req, res) => {
 };
 
 export const deleteFriendRequest = async (req, res) => {
+    console.log("Deleting friend request");
     try{
         const { friendUsername } = req.body;
         const uid = req.user?.uid;
@@ -247,6 +281,10 @@ export const deleteFriendRequest = async (req, res) => {
             return res.status(400).json({ error: "Friend request not found" });
         }
 
+        const io = getSocketInstance();
+        const onlineUsers = getOnlineUsers();
+        io.to(onlineUsers.get(uid)).emit('friend_request_handled');
+
         res.json({ message: "Friend request deleted successfully" });
 
     }catch(error){
@@ -255,6 +293,54 @@ export const deleteFriendRequest = async (req, res) => {
     }
 };
 
+export const unfriendUser = async (req, res) => {
+    try {
+      const { friendUsername } = req.body;
+      const uid = req.user?.uid;
+  
+      if (!uid) {
+        return res.status(401).json({ error: "Unauthorized - No user ID found" });
+      }
+  
+      if (!friendUsername) {
+        return res.status(400).json({ error: "Friend username is required" });
+      }
+  
+      const db = await connectDB();
+      const usersCollection = db.collection("users");
+  
+      // Find the friend by username
+      const friend = await usersCollection.findOne({ username: friendUsername });
+      if (!friend) {
+        return res.status(404).json({ error: "Friend not found" });
+      }
+  
+      const friendUid = friend.uid;
+  
+      // Remove each other from friends list
+      const removeFromFriends = await Promise.all([
+        usersCollection.updateOne(
+          { uid: uid },
+          { $pull: { friends: friendUid } }
+        ),
+        usersCollection.updateOne(
+          { uid: friendUid },
+          { $pull: { friends: uid } }
+        )
+      ]);
+  
+      if (removeFromFriends[0].modifiedCount === 0 && removeFromFriends[1].modifiedCount === 0) {
+        return res.status(400).json({ error: "Users are not friends" });
+      }
+  
+      res.json({ message: "Friend removed successfully" });
+  
+    } catch (error) {
+      console.error("Error removing friend:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  };
+  
 export const getFriendlist = async (req, res) => {
     try{
         const uid = req.user?.uid;

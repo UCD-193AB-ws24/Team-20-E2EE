@@ -1,8 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { MdSearch } from 'react-icons/md';
 import { getFriendList } from '../api/friends';
-import { getAllMessagePreviews } from '../api/messages'; // New import for message previews
-import { registerUserOnlineListener, registerUserOfflineListener, removeListener } from '../api/socket';
+import { getAllMessagePreviews } from '../api/messages';
+import { 
+  registerUserOnlineListener, 
+  registerUserOfflineListener, 
+  registerInitialStatusListener,
+  requestInitialStatus,
+  removeListener,
+} from '../api/socket';
+import { LoadingAnimation, useSocket } from './index';
 
 export default function ChatList({ selectedUser, setSelectedUser, messagesByUser, setMessagesByUser, isTyping }) {
   const [friends, setFriends] = useState([]);
@@ -10,8 +17,9 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
   const [isLoading, setIsLoading] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState({});
   const [messagePreviews, setMessagePreviews] = useState({});
+  const { socketReady } = useSocket();
 
-  // Get the auth token from localStorage
+  // Get auth token
   const getToken = () => {
     const user = JSON.parse(localStorage.getItem('user'));
     return user?.idToken;
@@ -39,6 +47,79 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
     
     loadFriends();
   }, []);
+
+  // Set up online status listeners - only when socket is ready
+  useEffect(() => {
+    if (!socketReady) {
+      console.log('Socket not ready, waiting to set up listeners');
+      return;
+    }
+    
+    registerUserOnlineListener((data) => {   
+      const username = data.username;
+      
+      if (!username) {
+        console.error('Missing username in user_online event:', data);
+        return;
+      }
+      
+      setOnlineUsers(prev => {
+        return {
+          ...prev,
+          [username]: true
+        };
+      });
+    });
+    
+    registerUserOfflineListener((data) => {      
+      if (!data) {
+        console.error('Received empty data in user_offline event');
+        return;
+      }
+      
+      const { username } = data;
+      
+      if (!username) {
+        console.error('Missing username in user_offline event:', data);
+        return;
+      }
+      
+      setOnlineUsers(prev => {
+        return {
+          ...prev,
+          [username]: false
+        };
+      });
+    });
+    
+    // Set up initial status listener
+    registerInitialStatusListener((data) => {
+      if (!data || !data.friends) {
+        console.log('No friends in initial status data');
+        return;
+      }
+    
+      // Update all online friends at once
+      setOnlineUsers((prev) => {
+        const newState = { ...prev };
+    
+        data.friends.forEach((friend) => {
+          if (friend && friend.username) {
+            newState[friend.username] = friend.online;
+          }
+        });
+        return newState;
+      });
+    });
+    
+    requestInitialStatus();
+    
+    return () => {
+      removeListener('user_online');
+      removeListener('user_offline');
+      removeListener('initial_status');
+    };
+  }, [socketReady]);
 
 // Function to load message previews for all friends
 const loadMessagePreviews = async (token, friendsList) => {
@@ -77,30 +158,6 @@ const loadMessagePreviews = async (token, friendsList) => {
     console.error("Error loading message previews:", err);
   }
 };
-
-  // Set up online status listeners
-  useEffect(() => {
-    registerUserOnlineListener((data) => {
-      const { username } = data;
-      setOnlineUsers(prev => ({
-        ...prev,
-        [username]: true
-      }));
-    });
-    
-    registerUserOfflineListener((data) => {
-      const { username } = data;
-      setOnlineUsers(prev => ({
-        ...prev,
-        [username]: false
-      }));
-    });
-    
-    return () => {
-      removeListener('user_online');
-      removeListener('user_offline');
-    };
-  }, []);
 
   const filteredFriends = friends.filter(friend =>
     friend.username.toLowerCase().includes(searchTerm.toLowerCase())
@@ -142,7 +199,7 @@ const loadMessagePreviews = async (token, friendsList) => {
       
       {isLoading ? (
         <div className="flex justify-center p-5">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-ucd-blue-600"></div>
+          <LoadingAnimation size="medium" color="ucd-blue" />
         </div>
       ) : (
         <ul className="flex-1 overflow-y-auto">

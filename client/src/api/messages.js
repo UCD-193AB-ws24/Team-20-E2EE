@@ -6,7 +6,7 @@ export const getChatHistory = async (token, username) => {
     const response = await fetch(`${BACKEND_URL}/api/message/history?username=${username}`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     });
@@ -29,7 +29,7 @@ export const getAllMessagePreviews = async (token) => {
     const response = await fetch(`${BACKEND_URL}/api/message/previews`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     });
@@ -43,5 +43,28 @@ export const getAllMessagePreviews = async (token) => {
   } catch (error) {
     console.error('Error fetching message previews:', error);
     return { previews: [] };
+  }
+};
+
+export const sendPrivateMessage = async (token, recipientUsername, text) => {
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/message/send`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ recipientUsername, text }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to send message');
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error('Error sending message', error);
+    return;
   }
 };

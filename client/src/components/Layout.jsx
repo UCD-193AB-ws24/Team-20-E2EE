@@ -1,17 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import NavBar from './NavBar';
-import ChatWindow from './ChatWindow';
-import MessageInput from './MessageInput';
-import ProfileModal from './ProfileModal';
-import Archive from '../pages/Archive';
-import Friends from '../pages/Friends';
-import Requests from '../pages/Requests';
+import { ChatWindow, MessageInput, ProfileModal, useSocket } from './index';
+import { Archive, Friends, Requests } from '../pages';
 import { 
-  initializeSocket, disconnectSocket, sendPrivateMessage,
   registerMessageListener, registerMessageSentListener,
   removeListener, sendTypingStatus, registerTypingListener
 } from '../api/socket';
-import { getChatHistory } from '../api/messages';
+import { getChatHistory, sendPrivateMessage } from '../api/messages';
 
 // Initialize with empty data structure
 const initialMessagesState = {};
@@ -24,19 +19,13 @@ export default function Layout({ children }) {
   const [view, setView] = useState('chat');
   const [isTyping, setIsTyping] = useState({});
   const [typingTimeout, setTypingTimeout] = useState(null);
+  const { socketReady } = useSocket();
 
-  // Initialize Socket.io connection
-  useEffect(() => {
+  // Get the auth token from localStorage
+  const getToken = () => {
     const user = JSON.parse(localStorage.getItem('user'));
-    if (user?.idToken) {
-      initializeSocket(user.idToken);
-      
-      // Clean up socket connection on component unmount
-      return () => {
-        disconnectSocket();
-      };
-    }
-  }, []);
+    return user?.idToken;
+  };
 
   // Load chat history when selected user changes
   useEffect(() => {
@@ -68,8 +57,12 @@ export default function Layout({ children }) {
     }
   }, [selectedUser, view]);
 
-  // Set up message listeners for real-time communication
+  // Set up message listeners
   useEffect(() => {
+    if (!socketReady) {
+      console.log('Socket not ready, waiting to set up listeners');
+      return;
+    }
     // Handle incoming messages
     registerMessageListener((message) => {
       const { sender, text, time } = message;
@@ -156,14 +149,9 @@ export default function Layout({ children }) {
   // Send message function
   const sendMessage = async (text) => {
     if (!selectedUser || !text.trim()) return;
+    const token = getToken();
     
-    // Send message via socket
-    const sent = sendPrivateMessage(selectedUser, text);
-    
-    if (!sent) {
-      console.error('Failed to send message: Socket not connected');
-      // You could implement a fallback here or show an error
-    }
+    sendPrivateMessage(token, selectedUser, text);
     
     // Clear typing indicator
     if (typingTimeout) {
