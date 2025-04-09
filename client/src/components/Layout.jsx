@@ -21,7 +21,7 @@ export default function Layout({ children }) {
   const [isTyping, setIsTyping] = useState({});
   const [typingTimeout, setTypingTimeout] = useState(null);
   const { socketReady } = useSocket();
-  const { avatarCache, appReady, currentUser } = useAppContext();
+  const { appReady } = useAppContext();
 
   // Get the auth token from localStorage
   const getToken = () => {

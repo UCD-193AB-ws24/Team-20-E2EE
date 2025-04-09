@@ -66,7 +66,7 @@ export default function NavBar({ onProfileClick, setView }) {
     transition={{ duration: 0.2, ease: "easeOut"}}
     >
       <div className={`flex flex-col justify-between h-screen bg-ucd-blue-light ${isCollapsed ? 'w-[60px]' : 'w-[150px]'}`}>
-        <div className="flex flex-col items-start mt-[25px] ml-[10px]">
+        <div className="flex flex-col items-start mt-3 ml-[10px]">
           {/* Direct Messages Link */}
           <Link
             to="/"
