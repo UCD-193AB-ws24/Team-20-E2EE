@@ -1,10 +1,34 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { getAvatar } from '../api/user';
 import { useAppContext } from './AppContext';
 
 export default function ChatWindow({ messages, selectedUser }) {
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
   const { avatarCache } = useAppContext();
+  const [avatars, setAvatars] = useState({});
+  const currentUsername = JSON.parse(localStorage.getItem('user'))?.username;
+
+  useEffect(() => {
+    const loadAvatars = async () => {
+      try {
+        if (selectedUser) {
+          const otherUserAvatar = await getAvatar(selectedUser);
+          if (currentUsername) {
+            const myAvatar = await getAvatar(currentUsername);
+            setAvatars({
+              [selectedUser]: otherUserAvatar,
+              [currentUsername]: myAvatar
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error loading avatars:', error);
+      }
+    };
+    
+    loadAvatars();
+  }, [selectedUser, currentUsername]);
 
   useEffect(() => {
     const isInitialLoad = 
@@ -24,20 +48,22 @@ export default function ChatWindow({ messages, selectedUser }) {
       {messages.map((msg, index) => {
         const showAvatar =
           index === 0 || messages[index - 1].sender !== msg.sender;
+        const isMe = msg.sender === 'Me';
 
           return (
             <div
               key={index}
               className={`flex items-start mb-2 ${
-                msg.sender === 'Me' ? 'justify-end' : 'justify-start'
+                isMe ? 'justify-end' : 'justify-start'
               }`}
             >
-              {msg.sender !== 'Me' && (
+              {!isMe && (
                 <div className="flex items-center">
                   {showAvatar ? (
                     <img
-                      src={avatarCache[selectedUser] || 'https://via.placeholder.com/40'}
+                      src={avatarCache[selectedUser] || avatars[selectedUser] || 'https://via.placeholder.com/40'}
                       className="w-8 h-8 rounded-full mr-2"
+                      alt={`${selectedUser}'s avatar`}
                     />
                   ) : (
                     <div className="w-8 h-8 mr-2" />
@@ -48,7 +74,7 @@ export default function ChatWindow({ messages, selectedUser }) {
               {/* Message bubble */}
               <div
                 className={`p-3 max-w-[75%] rounded-lg ${
-                  msg.sender === 'Me'
+                  isMe
                     ? 'bg-ucd-blue-500 text-white self-end'
                     : 'bg-ucd-blue-300 text-black self-start'
                 }`}
@@ -59,12 +85,13 @@ export default function ChatWindow({ messages, selectedUser }) {
                 </span>
               </div>
           
-              {msg.sender === 'Me' && (
+              {isMe && (
                 <div className="flex items-center">
                   {showAvatar ? (
                     <img
-                      src={avatarCache[JSON.parse(localStorage.getItem('user')).username] || 'https://via.placeholder.com/40'}
+                      src={avatarCache[currentUsername] || avatars[currentUsername] || 'https://via.placeholder.com/40'}
                       className="w-8 h-8 rounded-full ml-2"
+                      alt="My avatar"
                     />
                   ) : (
                     <div className="w-8 h-8 ml-2" />

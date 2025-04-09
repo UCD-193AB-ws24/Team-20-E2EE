@@ -7,17 +7,16 @@ const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
-  const [avatarCache, setAvatarCache] = useState({});
   const [appReady, setAppReady] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Check for an existing user on app load
   useEffect(() => {
-    const storedUser = getCurrentUser(); // Retrieve user from localStorage or session
+    const storedUser = getCurrentUser();
     if (storedUser) {
       setCurrentUser(storedUser);
     }
-    setLoading(false); // Mark loading as complete
+    setLoading(false);
   }, []);
 
   // Preload avatars after the user logs in
@@ -30,28 +29,13 @@ export const AppProvider = ({ children }) => {
         const friends = response.friends || [];
         const usernames = [currentUser.username, ...friends.map((friend) => friend.username)];
 
-        // Fetch and preload avatar images as Blobs
+        // Fetch and preload avatar images
         const avatarPromises = usernames.map(async (username) => {
-          const avatarUrl = await getAvatar(username);
-          const response = await fetch(avatarUrl);
-          if (!response.ok) {
-            throw new Error(`Failed to fetch avatar for ${username}`);
-          }
-          const blob = await response.blob();
-          const blobUrl = URL.createObjectURL(blob);
-          return { username, blobUrl };
+          return await getAvatar(username);
         });
 
-        const avatarResults = await Promise.all(avatarPromises);
-
-        // Build the avatarCache
-        const avatarMap = avatarResults.reduce((acc, { username, blobUrl }) => {
-          acc[username] = blobUrl;
-          return acc;
-        }, {});
-
-        setAvatarCache(avatarMap);
-        setAppReady(true); // Mark the app as ready
+        await Promise.all(avatarPromises);
+        setAppReady(true);
       } catch (error) {
         console.error('Error preloading avatars:', error);
       }
@@ -64,17 +48,17 @@ export const AppProvider = ({ children }) => {
   const login = async (email, password) => {
     const result = await loginUser(email, password);
     if (result.success) {
-      setCurrentUser(result.user); // Update the user state
+      setCurrentUser(result.user);
     }
-    return result; // Return the result to handle errors in the UI
+    return result;
   };
 
   if (loading) {
-    return <div>Loading...</div>; // Show a loading state while checking for an existing user
+    return <div>Loading...</div>;
   }
 
   return (
-    <AppContext.Provider value={{ avatarCache, appReady, currentUser, login }}>
+    <AppContext.Provider value={{ appReady, currentUser, login }}>
       {children}
     </AppContext.Provider>
   );
