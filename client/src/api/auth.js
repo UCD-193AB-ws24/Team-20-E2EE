@@ -89,21 +89,33 @@ export const getCurrentUser = () => {
 
 // Listen for auth state changes and store user info
 onAuthStateChanged(auth, async (user) => {
-    if (user) {
-        const idToken = await user.getIdToken();
+    try {
+        if (user) {
+            const idToken = await user.getIdToken();
 
-        const existingUserData = JSON.parse(localStorage.getItem("user")) || {};
+            const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ idToken }),
+                credentials: "include", // Use cookies for authentication
+            });
 
-        const updatedUserData = {
-            ...existingUserData,
-            uid: user.uid,
-            email: user.email,
-            emailVerified: user.emailVerified,
-            idToken,
-        };
+            if (!response.ok) {
+                throw new Error("Failed to authenticate user");
+            }
 
-        localStorage.setItem("user", JSON.stringify(updatedUserData));
-    } else {
-        localStorage.removeItem("user");
+            const data = await response.json();
+
+            // Validate user data before storing
+            if (data.user && data.user.uid) {
+                localStorage.setItem("user", JSON.stringify(data.user));
+            } else {
+                console.error("Invalid user data received from backend");
+            }
+        } else {
+            localStorage.removeItem("user");
+        }
+    } catch (error) {
+        console.error("Error in auth state change handler:", error);
     }
 });
