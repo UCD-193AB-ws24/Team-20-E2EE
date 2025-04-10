@@ -1,24 +1,41 @@
 import admin from "../firebaseAdmin.js";
 import { connectDB } from "../mongo/connection.js";
+import bcrypt from 'bcrypt';
+import jwt from "jsonwebtoken";
+import dotenv from 'dotenv';
+dotenv.config();
 
 export const register = async (req, res) => {
-  const { idToken, userId } = req.body;
-
+  const { email, password } = req.body;
   try {
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const userRecord = await admin.auth().getUser(decodedToken.uid);
-    const emailVerificationLink = await admin.auth().generateEmailVerificationLink(userRecord.email);
+    const firebaseUser = await admin.auth().createUser({
+      email: email,
+    });
+
+    // Verify the ID token
+    const emailVerificationLink = await admin.auth().generateEmailVerificationLink(email);
 
     console.log("Email Link:", emailVerificationLink);
 
     // Ensure DB connection
     const db = await connectDB();
     const usersCollection = db.collection("users");
+    const authCollection = db.collection("auth");
 
     // Insert user UID into MongoDB if not exists
-    const existingUser = await usersCollection.findOne({ uid: userId });
+    const existingUser = await authCollection.findOne({email: email});
 
+    const hashedPassword = await bcrypt.hash(password, Number(process.env.HASH_ROUNDS || 10));
+    
     if (!existingUser) {
+      const authResult = await authCollection.insertOne({
+        email: email,
+        password: hashedPassword,
+        emailVerified: false,
+        createdAt: new Date(),
+      });
+
+      const userId = authResult.insertedId.toString();
       await usersCollection.insertOne({
         uid: userId,
         friends: [],
@@ -28,6 +45,7 @@ export const register = async (req, res) => {
         description: "",
         createdAt: new Date(),
       });
+
       console.log("User inserted into MongoDB");
     } else {
       console.log("User already exists in MongoDB");
@@ -35,43 +53,79 @@ export const register = async (req, res) => {
 
     res.json({
       message: "User registered successfully. Please check your email to verify your account.",
-      user: userRecord.toJSON(),
+      user: email,
       emailVerificationLink,
     });
 
   } catch (error) {
-    console.error("Error verifying ID token:", error);
-    res.status(401).json({ error: "Unauthorized - Invalid token" });
+    console.log("Error registering user:", error);
+    res.status(401).json({ error: error.message });
   }
 };
 
 export const login = async (req, res) => {
-  const { idToken } = req.body;
-
+  const { email, password } = req.body;
   try {
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const userRecord = await admin.auth().getUser(decodedToken.uid);
-
-    if (!userRecord.emailVerified) {
-      return res.status(403).json({ error: "Email not verified. Please check your email." });
-    }
+    let emailVerified = false;
 
     // Ensure DB connection
     const db = await connectDB();
+    const authCollection = db.collection("auth");
+    const auth = await authCollection.findOne({ email: email});
+    if (!auth ) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+    const isPasswordValid = await bcrypt.compare(password, auth.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    if (!auth ) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    const userRecord = await admin.auth().getUserByEmail(email);
+    if (!userRecord) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    if (userRecord.emailVerified === false) {
+        return res.status(403).json({ error: "Email not verified. Please check your email." });
+    }else if(userRecord.emailVerified === true){
+        await authCollection.updateOne({email: email}, {$set: {emailVerified: true}});
+        emailVerified = true;
+    }
+
     const usersCollection = db.collection("users");
-    const existingUser = await usersCollection.findOne({ uid: userRecord.uid });
+    const user = await usersCollection.findOne({ uid: auth._id.toString() });
+
+    const accessToken = jwt.sign({ uid: user.uid}, process.env.JWT_ACCESS_TOKEN_SECRET, { expiresIn: "1h" });
+    const refreshToken = jwt.sign({ uid: user.uid}, process.env.JWT_REFRESH_TOKEN_SECRET, { expiresIn: "7d" });
+
+    // HttpOnly cookie
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: false, // true in production with HTTPS
+      sameSite: "Lax",
+      maxAge: 3600000 // 1 hour
+    });
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: false, // true in production with HTTPS
+      sameSite: "Lax",
+      maxAge: 604800000 // 7 days
+    });
 
     const userData = {
-      uid: userRecord.uid,
-      email: userRecord.email,
-      emailVerified: userRecord.emailVerified,
-      displayName: userRecord.displayName || "",
-      username: existingUser?.username || "",
-      description: userRecord.description,
-      idToken,
+      uid: user.uid,
+      email: email,
+      emailVerified: emailVerified,
+      username: user.username || "",
+      description: user.description,
     };
 
-    if (!existingUser?.username) {
+    if (!user?.username) {
       return res.json({
         message: "User authenticated successfully",
         warning: "Please set your username to continue",
@@ -84,8 +138,8 @@ export const login = async (req, res) => {
       user: userData,
     });
   } catch (error) {
-    console.error("Error verifying ID token:", error);
-    res.status(401).json({ error: "Unauthorized - Invalid token" });
+    console.error("Error:", error.message);
+    res.status(401).json({ error: error.message });
   }
 };
 
@@ -102,5 +156,23 @@ export const logout = async (req, res) => {
   } catch (error) {
     console.error("Error logging out:", error);
     res.status(500).json({ error: "Failed to log out" });
+  }
+};
+
+export const refreshToken = async (req, res) => {
+  const { token } = req.body;
+
+  try {
+    // Verify the token
+    const decodedToken = jwt.verify(token, process.env.JWT_REFRESH_TOKEN_SECRET);
+    const userId = decodedToken.userId;
+
+    // Generate a new token
+    const newToken = jwt.sign({ uid: userId }, process.env.JWT_ACCESS_TOKEN_SECRET, { expiresIn: "1h" });
+
+    res.json({ token: newToken });
+  } catch (error) {
+    console.error("Error refreshing token:", error);
+    res.status(401).json({ error: "Invalid token" });
   }
 };

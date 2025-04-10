@@ -5,7 +5,7 @@ import { getSocketInstance, getOnlineUsers } from "../socketManager.js";
 export const updateUsername = async (req, res) => {
     try {
         const { username } = req.body;
-        const uid = req.user?.uid; // Extract from Firebase token
+        const uid = req.user?.uid; // Extract from middleware
 
         if (!uid) {
             return res.status(401).json({ error: "Unauthorized - No user ID found" });

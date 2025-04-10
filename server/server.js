@@ -11,7 +11,6 @@ import messageRoutes from "./routes/message.routes.js";
 import userRoutes from "./routes/user.routes.js";
 
 dotenv.config();
-console.log("MongoDB URI in server.js:", process.env.ATLAS_URI);
 
 const app = express();
 const PORT = process.env.PORT || 3000;

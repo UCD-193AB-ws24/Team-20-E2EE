@@ -1,18 +1,24 @@
-import admin from "../firebaseAdmin.js"; // Import initialized Firebase Admin
+import jwt from "jsonwebtoken";
 
-// Middleware to verify Firebase ID Token
 export const authenticateUser = async (req, res, next) => {
-    const token = req.header("Authorization")?.split(" ")[1]; // Extract Bearer token
-    if (!token) {
-        return res.status(401).json({ error: "Unauthorized - No token provided" });
+  try {
+    // Try to get token from cookie
+    let token = req.cookies?.accessToken;
+
+    // If not in cookie, check Authorization header
+    if (!token && req.headers.authorization?.startsWith("Bearer ")) {
+      token = req.headers.authorization.split(" ")[1];
     }
 
-    try {
-        const decodedToken = await admin.auth().verifyIdToken(token);
-        req.user = decodedToken; // Attach user data to request
-        next(); // Proceed to next middleware
-    } catch (error) {
-        console.error("Token verification failed:", error);
-        res.status(401).json({ error: "Unauthorized - Invalid token" });
+    if (!token) {
+      return res.status(401).json({ error: "Access token missing" });
     }
+
+    const decoded = jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    console.error("Authentication error:", error.message);
+    return res.status(403).json({ error: "Invalid or expired access token" });
+  }
 };
