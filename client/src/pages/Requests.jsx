@@ -14,11 +14,6 @@ export default function Requests() {
   const [showModal, setShowModal] = useState(false);
   const { socketReady } = useSocket();
 
-  const getToken = () => {
-    const user = JSON.parse(localStorage.getItem('user'));
-    return user?.idToken;
-  };
-
   useEffect(() => {
     if (!socketReady) return;
     
@@ -35,8 +30,7 @@ export default function Requests() {
     setIsLoading(true);
     setError(null);
     try {
-      const token = getToken();
-      const data = await getFriendRequests(token);
+      const data = await getFriendRequests();
       const requests = data.friendRequests || [];
       
       const requestsWithAvatars = await Promise.all(requests.map(async (request) => {
@@ -63,8 +57,7 @@ export default function Requests() {
 
   const handleAcceptRequest = async (username) => {
     try {
-      const token = getToken();
-      await acceptFriendRequest(token, username);
+      await acceptFriendRequest(username);
       setFriendRequests(friendRequests.filter(request => request.username !== username));
       alert(`Friend request from ${username} accepted`);
     } catch (err) {
@@ -74,8 +67,7 @@ export default function Requests() {
 
   const handleDeclineRequest = async (username) => {
     try {
-      const token = getToken();
-      await deleteFriendRequest(token, username);
+      await deleteFriendRequest(username);
       setFriendRequests(friendRequests.filter(request => request.username !== username));
       alert(`Friend request from ${username} declined`);
     } catch (err) {
@@ -98,8 +90,7 @@ export default function Requests() {
     setSendStatus(null);
   
     try {
-      const token = getToken();
-      const result = await sendFriendRequest(token, username);
+      const result = await sendFriendRequest(username);
   
       setSendStatus({
         success: true,

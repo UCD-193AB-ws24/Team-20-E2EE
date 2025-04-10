@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { logoutUser } from '../api/auth';
 import { BACKEND_URL } from '../config/config';
 import { getAvatar } from '../api/user';
-
+import fetchWithAuth from '../util/FetchWithAuth';
 export default function Profile({ onClose }) {
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
   const [userInfo, setUserInfo] = useState(null);
@@ -12,22 +12,13 @@ export default function Profile({ onClose }) {
 
   useEffect(() => {
     const fetchUserInfo = async () => {
-      const user = JSON.parse(localStorage.getItem("user"));
-      const token = user?.idToken;
-      console.log("user: ", user.username);
-      const response = await fetch(`${BACKEND_URL}/api/user/get-user`, {
+      const response = await fetchWithAuth(`${BACKEND_URL}/api/user/get-user`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
         },
       });
 
-      // if (token) {
-      //   console.log("Token found:", token);
-      // } else {
-      //   console.log("No token found.");
-      // }
 
       if (response.ok) {
         const data = await response.json();
@@ -64,14 +55,10 @@ export default function Profile({ onClose }) {
 
   const handleSaveDescription = async () => {
 
-    const user = JSON.parse(localStorage.getItem("user"));
-    const token = user?.idToken;
-
-    const response = await fetch(`${BACKEND_URL}/api/user/update-description`, {
+    const response = await fetchWithAuth(`${BACKEND_URL}/api/user/update-description`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
       },
       body: JSON.stringify({ description }),
     });
@@ -96,20 +83,10 @@ export default function Profile({ onClose }) {
 
     formData.append("avatar", file);  // Append file to form data
   
-    const user = JSON.parse(localStorage.getItem("user"));
-    const token = user?.idToken;
-  
-    if (!token) {
-      console.error("Token is not available");
-      return;
-    }
   
     try {
-      const response = await fetch(`${BACKEND_URL}/api/user/update-avatar`, {
+      const response = await fetchWithAuth(`${BACKEND_URL}/api/user/update-avatar`, {
         method: "PUT",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-        },
         body: formData,
       });
   

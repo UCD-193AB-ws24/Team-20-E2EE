@@ -13,10 +13,6 @@ export default function NavBar({ onProfileClick, setView }) {
   const { socketReady } = useSocket();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const getToken = () => {
-    const user = JSON.parse(localStorage.getItem('user'));
-    return user?.idToken;
-  };
 
   // Set up friend request and friend request handled listener
   useEffect(() => {
@@ -46,8 +42,7 @@ export default function NavBar({ onProfileClick, setView }) {
   useEffect(() => {
     const loadFriendRequestsCount = async () => {
       try {
-        const token = getToken();
-        const data = await getFriendRequests(token);
+        const data = await getFriendRequests();
         console.log('Friend requests data:', data);
         setFriendRequestsCount(data.friendRequests.length || 0 );
       } catch (err) {

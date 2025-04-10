@@ -20,19 +20,13 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
   // const [messagePreviews, setMessagePreviews] = useState({});
   const { socketReady } = useSocket();
 
-  // Get auth token
-  const getToken = () => {
-    const user = JSON.parse(localStorage.getItem('user'));
-    return user?.idToken;
-  };
 
   // Fetch friends list on component mount
   useEffect(() => {
     const loadFriends = async () => {
       setIsLoading(true);
       try {
-        const token = getToken();
-        const data = await getFriendList(token);
+        const data = await getFriendList();
         
         // Load avatars for each friend
         const friendsWithAvatars = await Promise.all((data.friends || []).map(async (friend) => {

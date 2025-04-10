@@ -145,32 +145,31 @@ export const login = async (req, res) => {
 
 
 export const logout = async (req, res) => {
-  const { idToken } = req.body;
-
-  try {
-    // Revoke the refresh tokens for the user
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    await admin.auth().revokeRefreshTokens(decodedToken.uid);
-
-    res.json({ message: "User logged out successfully" });
-  } catch (error) {
-    console.error("Error logging out:", error);
-    res.status(500).json({ error: "Failed to log out" });
-  }
+  res.clearCookie("accessToken");
+  res.clearCookie("refreshToken");
+  res.json({ message: "User logged out successfully" });
 };
 
 export const refreshToken = async (req, res) => {
-  const { token } = req.body;
+  const token = req.cookies.refreshToken;
 
   try {
     // Verify the token
     const decodedToken = jwt.verify(token, process.env.JWT_REFRESH_TOKEN_SECRET);
-    const userId = decodedToken.userId;
+    const uid = decodedToken.uid;
 
     // Generate a new token
-    const newToken = jwt.sign({ uid: userId }, process.env.JWT_ACCESS_TOKEN_SECRET, { expiresIn: "1h" });
+    const newAccessToken = jwt.sign({ uid: uid }, process.env.JWT_ACCESS_TOKEN_SECRET, { expiresIn: "1h" });
+    
+    // Set the new access token as a cookie
+    res.cookie("accessToken", newAccessToken, {
+      httpOnly: true,
+      secure: false, // set to true in production (HTTPS)
+      sameSite: "Lax",
+      maxAge: 60 * 60 * 1000, // 1 hour
+    });
 
-    res.json({ token: newToken });
+    res.json({message: "Access Token Refreshed" });
   } catch (error) {
     console.error("Error refreshing token:", error);
     res.status(401).json({ error: "Invalid token" });

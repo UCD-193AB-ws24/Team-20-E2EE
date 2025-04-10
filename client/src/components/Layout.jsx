@@ -23,11 +23,6 @@ export default function Layout({ children }) {
   const { socketReady } = useSocket();
   const { appReady } = useAppContext();
 
-  // Get the auth token from localStorage
-  const getToken = () => {
-    const user = JSON.parse(localStorage.getItem('user'));
-    return user?.idToken;
-  };
 
   // Load chat history when selected user changes
   useEffect(() => {
@@ -35,11 +30,9 @@ export default function Layout({ children }) {
       if (!selectedUser) return;
       
       try {
-        const user = JSON.parse(localStorage.getItem('user'));
-        if (!user?.idToken) return;
         
         // Always fetch the chat history from the server when a user is selected
-        const { messages: chatHistory } = await getChatHistory(user.idToken, selectedUser);
+        const { messages: chatHistory } = await getChatHistory(selectedUser);
         
         // Update messages for this user
         setMessagesByUser(prev => ({
@@ -151,9 +144,8 @@ export default function Layout({ children }) {
   // Send message function
   const sendMessage = async (text) => {
     if (!selectedUser || !text.trim()) return;
-    const token = getToken();
     
-    sendPrivateMessage(token, selectedUser, text);
+    sendPrivateMessage(selectedUser, text);
     
     // Clear typing indicator
     if (typingTimeout) {
@@ -162,13 +154,13 @@ export default function Layout({ children }) {
     }
   };
 
-  if (!appReady) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gray-100">
-        <h1 className="text-lg text-gray-600">Loading...</h1>
-      </div>
-    );
-  }
+  // if (!appReady) {
+  //   return (
+  //     <div className="flex items-center justify-center h-screen bg-gray-100">
+  //       <h1 className="text-lg text-gray-600">Loading...</h1>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="h-screen flex bg-ucd-blue-light">

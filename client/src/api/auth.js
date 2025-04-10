@@ -1,8 +1,4 @@
-import { auth } from "../config/firebaseConfig"; 
-import {onAuthStateChanged } from "firebase/auth";
 import { BACKEND_URL } from "../config/config";
-import jwt from "jsonwebtoken";
-
 export const loginUser = async (email, password) => {
     try {
 
@@ -10,6 +6,7 @@ export const loginUser = async (email, password) => {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email, password }),
+            credentials: "include", // Include credentials for session management
         });
 
         const data = await response.json();
@@ -61,13 +58,18 @@ export const signUpUser = async (email, password) => {
 
 // Logout function
 export const logoutUser = async () => {
-    try {
-        await signOut(auth);
-        localStorage.removeItem("user"); // Clear stored user data
+    const response = await fetch(`${BACKEND_URL}/api/auth/logout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+    });
+
+    if (response.ok) {
+        console.log("Logout successful");
+        localStorage.removeItem("user");
         return { success: true };
-    } catch (error) {
-        console.error("Logout error:", error.message);
-        return { success: false, error: error.message };
+    } else {
+        console.error("Logout failed");
+        return { success: false, error: "Logout failed" };
     }
 };
 
@@ -77,23 +79,3 @@ export const getCurrentUser = () => {
     return user ? JSON.parse(user) : null;
 };
 
-// Listen for auth state changes and store user info
-onAuthStateChanged(auth, async (user) => {
-    if (user) {
-        const idToken = await user.getIdToken();
-
-        const existingUserData = JSON.parse(localStorage.getItem("user")) || {};
-
-        const updatedUserData = {
-            ...existingUserData,
-            uid: user.uid,
-            email: user.email,
-            emailVerified: user.emailVerified,
-            idToken,
-        };
-
-        localStorage.setItem("user", JSON.stringify(updatedUserData));
-    } else {
-        localStorage.removeItem("user");
-    }
-});

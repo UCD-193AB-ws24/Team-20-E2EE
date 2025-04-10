@@ -10,17 +10,11 @@ export default function Friends({ selectedUser, setSelectedUser }) {
   const [error, setError] = useState(null);
   const [unfriendConfirm, setUnfriendConfirm] = useState(null);
 
-  const getToken = () => {
-    const user = JSON.parse(localStorage.getItem('user'));
-    return user?.idToken;
-  };
-
   useEffect(() => {
     const loadFriends = async () => {
       setIsLoading(true);
       try {
-        const token = getToken();
-        const data = await getFriendList(token);
+        const data = await getFriendList();
         
         const friendList = await Promise.all(data.friends.map(async (friend) => {
           try {
@@ -53,8 +47,7 @@ export default function Friends({ selectedUser, setSelectedUser }) {
   
   const handleUnfriend = async (username) => {
     try {
-      const token = getToken();
-      await unfriendUser(token, username);
+      await unfriendUser(username);
       setFriends(friends.filter(friend => friend.username !== username));
       setUnfriendConfirm(null);
     } catch (err) {
