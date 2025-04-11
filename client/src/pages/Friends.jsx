@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MdSearch, MdPersonRemove } from 'react-icons/md';
 import { getFriendList, unfriendUser } from '../api/friends';
 import { getAvatar } from '../api/user';
+import { useAppContext } from '../components';
 
 export default function Friends({ selectedUser, setSelectedUser }) {
   const [friends, setFriends] = useState([]);
@@ -9,6 +10,7 @@ export default function Friends({ selectedUser, setSelectedUser }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [unfriendConfirm, setUnfriendConfirm] = useState(null);
+  const { theme } = useAppContext();
 
   const getToken = () => {
     const user = JSON.parse(localStorage.getItem('user'));
@@ -67,19 +69,23 @@ export default function Friends({ selectedUser, setSelectedUser }) {
     : friends.filter(friend => friend.username.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
-    <div className="flex-1 bg-white flex flex-col shadow-lg rounded-lg p-3 overflow-hidden">
+    <div 
+      className="flex-1 flex flex-col shadow-lg rounded-lg p-3 overflow-hidden"
+      style={{backgroundColor: theme.colors.background.secondary}}
+    >
       <div className="p-2">
-        <h2 className="text-2xl font-bold text-ucd-blue-900">Friends</h2>
+        <h2 className="text-2xl font-bold">Friends</h2>
       </div>
       
       <div className="px-2 pb-2 relative">
-        <MdSearch className="absolute left-6 top-4 transform -translate-y-1/2 text-ucd-blue-600" />
+        <MdSearch className="absolute left-6 top-4 transform -translate-y-1/2" />
         <input
           type="text"
           placeholder="Search friends..."
           value={searchTerm}
           onChange={handleSearch}
-          className="w-full h-8 p-1 pl-10 bg-ucd-blue-light border border-ucd-blue-300 rounded-full focus:outline-none focus:ring-2 focus:ring-ucd-gold-600"
+          className="w-full h-8 p-1 pl-10 rounded-full focus:outline-none focus:ring-1"
+          style={{backgroundColor: theme.colors.background.primary}}
         />
       </div>
       
@@ -91,25 +97,24 @@ export default function Friends({ selectedUser, setSelectedUser }) {
       
       {isLoading ? (
         <div className="flex justify-center p-5">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-ucd-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2"></div>
         </div>
       ) : (
         <ul className="flex-1 overflow-y-auto">
           {filteredFriends.length === 0 ? (
-            <p className="p-4 text-gray-500">No friends found</p>
+            <p className={`p-4 ${{color: theme.colors.text.secondary}}`}>No friends found</p>
           ) : (
             filteredFriends.map((friend, index) => (
               <li
                 key={index}
-                className={`flex items-center justify-between p-4 mb-2 bg-white rounded-lg shadow-md ${
-                  selectedUser === friend.username ? 'bg-ucd-blue-light' : ''
-                }`}
+                className={'flex items-center justify-between p-4 mb-2 rounded-lg'}
+                style={{backgroundColor: selectedUser === friend.username ? theme.colors.background.primary :theme.colors.background.secondary}}
               >
                 <div 
                   className="flex items-center flex-1 cursor-pointer" 
                   onClick={() => setSelectedUser(friend.username)}
                 >
-                  <div className="w-12 h-12 rounded-full bg-ucd-blue-600 text-white flex items-center justify-center mr-4 overflow-hidden">
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center mr-4 overflow-hidden">
                     <img 
                       src={friend.avatar || 'https://via.placeholder.com/40'} 
                       alt={friend.username.charAt(0).toUpperCase()}
@@ -139,7 +144,7 @@ export default function Friends({ selectedUser, setSelectedUser }) {
                 ) : (
                   <button
                     onClick={() => setUnfriendConfirm(friend.username)}
-                    className="ml-2 p-2 text-gray-500 hover:text-red-500 rounded-full hover:bg-gray-100"
+                    className="ml-2 p-2 rounded-full hover:bg-gray-100"
                     title="Unfriend"
                   >
                     <MdPersonRemove size={20} />

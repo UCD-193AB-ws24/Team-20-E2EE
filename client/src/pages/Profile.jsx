@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { logoutUser } from '../api/auth';
 import { BACKEND_URL } from '../config/config';
 import { getAvatar } from '../api/user';
+import { useAppContext } from '../components';
 
 export default function Profile({ onClose }) {
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
@@ -9,6 +10,7 @@ export default function Profile({ onClose }) {
   const [description, setDescription] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [avatar, setAvatar] = useState(null);
+  const { theme } = useAppContext();
 
   useEffect(() => {
     const fetchUserInfo = async () => {
@@ -129,12 +131,12 @@ export default function Profile({ onClose }) {
     }
   };
   
-
-
-
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: "rgba(255, 255, 255, 0.8)" }}>
-      <div className="bg-white rounded-lg p-6 w-96 shadow-lg relative">
+    <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: "rgba(0, 0, 0, 0.8)" }}>
+      <div
+       className="rounded-lg p-6 w-96 shadow-lg relative"
+       style={{backgroundColor: theme.colors.background.secondary}}
+      >
         <button
           onClick={onClose}
           className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 p-2 bg-gray-200 rounded-full"

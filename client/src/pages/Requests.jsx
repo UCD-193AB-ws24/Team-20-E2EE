@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { MdPersonAdd, MdClose } from 'react-icons/md';
 import { getFriendRequests, sendFriendRequest, acceptFriendRequest, deleteFriendRequest } from '../api/friends';
 import { registerFriendRequestListener } from '../api/socket';
-import { useSocket } from '../components';
+import { useSocket, useAppContext } from '../components';
 import { getAvatar } from '../api/user';
+import { motion } from "motion/react";
 
 export default function Requests() {
   const [friendRequests, setFriendRequests] = useState([]);
@@ -13,6 +14,7 @@ export default function Requests() {
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const { socketReady } = useSocket();
+  const { theme } = useAppContext();
 
   const getToken = () => {
     const user = JSON.parse(localStorage.getItem('user'));
@@ -126,10 +128,13 @@ export default function Requests() {
     if (!showModal) return null;
     
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-5">
+      <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: "rgba(0, 0, 0, 0.8)" }}>
+        <div 
+          className="rounded-xl shadow-xl w-full max-w-md p-5"
+          style={{backgroundColor: theme.colors.background.secondary}}
+        >
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-ucd-blue-900">Add a Friend</h2>
+            <h2 className="text-xl font-bold">Add a Friend</h2>
             <button 
               onClick={() => {
                 setShowModal(false);
@@ -153,7 +158,7 @@ export default function Requests() {
                 placeholder="Enter a username (case-sensitive)"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ucd-gold-600"
+                className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2"
                 autoFocus
                 disabled={isLoading}
               />
@@ -166,14 +171,23 @@ export default function Requests() {
             )}
             
             <div className="flex justify-end">
-              <button
+              <motion.button
                 type="submit"
                 disabled={isLoading || !username.trim()}
-                className={`px-4 py-2 rounded-lg text-white flex items-center ${
-                  isLoading || !username.trim() 
-                    ? 'bg-gray-400 cursor-not-allowed' 
-                    : 'bg-ucd-blue-600 hover:bg-ucd-blue-700'
-                }`}
+                style={{
+                  backgroundColor: isLoading || !username.trim() 
+                    ? '#9CA3AF'
+                    : theme.colors.button.secondary,
+                  color: theme.colors.text.secondary,
+                  cursor: isLoading || !username.trim() ? 'not-allowed' : 'pointer'
+                }}
+                whileHover={
+                  !(isLoading || !username.trim()) && {
+                    backgroundColor: theme.colors.button.secondaryHover
+                  }
+                }
+                className="px-4 py-2 rounded-lg flex items-center"
+                transition={{ duration: 0.1 }}
               >
                 {isLoading ? (
                   <>
@@ -186,7 +200,7 @@ export default function Requests() {
                     Send Request
                   </>
                 )}
-              </button>
+              </motion.button>
             </div>
           </form>
         </div>
@@ -197,14 +211,22 @@ export default function Requests() {
   return (
     <div className="flex-1 bg-white flex flex-col shadow-lg rounded-lg p-3 overflow-hidden">
       <div className="p-2">
-        <h2 className="text-2xl font-bold text-ucd-blue-900 mb-3">Friend Requests</h2>
-        <button 
+        <h2 className="text-2xl font-bold mb-3">Friend Requests</h2>
+        <motion.button 
           onClick={() => setShowModal(true)}
-          className="px-4 py-2 bg-ucd-gold-600 text-white rounded-lg hover:bg-ucd-gold-700 flex items-center w-fit"
+          className="px-4 py-2 rounded-lg flex items-center w-fit"
+          style={{
+            backgroundColor: theme.colors.button.primary,
+            color: theme.colors.text.secondary
+          }}
+          whileHover={{
+            backgroundColor: theme.colors.button.primaryHover,
+          }}
+          transition={{ duration: 0.1 }}
         >
           <MdPersonAdd className="mr-2" />
           Add a User
-        </button>
+        </motion.button>
       </div>
       
       {error && (
@@ -213,13 +235,9 @@ export default function Requests() {
         </div>
       )}
       
-      <div className="flex items-center mb-4 mt-4">
-        <h3 className="px-4 text-sm font-semibold text-gray-500">Pending Requests</h3>
-      </div>
-      
       {isLoading && !showModal ? (
         <div className="flex justify-center p-5">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-ucd-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2"/>
         </div>
       ) : (
         <ul className="flex-1 overflow-y-auto">
@@ -232,7 +250,7 @@ export default function Requests() {
                 className="flex flex-col items-center justify-between p-4 mb-2 bg-white rounded-lg shadow-md"
               >
                 <div className="flex items-center">
-                  <div className="w-12 h-12 rounded-full bg-ucd-blue-600 text-white flex items-center justify-center mr-4 overflow-hidden">
+                  <div className="w-12 h-12 rounded-full text-white flex items-center justify-center mr-4 overflow-hidden">
                     <img 
                       src={request.avatar || 'https://via.placeholder.com/40'} 
                       alt={request.username.charAt(0).toUpperCase()}

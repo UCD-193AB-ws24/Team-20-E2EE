@@ -21,7 +21,7 @@ export default function Layout({ children }) {
   const [isTyping, setIsTyping] = useState({});
   const [typingTimeout, setTypingTimeout] = useState(null);
   const { socketReady } = useSocket();
-  const { appReady } = useAppContext();
+  const { appReady, theme } = useAppContext();
 
   // Get the auth token from localStorage
   const getToken = () => {
@@ -171,12 +171,18 @@ export default function Layout({ children }) {
   }
 
   return (
-    <div className="h-screen flex bg-ucd-blue-light">
+    <div
+     className="h-screen flex"
+     style={{
+      backgroundColor: theme.colors.background.primary,
+      color: theme.colors.text.primary
+     }}
+    >
       {/* Navigation Bar */}
       <NavBar onProfileClick={() => setShowProfileModal(true)} setView={setView} />
 
       {/* Side Bar */}
-      <div className="min-w-[250px] w-[25%] m-3 flex flex-col bg-ucd-blue-light">
+      <div className="min-w-[250px] w-[25%] m-3 flex flex-col">
         {view === 'archive' ? (
           <Archive selectedUser={selectedUser} setSelectedUser={setSelectedUser} />
         ) : view === 'friends' ? (
@@ -197,7 +203,7 @@ export default function Layout({ children }) {
       {/* Chat Window */}
       <div className="flex-1 flex flex-col bg-white shadow-lg rounded-lg m-3 ml-0">
         <div className="p-4">
-          <h2 className="text-xl font-bold text-ucd-blue-900">
+          <h2 className="text-xl font-bold">
             {selectedUser || 'Select a user to start chatting'}
             {selectedUser && view === 'archive' && ' (Archive)'}
             {selectedUser && isTyping[selectedUser] && 

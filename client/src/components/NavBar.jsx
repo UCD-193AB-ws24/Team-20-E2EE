@@ -4,7 +4,7 @@ import { MdMessage, MdPeople, MdPersonAdd, MdArchive, MdPerson } from 'react-ico
 import { TbLayoutSidebarLeftExpandFilled, TbLayoutSidebarRightExpand } from "react-icons/tb";
 import { registerFriendRequestListener, registerFriendRequestHandledListener } from '../api/socket';
 import { getFriendRequests } from '../api/friends';
-import { useSocket } from './index';
+import { useSocket, useAppContext } from './index';
 import { motion } from "motion/react";
 
 export default function NavBar({ onProfileClick, setView }) {
@@ -12,6 +12,7 @@ export default function NavBar({ onProfileClick, setView }) {
   const [friendRequestsCount, setFriendRequestsCount] = useState(0);
   const { socketReady } = useSocket();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { theme } = useAppContext();
 
   const getToken = () => {
     const user = JSON.parse(localStorage.getItem('user'));
@@ -59,53 +60,71 @@ export default function NavBar({ onProfileClick, setView }) {
     loadFriendRequestsCount();
   }, []);
 
+  // Theme Styling
+  const navBarStyle = {
+    color: theme.colors.text.primary,
+    backgroundColor: theme.colors.background.primary,
+  };
+
+  const activeItemStyle = {
+    backgroundColor: theme.colors.background.accent,
+  }
+
+  const notificationStyle = {
+    color: theme.colors.notification.text,
+    backgroundColor: theme.colors.notification.background,
+  }
+
   return (
     <motion.div 
     initial={{ width: 150 }}
     animate={{ width: isCollapsed ? 60 : 150 }}
     transition={{ duration: 0.2, ease: "easeOut"}}
     >
-      <div className={`flex flex-col justify-between h-screen bg-ucd-blue-light ${isCollapsed ? 'w-[60px]' : 'w-[150px]'}`}>
+      <div
+       className={`flex flex-col justify-between h-screen ${isCollapsed ? 'w-[60px]' : 'w-[150px]'}`}
+       style={navBarStyle}
+       >
         <div className="flex flex-col items-start mt-3 ml-[10px]">
           {/* Direct Messages Link */}
           <Link
             to="/"
-            className={`w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] ${
-              location.pathname === '/' ? 'text-ucd-blue-800 bg-ucd-blue-100' : 'text-ucd-blue-600'
-            } hover:scale-105`}
+            className={`w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] hover:scale-105`}
+            style={location.pathname === '/' ? activeItemStyle : {}}
             onClick={() => setView('chat')}
           >
-            <MdMessage className={`${location.pathname === '/' ? 'text-ucd-blue-800' : 'text-ucd-blue-600'}`} />
+            <MdMessage/>
             {!isCollapsed && <span className="text-lg align-middle pl-[15px]">Chat</span>}
           </Link>
 
           {/* Friends Link */}
           <Link
             to="/friends"
-            className={`w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] ${
-              location.pathname === '/friends' ? 'text-ucd-blue-800 bg-ucd-blue-100' : 'text-ucd-blue-600'
-            } hover:scale-105`}
+            className={`w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] hover:scale-105`}
+            style={location.pathname === '/friends' ? activeItemStyle : {}}
             onClick={() => setView('friends')}
           >
-            <MdPeople className={`${location.pathname === '/friends' ? 'text-ucd-blue-800' : 'text-ucd-blue-600'}`} />
+            <MdPeople/>
             {!isCollapsed && <span className="text-lg align-middle pl-[15px]">Friends</span>}
           </Link>
 
           {/* Requests Link */}
           <Link
             to="/requests"
-            className={`w-full flex text-left px-[15px] rounded-lg mb-2 transition items-center text-lg h-[50px] ${
-              location.pathname === '/requests' ? 'text-ucd-blue-800 bg-ucd-blue-100' : 'text-ucd-blue-600'
-            } hover:scale-105`}
+            className={`w-full flex text-left px-[15px] rounded-lg mb-2 transition items-center text-lg h-[50px] hover:scale-105`}
+            style={location.pathname === '/requests' ? activeItemStyle : {}}
             onClick={() => setView('requests')}
           >
             <div className='relative w-[20px] h-[20px]'>
               {friendRequestsCount > 0 ? (
-                <span className="relative text-xs text-white bg-red-600 w-[20px] h-[20px] flex items-center justify-center rounded-full mr-2">
+                <span 
+                  className="relative text-xs w-[20px] h-[20px] flex items-center justify-center rounded-full mr-2"
+                  style={notificationStyle}
+                >
                   {friendRequestsCount}
                 </span>
               ) : (
-                <MdPersonAdd className={`${location.pathname === '/requests' ? 'text-ucd-blue-800' : 'text-ucd-blue-600'}`} />
+                <MdPersonAdd/>
               )}
             </div>
             {!isCollapsed && <span className="text-lg align-middle pl-[15px]">Requests</span>}
@@ -114,12 +133,11 @@ export default function NavBar({ onProfileClick, setView }) {
           {/* Archive Link */}
           <Link
             to="/archive"
-            className={`w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] ${
-              location.pathname === '/archive' ? 'text-ucd-blue-800 bg-ucd-blue-100' : 'text-ucd-blue-600'
-            } hover:scale-105`}
+            className={`w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] hover:scale-105`}
+            style={location.pathname === '/archive' ? activeItemStyle : {}}
             onClick={() => setView('archive')}
           >
-            <MdArchive className={`${location.pathname === '/archive' ? 'text-ucd-blue-800' : 'text-ucd-blue-600'}`} />
+            <MdArchive/>
             {!isCollapsed && <span className="text-lg align-middle pl-[15px]">Archive</span>}
           </Link>
         </div>
