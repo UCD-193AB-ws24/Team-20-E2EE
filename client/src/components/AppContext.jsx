@@ -10,7 +10,13 @@ export const AppProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [appReady, setAppReady] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [theme, setTheme] = useState(darkTheme);
+  const [theme, setTheme] = useState(() => {
+    // Check for system's theme preference
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return darkTheme;
+    }
+    return lightTheme;
+  });
 
   // Check for an existing user on app load
   useEffect(() => {

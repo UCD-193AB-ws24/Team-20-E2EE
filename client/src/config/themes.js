@@ -1,4 +1,5 @@
 export const lightTheme = {
+    type: "light",
     colors: {
         background: {
             primary: "#F0F4FA",
@@ -28,6 +29,7 @@ export const lightTheme = {
 };
 
 export const darkTheme = {
+    type: "dark",
     colors: {
         background: {
             primary: "#1a1a1a",

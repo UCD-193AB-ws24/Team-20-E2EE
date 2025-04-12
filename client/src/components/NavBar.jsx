@@ -1,18 +1,21 @@
 import React, {useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { MdMessage, MdPeople, MdPersonAdd, MdArchive, MdPerson } from 'react-icons/md';
+import { FiSun, FiMoon } from "react-icons/fi";
 import { TbLayoutSidebarLeftExpandFilled, TbLayoutSidebarRightExpand } from "react-icons/tb";
 import { registerFriendRequestListener, registerFriendRequestHandledListener } from '../api/socket';
 import { getFriendRequests } from '../api/friends';
 import { useSocket, useAppContext } from './index';
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
+import { darkTheme, lightTheme } from '../config/themes';
 
 export default function NavBar({ onProfileClick, setView }) {
   const location = useLocation();
   const [friendRequestsCount, setFriendRequestsCount] = useState(0);
   const { socketReady } = useSocket();
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const { theme } = useAppContext();
+  const { theme, setTheme } = useAppContext();
+  const isDarkMode = theme.type === 'dark';
 
   const getToken = () => {
     const user = JSON.parse(localStorage.getItem('user'));
@@ -59,6 +62,10 @@ export default function NavBar({ onProfileClick, setView }) {
 
     loadFriendRequestsCount();
   }, []);
+
+  const handleThemeToggle = () => {
+    setTheme(isDarkMode ? lightTheme : darkTheme);
+  };
 
   // Theme Styling
   const navBarStyle = {
@@ -152,16 +159,69 @@ export default function NavBar({ onProfileClick, setView }) {
             {!isCollapsed && <span className="text-lg align-middle pl-[15px]">Profile</span>}
           </button>
 
+          {/* Theme Toggle Button */}
+          <button
+            onClick={handleThemeToggle}
+            className="w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] hover:scale-105"
+            title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            <div className="relative w-[24px] h-[24px] flex items-center justify-center">
+              <AnimatePresence mode="wait" initial={false}>
+                {isDarkMode ? (
+                  <motion.div
+                    key="moon"
+                    initial={{ rotateY: -90 }}
+                    animate={{ rotateY: 0 }}
+                    exit={{ rotateY: 90 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <FiMoon size={20} />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="sun"
+                    initial={{ rotateY: -90 }}
+                    animate={{ rotateY: 0 }}
+                    exit={{ rotateY: 90 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <FiSun size={20} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </button>
+
           {/* Collasp Button */}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] text-ucd-blue-600 hover:scale-105"
-            >
-              {isCollapsed ? (
-                <TbLayoutSidebarLeftExpandFilled/>
-              ) : (
-                <TbLayoutSidebarRightExpand/>
-              )}
+            className="w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] hover:scale-105"
+          >
+            <div className="relative w-[24px] h-[24px] flex items-center justify-center">
+              <AnimatePresence mode="wait" initial={false}>
+                {isCollapsed ? (
+                  <motion.div
+                    key="expand"
+                    initial={{ rotateY: -90 }}
+                    animate={{ rotateY: 0 }}
+                    exit={{ rotateY: 90 }}
+                    transition={{ duration: 0.1 }}
+                  >
+                    <TbLayoutSidebarLeftExpandFilled size={20} />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="collapse"
+                    initial={{ rotateY: -90 }}
+                    animate={{ rotateY: 0 }}
+                    exit={{ rotateY: 90 }}
+                    transition={{ duration: 0.1 }}
+                  >
+                    <TbLayoutSidebarRightExpand size={20} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </button>
         </div>
       </div>

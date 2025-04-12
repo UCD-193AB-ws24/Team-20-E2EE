@@ -108,10 +108,16 @@ export default function Friends({ selectedUser, setSelectedUser }) {
               <li
                 key={index}
                 className="flex items-center justify-between p-4 mb-2 rounded-lg h-[70px]"
-                style={{backgroundColor: selectedUser === friend.username ? theme.colors.background.primary : theme.colors.background.secondary}}
+                style={{
+                  backgroundColor: selectedUser === friend.username || unfriendConfirm === friend.username 
+                    ? theme.colors.background.primary 
+                    : theme.colors.background.secondary
+                }}
               >
                 {unfriendConfirm === friend.username ? (
-                  <div className="w-full flex justify-center items-center">
+                  <div className="w-full flex justify-center items-center"
+                    style={{backgroundColor: theme.colors.background.primary}}  
+                  >
                     <div className="flex space-x-2">
                       <button
                         onClick={() => handleUnfriend(friend.username)}
@@ -131,7 +137,7 @@ export default function Friends({ selectedUser, setSelectedUser }) {
                   <>
                     <div 
                       className="flex items-center flex-1 cursor-pointer" 
-                      onClick={() => setSelectedUser(friend.username)}
+                      onClick={() => {setSelectedUser(friend.username)}}
                     >
                       <div className="flex-1 flex items-center">
                         <div className="w-12 h-12 rounded-full flex items-center justify-center mr-4 overflow-hidden">

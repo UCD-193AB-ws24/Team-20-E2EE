@@ -164,8 +164,12 @@ export default function Layout({ children }) {
 
   if (!appReady) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-100">
-        <h1 className="text-lg text-gray-600">Loading...</h1>
+      <div className="flex items-center justify-center h-screen"
+        style={{
+          backgroundColor: theme.colors.background.primary,
+          color: theme.colors.text.primary
+        }}>
+        <h1 className="text-lg">Loading...</h1>
       </div>
     );
   }
