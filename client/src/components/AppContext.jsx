@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getFriendList } from '../api/friends';
 import { getAvatar } from '../api/user';
 import { loginUser, getCurrentUser } from '../api/auth';
-import { lightTheme } from '../config/themes';
+import { darkTheme, lightTheme } from '../config/themes';
 
 const AppContext = createContext();
 
@@ -10,7 +10,7 @@ export const AppProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [appReady, setAppReady] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [theme, setTheme] = useState(lightTheme);
+  const [theme, setTheme] = useState(darkTheme);
 
   // Check for an existing user on app load
   useEffect(() => {

@@ -196,10 +196,10 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
 
   return (
     <div 
-      className="flex-1 flex flex-col shadow-lg rounded-lg p-3 overflow-hidden"
+      className="flex-1 flex flex-col shadow-lg rounded-lg p-1 overflow-hidden"
       style={{backgroundColor: theme.colors.background.secondary}}
     >
-      <div className="p-2">
+      <div className="p-3">
         <h2 className="text-2xl font-bold text-ucd-blue-900">Chats</h2>
       </div>
   
@@ -220,19 +220,19 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
           <LoadingAnimation size="medium" color="ucd-blue" />
         </div>
       ) : (
-        <ul className="flex-1 overflow-y-auto">
+        <ul className="flex-1 overflow-y-auto p-1">
           {filteredFriends.length === 0 ? (
             <p className="p-4 text-gray-500">No chats found</p>
           ) : (
             filteredFriends.map((friend, index) => (
               <li
                 key={index}
-                className={'my-1 p-2 cursor-pointer flex items-center space-x-3 rounded-lg'}
+                className={'flex items-center justify-between p-4 mb-2 rounded-lg h-[70px]'}
                 style={{ backgroundColor: selectedUser === friend.username ? theme.colors.background.primary : theme.colors.background.secondary}} 
                 onClick={() => setSelectedUser(friend.username)}
               >
                 <div className="relative">
-                  <div className={'w-10 h-10 rounded-full flex items-center justify-center overflow-hidden'}>
+                  <div className={'w-12 h-12 rounded-full flex items-center justify-center overflow-hidden'}>
                     {friend.avatar ? (
                       <img
                         src={friend.avatar}
@@ -249,7 +249,7 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
                   )}
                 </div>
                 <div className="flex flex-col justify-center flex-1 overflow-hidden">
-                  <span className="font-semibold truncate">{friend.username}</span>
+                  <span className="font-semibold truncate ml-4">{friend.username}</span>
                 </div>
               </li>
             ))

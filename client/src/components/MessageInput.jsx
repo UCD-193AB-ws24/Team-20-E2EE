@@ -41,17 +41,20 @@ export default function MessageInput({ sendMessage, onTyping, disabled = false }
         placeholder={disabled ? "Select a user to chat" : "Type your message..."}
         disabled={disabled || isSending}
       />
-      <motion.button 
-        type="submit" 
-        className={'ml-2 p-2 rounded-lg'}
-        style={{backgroundColor: disabled ? '#BDBDBD' : theme.colors.button.primary}}
-        whileHover={{
-          backgroundColor: theme.colors.button.primaryHover,
-        }}
-        disabled={disabled || isSending}
-      >
-        {isSending ? 'Sending...' : 'Send'}
-      </motion.button>
+        <motion.button 
+          type="submit" 
+          className={'ml-2 p-2 rounded-lg'}
+          style={{
+            backgroundColor: theme.colors.button.primary,
+            display: disabled ? 'none' : 'block'
+          }}
+          whileHover={{
+            backgroundColor: theme.colors.button.primaryHover,
+          }}
+          disabled={isSending}
+        >
+          {isSending ? 'Sending...' : 'Send'}
+        </motion.button>
     </form>
   );
 }

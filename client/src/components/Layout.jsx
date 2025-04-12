@@ -201,7 +201,10 @@ export default function Layout({ children }) {
       </div>
 
       {/* Chat Window */}
-      <div className="flex-1 flex flex-col bg-white shadow-lg rounded-lg m-3 ml-0">
+      <div 
+        className="flex-1 flex flex-col shadow-lg rounded-lg m-3 ml-0"
+        style={{backgroundColor: theme.colors.background.secondary}}
+      >
         <div className="p-4">
           <h2 className="text-xl font-bold">
             {selectedUser || 'Select a user to start chatting'}
