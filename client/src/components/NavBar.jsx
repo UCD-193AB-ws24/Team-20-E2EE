@@ -67,6 +67,37 @@ export default function NavBar({ onProfileClick, setView }) {
     setTheme(isDarkMode ? lightTheme : darkTheme);
   };
 
+  // NavBar components
+  const NavItem = ({ to, icon, label, isActive, onClick, isCollapsed, theme }) => {
+    const location = useLocation();
+    
+    const activeItemStyle = {
+      backgroundColor: theme.colors.background.accent,
+    };
+  
+    return (
+      <Link
+        to={to}
+        className="w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px]"
+        style={isActive ? activeItemStyle : {}}
+        onClick={onClick}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = theme.colors.background.accent;
+          e.currentTarget.style.transform = 'scale(1.05)';
+        }}
+        onMouseLeave={(e) => {
+          if (!isActive) {
+            e.currentTarget.style.backgroundColor = '';
+          }
+          e.currentTarget.style.transform = '';
+        }}
+      >
+        {icon}
+        {!isCollapsed && <span className="text-lg align-middle pl-[15px]">{label}</span>}
+      </Link>
+    );
+  };
+
   // Theme Styling
   const navBarStyle = {
     color: theme.colors.text.primary,
@@ -94,33 +125,43 @@ export default function NavBar({ onProfileClick, setView }) {
        >
         <div className="flex flex-col items-start mt-3 ml-[10px]">
           {/* Direct Messages Link */}
-          <Link
+          <NavItem
             to="/"
-            className={`w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] hover:scale-105`}
-            style={location.pathname === '/' ? activeItemStyle : {}}
+            icon={<MdMessage />}
+            label="Chat"
+            isActive={location.pathname === '/'}
             onClick={() => setView('chat')}
-          >
-            <MdMessage/>
-            {!isCollapsed && <span className="text-lg align-middle pl-[15px]">Chat</span>}
-          </Link>
+            isCollapsed={isCollapsed}
+            theme={theme}
+          />
 
           {/* Friends Link */}
-          <Link
+          <NavItem
             to="/friends"
-            className={`w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] hover:scale-105`}
-            style={location.pathname === '/friends' ? activeItemStyle : {}}
+            icon={<MdPeople />}
+            label="Friends"
+            isActive={location.pathname === '/friends'}
             onClick={() => setView('friends')}
-          >
-            <MdPeople/>
-            {!isCollapsed && <span className="text-lg align-middle pl-[15px]">Friends</span>}
-          </Link>
+            isCollapsed={isCollapsed}
+            theme={theme}
+          />
 
           {/* Requests Link */}
           <Link
             to="/requests"
-            className={`w-full flex text-left px-[15px] rounded-lg mb-2 transition items-center text-lg h-[50px] hover:scale-105`}
+            className={`w-full flex text-left px-[15px] rounded-lg mb-2 transition items-center text-lg h-[50px]`}
             style={location.pathname === '/requests' ? activeItemStyle : {}}
             onClick={() => setView('requests')}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = theme.colors.background.accent;
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }}
+            onMouseLeave={(e) => {
+              if (location.pathname !== '/requests') {
+                e.currentTarget.style.backgroundColor = '';
+              }
+              e.currentTarget.style.transform = '';
+            }}
           >
             <div className='relative w-[20px] h-[20px]'>
               {friendRequestsCount > 0 ? (
@@ -138,31 +179,39 @@ export default function NavBar({ onProfileClick, setView }) {
           </Link>
 
           {/* Archive Link */}
-          <Link
+          <NavItem
             to="/archive"
-            className={`w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] hover:scale-105`}
-            style={location.pathname === '/archive' ? activeItemStyle : {}}
+            icon={<MdArchive />}
+            label="Archive"
+            isActive={location.pathname === '/archive'}
             onClick={() => setView('archive')}
-          >
-            <MdArchive/>
-            {!isCollapsed && <span className="text-lg align-middle pl-[15px]">Archive</span>}
-          </Link>
+            isCollapsed={isCollapsed}
+            theme={theme}
+          />
         </div>
 
-        <div className={`flex flex-col items-start mt-[10px] ml-[10px] ${isCollapsed ? 'w-[60px]' : 'w-[150px]'}`}>
+        <div className={`flex flex-col items-start mt-[10px] ml-[10px]`}>
           {/* Profile Link */}
           <button
             onClick={onProfileClick}
-            className="w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] text-ucd-blue-600 hover:scale-105"
+            className="w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px]"
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = theme.colors.background.accent;
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '';
+              e.currentTarget.style.transform = '';
+            }}
           >
-            <MdPerson className="mr-3 text-ucd-blue-600" />
+            <MdPerson/>
             {!isCollapsed && <span className="text-lg align-middle pl-[15px]">Profile</span>}
           </button>
 
           {/* Theme Toggle Button */}
           <button
             onClick={handleThemeToggle}
-            className="w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] hover:scale-105"
+            className="w-fit text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] hover:scale-130"
             title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
           >
             <div className="relative w-[24px] h-[24px] flex items-center justify-center">
@@ -195,7 +244,8 @@ export default function NavBar({ onProfileClick, setView }) {
           {/* Collasp Button */}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] hover:scale-105"
+            className="w-fit text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] hover:scale-130"
+            title={isCollapsed ? "Expand" : "Collapse"}
           >
             <div className="relative w-[24px] h-[24px] flex items-center justify-center">
               <AnimatePresence mode="wait" initial={false}>
