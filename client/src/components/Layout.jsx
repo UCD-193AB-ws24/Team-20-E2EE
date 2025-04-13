@@ -17,7 +17,7 @@ export default function Layout({ children }) {
   const [messages, setMessages] = useState([]);
   const [messagesByUser, setMessagesByUser] = useState(initialMessagesState);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [view, setView] = useState('chat');
+  const [view, setView] = useState();
   const [isTyping, setIsTyping] = useState({});
   const [typingTimeout, setTypingTimeout] = useState(null);
   const { socketReady } = useSocket();
@@ -28,6 +28,20 @@ export default function Layout({ children }) {
     const user = JSON.parse(localStorage.getItem('user'));
     return user?.idToken;
   };
+ 
+  // Get initial view on mount
+  useEffect(() => {
+    const path = location.pathname;
+    if (path === '/archive') {
+      setView('archive');
+    } else if (path === '/friends') {
+      setView('friends');
+    } else if (path === '/requests') {
+      setView('requests');
+    } else {
+      setView('chat');
+    }
+  });
 
   // Load chat history when selected user changes
   useEffect(() => {
@@ -54,7 +68,7 @@ export default function Layout({ children }) {
       }
     };
     
-    if (view === 'chat') {
+    if (view === 'chat' || view === 'friends') {
       loadChatHistory();
     }
   }, [selectedUser, view]);
