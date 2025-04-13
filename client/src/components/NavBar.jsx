@@ -83,13 +83,11 @@ export default function NavBar({ onProfileClick, setView }) {
         onClick={onClick}
         onMouseEnter={(e) => {
           e.currentTarget.style.backgroundColor = theme.colors.background.accent;
-          e.currentTarget.style.transform = 'scale(1.05)';
         }}
         onMouseLeave={(e) => {
           if (!isActive) {
             e.currentTarget.style.backgroundColor = '';
           }
-          e.currentTarget.style.transform = '';
         }}
       >
         {icon}
@@ -154,13 +152,11 @@ export default function NavBar({ onProfileClick, setView }) {
             onClick={() => setView('requests')}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = theme.colors.background.accent;
-              e.currentTarget.style.transform = 'scale(1.05)';
             }}
             onMouseLeave={(e) => {
               if (location.pathname !== '/requests') {
                 e.currentTarget.style.backgroundColor = '';
               }
-              e.currentTarget.style.transform = '';
             }}
           >
             <div className='relative w-[20px] h-[20px]'>
@@ -197,11 +193,9 @@ export default function NavBar({ onProfileClick, setView }) {
             className="w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px]"
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = theme.colors.background.accent;
-              e.currentTarget.style.transform = 'scale(1.05)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = '';
-              e.currentTarget.style.transform = '';
             }}
           >
             <MdPerson/>
