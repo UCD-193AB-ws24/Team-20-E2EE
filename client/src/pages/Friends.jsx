@@ -3,6 +3,7 @@ import { MdSearch, MdPersonRemove } from 'react-icons/md';
 import { getFriendList, unfriendUser } from '../api/friends';
 import { getAvatar } from '../api/user';
 import { useAppContext } from '../components';
+import { motion } from "motion/react";
 
 export default function Friends({ selectedUser, setSelectedUser }) {
   const [friends, setFriends] = useState([]);
@@ -105,19 +106,20 @@ export default function Friends({ selectedUser, setSelectedUser }) {
             <p style={{color: theme.colors.text.muted}} className="p-4">No friends found</p>
           ) : (
             filteredFriends.map((friend, index) => (
-              <li
+              <motion.li
                 key={index}
                 className="flex items-center justify-between p-4 mb-2 rounded-lg h-[70px]"
-                style={{
-                  backgroundColor: selectedUser === friend.username || unfriendConfirm === friend.username 
+                initial={false}
+                animate={{ 
+                  backgroundColor: (selectedUser === friend.username || unfriendConfirm === friend.username) 
                     ? theme.colors.background.primary 
-                    : theme.colors.background.secondary
+                    : theme.colors.background.secondary 
                 }}
+                whileHover={{ backgroundColor: theme.colors.background.primary }}
+                whileTap={{ backgroundColor: theme.colors.background.secondary }}
               >
                 {unfriendConfirm === friend.username ? (
-                  <div className="w-full flex justify-center items-center"
-                    style={{backgroundColor: theme.colors.background.primary}}  
-                  >
+                  <div className="w-full flex justify-center items-center">                
                     <div className="flex space-x-2">
                       <button
                         onClick={() => handleUnfriend(friend.username)}
@@ -159,7 +161,7 @@ export default function Friends({ selectedUser, setSelectedUser }) {
                     </button>
                   </>
                 )}
-              </li>
+              </motion.li>
             ))
           )}
         </ul>

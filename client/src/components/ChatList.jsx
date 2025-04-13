@@ -11,6 +11,7 @@ import {
 } from '../api/socket';
 import { getAvatar } from '../api/user';
 import { LoadingAnimation, useSocket, useAppContext } from './index';
+import { motion } from "motion/react";
 
 export default function ChatList({ selectedUser, setSelectedUser, messagesByUser, setMessagesByUser, isTyping }) {
   const [friends, setFriends] = useState([]);
@@ -225,10 +226,16 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
             <p className="p-4 text-gray-500">No chats found</p>
           ) : (
             filteredFriends.map((friend, index) => (
-              <li
-                key={index}
-                className={'flex items-center justify-between p-4 mb-2 rounded-lg h-[70px]'}
-                style={{ backgroundColor: selectedUser === friend.username ? theme.colors.background.primary : theme.colors.background.secondary}} 
+              <motion.li
+                className="flex items-center justify-between p-4 mb-2 rounded-lg h-[70px]"
+                initial={false}
+                animate={{ 
+                  backgroundColor: selectedUser === friend.username 
+                    ? theme.colors.background.primary 
+                    : theme.colors.background.secondary 
+                }}
+                whileHover={{ backgroundColor: theme.colors.background.primary }}
+                whileTap={{ backgroundColor: theme.colors.background.secondary }}
                 onClick={() => setSelectedUser(friend.username)}
               >
                 <div className="relative">
@@ -251,7 +258,7 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
                 <div className="flex flex-col justify-center flex-1 overflow-hidden">
                   <span className="font-semibold truncate ml-4">{friend.username}</span>
                 </div>
-              </li>
+              </motion.li>
             ))
           )}
         </ul>
