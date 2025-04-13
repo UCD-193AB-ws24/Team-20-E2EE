@@ -1,17 +1,21 @@
 import React, {useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { MdMessage, MdPeople, MdPersonAdd, MdArchive, MdPerson } from 'react-icons/md';
+import { FiSun, FiMoon } from "react-icons/fi";
 import { TbLayoutSidebarLeftExpandFilled, TbLayoutSidebarRightExpand } from "react-icons/tb";
 import { registerFriendRequestListener, registerFriendRequestHandledListener } from '../api/socket';
 import { getFriendRequests } from '../api/friends';
-import { useSocket } from './index';
-import { motion } from "motion/react";
+import { useSocket, useAppContext } from './index';
+import { motion, AnimatePresence } from "motion/react";
+import { darkTheme, lightTheme } from '../config/themes';
 
 export default function NavBar({ onProfileClick, setView }) {
   const location = useLocation();
   const [friendRequestsCount, setFriendRequestsCount] = useState(0);
   const { socketReady } = useSocket();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { theme, setTheme } = useAppContext();
+  const isDarkMode = theme.type === 'dark';
 
   const getToken = () => {
     const user = JSON.parse(localStorage.getItem('user'));
@@ -59,53 +63,75 @@ export default function NavBar({ onProfileClick, setView }) {
     loadFriendRequestsCount();
   }, []);
 
+  const handleThemeToggle = () => {
+    setTheme(isDarkMode ? lightTheme : darkTheme);
+  };
+
+  // Theme Styling
+  const navBarStyle = {
+    color: theme.colors.text.primary,
+    backgroundColor: theme.colors.background.primary,
+  };
+
+  const activeItemStyle = {
+    backgroundColor: theme.colors.background.accent,
+  }
+
+  const notificationStyle = {
+    color: theme.colors.notification.text,
+    backgroundColor: theme.colors.notification.background,
+  }
+
   return (
     <motion.div 
     initial={{ width: 150 }}
     animate={{ width: isCollapsed ? 60 : 150 }}
     transition={{ duration: 0.2, ease: "easeOut"}}
     >
-      <div className={`flex flex-col justify-between h-screen bg-ucd-blue-light ${isCollapsed ? 'w-[60px]' : 'w-[150px]'}`}>
+      <div
+       className={`flex flex-col justify-between h-screen ${isCollapsed ? 'w-[60px]' : 'w-[150px]'}`}
+       style={navBarStyle}
+       >
         <div className="flex flex-col items-start mt-3 ml-[10px]">
           {/* Direct Messages Link */}
           <Link
             to="/"
-            className={`w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] ${
-              location.pathname === '/' ? 'text-ucd-blue-800 bg-ucd-blue-100' : 'text-ucd-blue-600'
-            } hover:scale-105`}
+            className={`w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] hover:scale-105`}
+            style={location.pathname === '/' ? activeItemStyle : {}}
             onClick={() => setView('chat')}
           >
-            <MdMessage className={`${location.pathname === '/' ? 'text-ucd-blue-800' : 'text-ucd-blue-600'}`} />
+            <MdMessage/>
             {!isCollapsed && <span className="text-lg align-middle pl-[15px]">Chat</span>}
           </Link>
 
           {/* Friends Link */}
           <Link
             to="/friends"
-            className={`w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] ${
-              location.pathname === '/friends' ? 'text-ucd-blue-800 bg-ucd-blue-100' : 'text-ucd-blue-600'
-            } hover:scale-105`}
+            className={`w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] hover:scale-105`}
+            style={location.pathname === '/friends' ? activeItemStyle : {}}
             onClick={() => setView('friends')}
           >
-            <MdPeople className={`${location.pathname === '/friends' ? 'text-ucd-blue-800' : 'text-ucd-blue-600'}`} />
+            <MdPeople/>
             {!isCollapsed && <span className="text-lg align-middle pl-[15px]">Friends</span>}
           </Link>
 
           {/* Requests Link */}
           <Link
             to="/requests"
-            className={`w-full flex text-left px-[15px] rounded-lg mb-2 transition items-center text-lg h-[50px] ${
-              location.pathname === '/requests' ? 'text-ucd-blue-800 bg-ucd-blue-100' : 'text-ucd-blue-600'
-            } hover:scale-105`}
+            className={`w-full flex text-left px-[15px] rounded-lg mb-2 transition items-center text-lg h-[50px] hover:scale-105`}
+            style={location.pathname === '/requests' ? activeItemStyle : {}}
             onClick={() => setView('requests')}
           >
             <div className='relative w-[20px] h-[20px]'>
               {friendRequestsCount > 0 ? (
-                <span className="relative text-xs text-white bg-red-600 w-[20px] h-[20px] flex items-center justify-center rounded-full mr-2">
+                <span 
+                  className="relative text-xs w-[20px] h-[20px] flex items-center justify-center rounded-full mr-2"
+                  style={notificationStyle}
+                >
                   {friendRequestsCount}
                 </span>
               ) : (
-                <MdPersonAdd className={`${location.pathname === '/requests' ? 'text-ucd-blue-800' : 'text-ucd-blue-600'}`} />
+                <MdPersonAdd/>
               )}
             </div>
             {!isCollapsed && <span className="text-lg align-middle pl-[15px]">Requests</span>}
@@ -114,12 +140,11 @@ export default function NavBar({ onProfileClick, setView }) {
           {/* Archive Link */}
           <Link
             to="/archive"
-            className={`w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] ${
-              location.pathname === '/archive' ? 'text-ucd-blue-800 bg-ucd-blue-100' : 'text-ucd-blue-600'
-            } hover:scale-105`}
+            className={`w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] hover:scale-105`}
+            style={location.pathname === '/archive' ? activeItemStyle : {}}
             onClick={() => setView('archive')}
           >
-            <MdArchive className={`${location.pathname === '/archive' ? 'text-ucd-blue-800' : 'text-ucd-blue-600'}`} />
+            <MdArchive/>
             {!isCollapsed && <span className="text-lg align-middle pl-[15px]">Archive</span>}
           </Link>
         </div>
@@ -134,16 +159,69 @@ export default function NavBar({ onProfileClick, setView }) {
             {!isCollapsed && <span className="text-lg align-middle pl-[15px]">Profile</span>}
           </button>
 
+          {/* Theme Toggle Button */}
+          <button
+            onClick={handleThemeToggle}
+            className="w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] hover:scale-105"
+            title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            <div className="relative w-[24px] h-[24px] flex items-center justify-center">
+              <AnimatePresence mode="wait" initial={false}>
+                {isDarkMode ? (
+                  <motion.div
+                    key="moon"
+                    initial={{ rotateY: -90 }}
+                    animate={{ rotateY: 0 }}
+                    exit={{ rotateY: 90 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <FiMoon size={20} />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="sun"
+                    initial={{ rotateY: -90 }}
+                    animate={{ rotateY: 0 }}
+                    exit={{ rotateY: 90 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <FiSun size={20} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </button>
+
           {/* Collasp Button */}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] text-ucd-blue-600 hover:scale-105"
-            >
-              {isCollapsed ? (
-                <TbLayoutSidebarLeftExpandFilled/>
-              ) : (
-                <TbLayoutSidebarRightExpand/>
-              )}
+            className="w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] hover:scale-105"
+          >
+            <div className="relative w-[24px] h-[24px] flex items-center justify-center">
+              <AnimatePresence mode="wait" initial={false}>
+                {isCollapsed ? (
+                  <motion.div
+                    key="expand"
+                    initial={{ rotateY: -90 }}
+                    animate={{ rotateY: 0 }}
+                    exit={{ rotateY: 90 }}
+                    transition={{ duration: 0.1 }}
+                  >
+                    <TbLayoutSidebarLeftExpandFilled size={20} />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="collapse"
+                    initial={{ rotateY: -90 }}
+                    animate={{ rotateY: 0 }}
+                    exit={{ rotateY: 90 }}
+                    transition={{ duration: 0.1 }}
+                  >
+                    <TbLayoutSidebarRightExpand size={20} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </button>
         </div>
       </div>

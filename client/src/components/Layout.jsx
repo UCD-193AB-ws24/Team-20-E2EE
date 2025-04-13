@@ -17,17 +17,31 @@ export default function Layout({ children }) {
   const [messages, setMessages] = useState([]);
   const [messagesByUser, setMessagesByUser] = useState(initialMessagesState);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [view, setView] = useState('chat');
+  const [view, setView] = useState();
   const [isTyping, setIsTyping] = useState({});
   const [typingTimeout, setTypingTimeout] = useState(null);
   const { socketReady } = useSocket();
-  const { appReady } = useAppContext();
+  const { appReady, theme } = useAppContext();
 
   // Get the auth token from localStorage
   const getToken = () => {
     const user = JSON.parse(localStorage.getItem('user'));
     return user?.idToken;
   };
+ 
+  // Get initial view on mount
+  useEffect(() => {
+    const path = location.pathname;
+    if (path === '/archive') {
+      setView('archive');
+    } else if (path === '/friends') {
+      setView('friends');
+    } else if (path === '/requests') {
+      setView('requests');
+    } else {
+      setView('chat');
+    }
+  });
 
   // Load chat history when selected user changes
   useEffect(() => {
@@ -54,7 +68,7 @@ export default function Layout({ children }) {
       }
     };
     
-    if (view === 'chat') {
+    if (view === 'chat' || view === 'friends') {
       loadChatHistory();
     }
   }, [selectedUser, view]);
@@ -164,19 +178,29 @@ export default function Layout({ children }) {
 
   if (!appReady) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-100">
-        <h1 className="text-lg text-gray-600">Loading...</h1>
+      <div className="flex items-center justify-center h-screen"
+        style={{
+          backgroundColor: theme.colors.background.primary,
+          color: theme.colors.text.primary
+        }}>
+        <h1 className="text-lg">Loading...</h1>
       </div>
     );
   }
 
   return (
-    <div className="h-screen flex bg-ucd-blue-light">
+    <div
+     className="h-screen flex"
+     style={{
+      backgroundColor: theme.colors.background.primary,
+      color: theme.colors.text.primary
+     }}
+    >
       {/* Navigation Bar */}
       <NavBar onProfileClick={() => setShowProfileModal(true)} setView={setView} />
 
       {/* Side Bar */}
-      <div className="min-w-[250px] w-[25%] m-3 flex flex-col bg-ucd-blue-light">
+      <div className="min-w-[250px] w-[25%] m-3 flex flex-col">
         {view === 'archive' ? (
           <Archive selectedUser={selectedUser} setSelectedUser={setSelectedUser} />
         ) : view === 'friends' ? (
@@ -195,9 +219,12 @@ export default function Layout({ children }) {
       </div>
 
       {/* Chat Window */}
-      <div className="flex-1 flex flex-col bg-white shadow-lg rounded-lg m-3 ml-0">
+      <div 
+        className="flex-1 flex flex-col shadow-lg rounded-lg m-3 ml-0"
+        style={{backgroundColor: theme.colors.background.secondary}}
+      >
         <div className="p-4">
-          <h2 className="text-xl font-bold text-ucd-blue-900">
+          <h2 className="text-xl font-bold">
             {selectedUser || 'Select a user to start chatting'}
             {selectedUser && view === 'archive' && ' (Archive)'}
             {selectedUser && isTyping[selectedUser] && 

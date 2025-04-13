@@ -5,10 +5,10 @@ import React from 'react';
  * 
  * @param {Object} props - Component props
  * @param {string} [props.size='medium'] - Size of the spinner ('small', 'medium', 'large')
- * @param {string} [props.color='ucd-blue'] - Color theme ('ucd-blue', 'ucd-gold', 'gray')
+ * @param {string} [props.color='#022851'] - Color theme
  * @param {string} [props.className=''] - Additional CSS classes
  */
-export default function LoadingAnimation({ size = 'medium', color = 'ucd-blue', className = '' }) {
+export default function LoadingAnimation({ size = 'medium', color = '#022851', className = '' }) {
   // Size mapping
   const sizeClasses = {
     small: 'h-4 w-4 border-2',
@@ -18,8 +18,6 @@ export default function LoadingAnimation({ size = 'medium', color = 'ucd-blue', 
   
   // Color mapping
   const colorClasses = {
-    'ucd-blue': 'border-ucd-blue-600',
-    'ucd-gold': 'border-ucd-gold-600',
     gray: 'border-gray-400',
     white: 'border-white'
   };

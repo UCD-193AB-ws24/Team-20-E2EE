@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { logoutUser } from '../api/auth';
 import { BACKEND_URL } from '../config/config';
 import { getAvatar } from '../api/user';
+import { useAppContext } from '../components';
 
 export default function Profile({ onClose }) {
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
@@ -9,6 +10,7 @@ export default function Profile({ onClose }) {
   const [description, setDescription] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [avatar, setAvatar] = useState(null);
+  const { theme } = useAppContext();
 
   useEffect(() => {
     const fetchUserInfo = async () => {
@@ -129,17 +131,20 @@ export default function Profile({ onClose }) {
     }
   };
   
-
-
-
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: "rgba(255, 255, 255, 0.8)" }}>
-      <div className="bg-white rounded-lg p-6 w-96 shadow-lg relative">
+    <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: "rgba(0, 0, 0, 0.8)" }}>
+      <div
+       className="rounded-lg p-6 w-96 shadow-lg relative"
+       style={{backgroundColor: theme.colors.background.secondary}}
+      >
         <button
           onClick={onClose}
-          className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 p-2 bg-gray-200 rounded-full"
+          className="absolute top-3 right-3 flex items-center justify-center w-8 h-8 rounded-full"
+          style={{
+            backgroundColor: theme.colors.background.accent,
+          }}
         >
-          &times;
+          <span className="text-xl">&times;</span>
         </button>
         <div className="flex flex-col items-center justify-center">
           <label htmlFor="file-input" className="cursor-pointer">
@@ -192,10 +197,10 @@ export default function Profile({ onClose }) {
           </div>
         </div>
         {showLogoutConfirmation && (
-          <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-96 shadow-lg">
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">Confirm Logout</h2>
-              <p className="text-gray-600 mb-6">Are you sure you want to logout?</p>
+          <div className="absolute inset-0 bg-opacity-90 flex items-center justify-center z-50" style={{backgroundColor: theme.colors.background.secondary}}>
+            <div className="rounded-lg p-6 w-96 shadow-lg" style={{backgroundColor: theme.colors.background.primary}}>
+              <h2 className="text-2xl font-bold mb-4">Confirm Logout</h2>
+              <p className="mb-6">Are you sure you want to logout?</p>
               <div className="flex justify-end space-x-4">
                 <button
                   onClick={() => setShowLogoutConfirmation(false)}

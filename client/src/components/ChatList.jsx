@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import { MdSearch } from 'react-icons/md';
 import { getFriendList } from '../api/friends';
 import { getAllMessagePreviews } from '../api/messages';
@@ -10,7 +10,7 @@ import {
   removeListener,
 } from '../api/socket';
 import { getAvatar } from '../api/user';
-import { LoadingAnimation, useSocket } from './index';
+import { LoadingAnimation, useSocket, useAppContext } from './index';
 
 export default function ChatList({ selectedUser, setSelectedUser, messagesByUser, setMessagesByUser, isTyping }) {
   const [friends, setFriends] = useState([]);
@@ -19,6 +19,7 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
   const [onlineUsers, setOnlineUsers] = useState({});
   // const [messagePreviews, setMessagePreviews] = useState({});
   const { socketReady } = useSocket();
+  const { theme } = useAppContext();
 
   // Get auth token
   const getToken = () => {
@@ -194,8 +195,11 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
   // };
 
   return (
-    <div className="flex-1 bg-white flex flex-col shadow-lg rounded-lg p-3 overflow-hidden">
-      <div className="p-2">
+    <div 
+      className="flex-1 flex flex-col shadow-lg rounded-lg p-1 overflow-hidden"
+      style={{backgroundColor: theme.colors.background.secondary}}
+    >
+      <div className="p-3">
         <h2 className="text-2xl font-bold text-ucd-blue-900">Chats</h2>
       </div>
   
@@ -206,7 +210,8 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
           placeholder="Search for a user..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full h-8 p-1 pl-10 bg-ucd-blue-light border border-ucd-blue-300 rounded-full focus:outline-none focus:ring-2 focus:ring-ucd-gold-600"
+          className="w-full h-8 p-1 pl-10 rounded-full focus:outline-none focus:ring-1"
+          style={{backgroundColor: theme.colors.background.primary}}
         />
       </div>
   
@@ -215,22 +220,19 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
           <LoadingAnimation size="medium" color="ucd-blue" />
         </div>
       ) : (
-        <ul className="flex-1 overflow-y-auto">
+        <ul className="flex-1 overflow-y-auto p-1">
           {filteredFriends.length === 0 ? (
             <p className="p-4 text-gray-500">No chats found</p>
           ) : (
             filteredFriends.map((friend, index) => (
               <li
                 key={index}
-                className={`my-1 p-2 cursor-pointer flex items-center space-x-3 rounded-lg ${
-                  selectedUser === friend.username ? 'bg-ucd-blue-light text-ucd-blue-900' : 'hover:bg-ucd-blue-light'
-                }`}
+                className={'flex items-center justify-between p-4 mb-2 rounded-lg h-[70px]'}
+                style={{ backgroundColor: selectedUser === friend.username ? theme.colors.background.primary : theme.colors.background.secondary}} 
                 onClick={() => setSelectedUser(friend.username)}
               >
                 <div className="relative">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center overflow-hidden ${
-                    selectedUser === friend.username ? 'bg-ucd-blue-200 text-ucd-blue-900' : 'bg-ucd-blue-600 text-white'
-                  }`}>
+                  <div className={'w-12 h-12 rounded-full flex items-center justify-center overflow-hidden'}>
                     {friend.avatar ? (
                       <img
                         src={friend.avatar}
@@ -247,7 +249,7 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
                   )}
                 </div>
                 <div className="flex flex-col justify-center flex-1 overflow-hidden">
-                  <span className="font-semibold truncate">{friend.username}</span>
+                  <span className="font-semibold truncate ml-4">{friend.username}</span>
                 </div>
               </li>
             ))

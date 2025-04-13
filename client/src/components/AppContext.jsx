@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getFriendList } from '../api/friends';
 import { getAvatar } from '../api/user';
 import { loginUser, getCurrentUser } from '../api/auth';
+import { darkTheme, lightTheme } from '../config/themes';
 
 const AppContext = createContext();
 
@@ -9,6 +10,13 @@ export const AppProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [appReady, setAppReady] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [theme, setTheme] = useState(() => {
+    // Check for system's theme preference
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return darkTheme;
+    }
+    return lightTheme;
+  });
 
   // Check for an existing user on app load
   useEffect(() => {
@@ -58,7 +66,7 @@ export const AppProvider = ({ children }) => {
   }
 
   return (
-    <AppContext.Provider value={{ appReady, currentUser, login }}>
+    <AppContext.Provider value={{ appReady, currentUser, login, theme, setTheme }}>
       {children}
     </AppContext.Provider>
   );
