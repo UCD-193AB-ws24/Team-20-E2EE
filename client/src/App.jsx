@@ -11,6 +11,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import { CorbadoProvider } from "@corbado/react";
 import PasskeyLogin from './pages/PasskeyLogin';
+// import PasskeyHome from './pages/PasskeyHome';
 import LoginSelection from './pages/LoginSelection';
 
 const CORBADO_PROJECT_ID = import.meta.env.VITE_REACT_APP_CORBADO_PROJECT_ID;
@@ -21,7 +22,7 @@ export default function App() {
 
     <Routes>
       {/* Public Routes */}
-      {/* <Route path="/loginselection" element={<LoginSelection />} />  */}
+      <Route path="/loginselection" element={<LoginSelection />} /> 
       <Route path="/passkeylogin" element={<PasskeyLogin />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<SignUp />} />
