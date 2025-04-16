@@ -9,7 +9,6 @@ const AppContext = createContext();
 export const AppProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [appReady, setAppReady] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState(() => {
     // Check for system's theme preference
     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
@@ -24,7 +23,6 @@ export const AppProvider = ({ children }) => {
     if (storedUser) {
       setCurrentUser(storedUser);
     }
-    setLoading(false);
   }, []);
 
   // Preload avatars after the user logs in
@@ -60,10 +58,6 @@ export const AppProvider = ({ children }) => {
     }
     return result;
   };
-
-  if (loading) {
-    return <div>Loading...</div>;
-  }
 
   return (
     <AppContext.Provider value={{ appReady, currentUser, login, theme, setTheme }}>
