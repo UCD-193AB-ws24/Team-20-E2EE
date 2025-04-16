@@ -78,10 +78,8 @@ export const initializeSocket = (httpServer) => {
 
 const registerSocketEvents = (socket, usersCollection, currentUser) => {
     // Handle typing events
-    console.log("Registering socket events for:", socket.id);
 
     socket.on("typing", async (data) => {
-      console.log("Typing event received:", data);
       try {
           const { recipientUsername, isTyping } = data;
           
