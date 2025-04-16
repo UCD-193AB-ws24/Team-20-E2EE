@@ -66,6 +66,9 @@ export default function Welcome() {
         const data = await response.json();
   
         if (response.ok) {
+          const user = JSON.parse(localStorage.getItem("user")) || {};
+          user.username = username;
+          localStorage.setItem("user", JSON.stringify(user))
           navigate("/"); // Redirect to home after successful update
         } else {
           setError(data.error || "Failed to update username");

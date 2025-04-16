@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import dotenv from 'dotenv';
 dotenv.config();
 
+
 export const register = async (req, res) => {
   const { email, password } = req.body;
   try {
@@ -32,6 +33,7 @@ export const register = async (req, res) => {
         email: email,
         password: hashedPassword,
         emailVerified: false,
+        loginMethod: "traditional",
         createdAt: new Date(),
       });
 
@@ -59,9 +61,84 @@ export const register = async (req, res) => {
 
   } catch (error) {
     console.log("Error registering user:", error);
+
     res.status(401).json({ error: error.message });
   }
 };
+
+export const corbadoLogin = async (req, res) => {
+  try {
+    const email = req.body.email;
+    console.log("Email from Corbado:", email);
+    if (!email) return res.status(400).json({ error: "Invalid token: no email" });
+
+    const db = await connectDB();
+    const authCollection = db.collection("auth");
+    const usersCollection = db.collection("users");
+
+    let auth = await authCollection.findOne({ email });
+    if (!auth) {
+      const result = await authCollection.insertOne({ email, createdAt: new Date(), emailVerified: true, loginMethod: "corbado" });
+      auth = { _id: result.insertedId, email, emailVerified: true, loginMethod: "corbado" };
+
+      await usersCollection.insertOne({
+        uid: result.insertedId.toString(),
+        friends: [],
+        friendsRequests: [],
+        avatar: "",
+        username: "",
+        description: "",
+        createdAt: new Date(),
+      });
+    }
+
+    const user = await usersCollection.findOne({ uid: auth._id.toString() });
+
+    const accessToken = jwt.sign({ uid: auth._id.toString() }, process.env.JWT_ACCESS_TOKEN_SECRET, { expiresIn: "1h" });
+    const refreshToken = jwt.sign({ uid: auth._id.toString() }, process.env.JWT_REFRESH_TOKEN_SECRET, { expiresIn: "7d" });
+
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "Lax",
+      maxAge: 3600000,
+    });
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "Lax",
+      maxAge: 604800000,
+    });
+
+    const userData = {
+      uid: user.uid,
+      email,
+      username: user.username || "",
+      emailVerified: true,
+      loginMethod: "corbado",
+      description: user.description,
+    };
+
+    if (!user.username) {
+      return res.json({
+        message: "User authenticated successfully",
+        warning: "Please set your username to continue",
+        user: userData,
+      });
+    }
+
+    return res.status(200).json({
+      message: "User authenticated successfully",
+      user: userData,
+    });
+
+  } catch (error) {
+    console.error("Error in corbadoLogin:", error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
@@ -123,6 +200,7 @@ export const login = async (req, res) => {
       emailVerified: emailVerified,
       username: user.username || "",
       description: user.description,
+      loginMethod: "traditional",
     };
 
     if (!user?.username) {

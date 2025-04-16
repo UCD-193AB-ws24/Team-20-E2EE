@@ -4,12 +4,14 @@ import { SocketProvider, AppProvider } from './components'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import './index.css'
-
+import { CorbadoContextProvider } from './components/CorbadoContextProvider'
 ReactDOM.createRoot(document.getElementById('root')).render(
   <BrowserRouter>
     <AppProvider>
       <SocketProvider>
-        <App />
+        <CorbadoContextProvider>
+          <App />
+        </CorbadoContextProvider>
       </SocketProvider>
     </AppProvider>
   </BrowserRouter>

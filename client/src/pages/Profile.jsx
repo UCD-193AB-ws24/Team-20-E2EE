@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { logoutUser } from '../api/auth';
 import { BACKEND_URL } from '../config/config';
 import { getAvatar } from '../api/user';
 import fetchWithAuth from '../util/FetchWithAuth';
+import { useCorbado } from '@corbado/react';
+
 export default function Profile({ onClose }) {
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
   const [userInfo, setUserInfo] = useState(null);
   const [description, setDescription] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [avatar, setAvatar] = useState(null);
+  const { logout } = useCorbado();
 
   useEffect(() => {
     const fetchUserInfo = async () => {
@@ -43,14 +45,12 @@ export default function Profile({ onClose }) {
     fetchUserInfo();
   }, []);
 
+
   const handleLogout = async () => {
-    const response = await logoutUser();
-    if (response.success) {
-      console.log("Logout successful");
-      window.location.href = "/login";
-    } else {
-      console.error("Logout failed:", response.error);
-    }
+    // Call the Corbado logout function
+    await logout();
+    localStorage.removeItem("user");
+
   };
 
   const handleSaveDescription = async () => {

@@ -38,7 +38,7 @@ export default function SignUp() {
           <p>I</p>
           <p>S</p>
         </div>
-        <div className="flex justify-center items-center h-screen bg-gray-100 w-full">
+        <div className="flex flex-col gap-8 justify-center items-center h-screen bg-gray-100 w-full">
           <div className="w-[400px] text-black rounded-xl p-8 border-2 border-gray-300 shadow-lg bg-white">
             <h1 className="text-3xl font-bold text-center">Create an account</h1>
             {verificationRequired && <EmailVerificationMessage />}
@@ -116,6 +116,18 @@ export default function SignUp() {
               </form>
             )}
           </div>
+
+          <div className="flex items-center w-full max-w-sm">
+          <hr className="flex-grow border-t border-gray-400" />
+          <span className="mx-4 text-gray-500">OR</span>
+          <hr className="flex-grow border-t border-gray-400" />
+        </div>
+        <div>
+          <button className="p-4 bg-white rounded-lg text-black border-lg border-black border-2 font-bold hover:brightness-105 cursor-pointer hover:translate-y-[-5px] transition-transform shadow-lg" onClick={() => {navigate("/passkey")}}>
+            Passkey Secure Login
+          </button>
+        </div>
+
         </div>
       </div>
     );
