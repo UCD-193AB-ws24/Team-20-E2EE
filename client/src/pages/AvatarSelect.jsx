@@ -3,15 +3,14 @@ import { useNavigate } from "react-router-dom";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { BACKEND_URL } from "../config/config.js";
 
-export default function Welcome() {
+export default function WelcomeAvatar() {
   const [text1, setText1] = useState("");
   const [text2, setText2] = useState("");
   const [error, setError] = useState("");
   const [username, setUsername] = useState("");
   const navigate = useNavigate();
 
-  const title1 = "Welcome to EMA";
-  const title2 = "Choose your username";
+  const title1 = "Set a profile picture";
 
   useEffect(() => {
     let i = 0;
@@ -23,21 +22,6 @@ export default function Welcome() {
         i++;
       } else {
         clearInterval(interval1);
-
-        // Delay before starting the second animation
-        setTimeout(() => {
-          let j = 0;
-          let newText2 = "";
-          const interval2 = setInterval(() => {
-            if (j < title2.length) {
-              newText2 += title2.charAt(j);
-              setText2(newText2);
-              j++;
-            } else {
-              clearInterval(interval2);
-            }
-          }, 50);
-        }, 100);
       }
     }, 50);
 
@@ -75,7 +59,7 @@ export default function Welcome() {
         const data = await response.json();
   
         if (response.ok) {
-          navigate("/"); // Redirect to avatar selection after successful update
+          navigate("/"); // Redirect to home after successful update
         } else {
           setError(data.error || "Failed to update username");
         }
