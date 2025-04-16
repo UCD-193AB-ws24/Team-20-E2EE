@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getFriendList } from '../api/friends';
 import { getAvatar } from '../api/user';
-import { loginUser, getCurrentUser } from '../api/auth';
+import { loginUser } from '../api/auth';
+import getCurrentUser from '../util/getCurrentUser.js';
 
 const AppContext = createContext();
 

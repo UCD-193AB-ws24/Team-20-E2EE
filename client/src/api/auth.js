@@ -58,26 +58,3 @@ export const signUpUser = async (email, password) => {
     }
 };
 
-// Logout function
-export const logoutUser = async () => {
-    const response = await fetch(`${BACKEND_URL}/api/auth/logout`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-    });
-
-    if (response.ok) {
-        console.log("Logout successful");
-        localStorage.removeItem("user");
-        return { success: true };
-    } else {
-        console.error("Logout failed");
-        return { success: false, error: "Logout failed" };
-    }
-};
-
-// Function to get the current user from localStorage
-export const getCurrentUser = () => {
-    const user = localStorage.getItem("user");
-    return user ? JSON.parse(user) : null;
-};
-

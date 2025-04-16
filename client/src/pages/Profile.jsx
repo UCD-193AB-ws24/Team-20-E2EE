@@ -3,6 +3,7 @@ import { BACKEND_URL } from '../config/config';
 import { getAvatar } from '../api/user';
 import fetchWithAuth from '../util/FetchWithAuth';
 import { useCorbado } from '@corbado/react';
+import getCurrentUser from '../util/getCurrentUser.js';
 
 export default function Profile({ onClose }) {
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
@@ -11,7 +12,8 @@ export default function Profile({ onClose }) {
   const [isEditing, setIsEditing] = useState(false);
   const [avatar, setAvatar] = useState(null);
   const { logout } = useCorbado();
-
+  const currentUser = getCurrentUser();
+  const loginMethod = currentUser?.loginMethod || null;
   useEffect(() => {
     const fetchUserInfo = async () => {
       const response = await fetchWithAuth(`${BACKEND_URL}/api/user/get-user`, {
@@ -46,11 +48,37 @@ export default function Profile({ onClose }) {
   }, []);
 
 
-  const handleLogout = async () => {
+  const handleCorbadoLogout = async () => {
     // Call the Corbado logout function
-    await logout();
-    localStorage.removeItem("user");
+    const response = await fetch(`${BACKEND_URL}/api/auth/logout`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+    });
+    if (response.ok) {
+      localStorage.clear();
+      await logout();
+    }else{
+      console.error("Logout failed");
+    }
+  };
 
+  const handleTraditionalLogout = async () => {
+    const response = await fetch(`${BACKEND_URL}/api/auth/logout`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+    });
+
+    if (response.ok) {
+      localStorage.clear();
+    } else {
+      console.error("Logout failed");
+    }
   };
 
   const handleSaveDescription = async () => {
@@ -182,7 +210,13 @@ export default function Profile({ onClose }) {
                 </button>
                 <button
                   onClick={() => {
-                    handleLogout()
+                    if(loginMethod === "corbado") {
+                      handleCorbadoLogout().then(() => window.location.href = "/passkey");
+
+                    }else if (loginMethod === "traditional") {
+                      handleTraditionalLogout().then(() => window.location.href = "/passkey");
+                    }
+                    
                   }}
                   className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300"
                 >
