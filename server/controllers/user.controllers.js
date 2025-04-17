@@ -412,7 +412,6 @@ export const updateAvatar = async (req, res) => {
 
             console.log("Multer File Object:", req.file);
 
-            // Store file manually in GridFS
             const fileId = await storeFileInGridFS(req.file);
             if (!fileId) {
                 return res.status(500).json({ error: "File upload failed - No file ID received" });
@@ -446,7 +445,6 @@ export const getAvatar = async (req, res) => {
     try {
         const { username } = req.params;
 
-        // Connect to database
         const db = await connectDB();
         const usersCollection = db.collection("users");
         const user = await usersCollection.findOne({ username });
@@ -493,10 +491,8 @@ export const getAvatar = async (req, res) => {
 
         const file = fileArray[0];
 
-        // Set Content-Type header
         res.set("Content-Type", file.contentType);
 
-        // Create a readable stream and pipe to response
         const readStream = gridfsBucket.openDownloadStream(new mongoose.Types.ObjectId(fileId));
 
         readStream.pipe(res);
