@@ -16,7 +16,7 @@ export const getAvatar = async (username) => {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch avatar: ${response.statusText}`);
+      console.log(`Failed to fetch avatar: ${response.statusText}`);
     }
 
     // Create a blob URL that stays valid even after the response is consumed

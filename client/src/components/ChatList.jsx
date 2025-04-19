@@ -8,18 +8,38 @@ import {
   registerInitialStatusListener,
   requestInitialStatus,
   removeListener,
+  registerMessageListener,
+  registerMessageSentListener
 } from '../api/socket';
 import { getAvatar } from '../api/user';
-import { LoadingAnimation, useSocket } from './index';
+import { LoadingAnimation, useSocket, useAppContext } from './index';
+import { motion } from "motion/react";
 
-export default function ChatList({ selectedUser, setSelectedUser, messagesByUser, setMessagesByUser, isTyping }) {
+export default function ChatList({ selectedUser, setSelectedUser }) {
   const [friends, setFriends] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState({});
-  // const [messagePreviews, setMessagePreviews] = useState({});
+  const [messagePreviews, setMessagePreviews] = useState({});
   const { socketReady } = useSocket();
+  const { theme } = useAppContext();
 
+
+  // Load message previews for each friend
+  const loadMessagePreviews = async (token) => {
+    try {
+      const data = await getAllMessagePreviews(token);
+      const previews = {};
+      
+      (data.previews || []).forEach(preview => {
+        previews[preview.username] = preview.lastMessage;
+      });
+      
+      setMessagePreviews(previews);
+    } catch (err) {
+      console.error("Error loading message previews:", err);
+    }
+  };
 
   // Fetch friends list on component mount
   useEffect(() => {
@@ -41,10 +61,8 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
         
         setFriends(friendsWithAvatars);
         
-        // Now load message previews for each friend
-        // if (data.friends && data.friends.length > 0) {
-        //   await loadMessagePreviews(token, data.friends);
-        // }
+        // Load message previews
+        await loadMessagePreviews(token);
       } catch (err) {
         console.error("Error loading friends:", err);
       } finally {
@@ -55,7 +73,7 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
     loadFriends();
   }, []);
 
-  // Set up online status listeners - only when socket is ready
+  // Set up online status listeners
   useEffect(() => {
     if (!socketReady) {
       console.log('Socket not ready, waiting to set up listeners');
@@ -128,68 +146,111 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
     };
   }, [socketReady]);
 
-  // // Function to load message previews for all friends
-  // const loadMessagePreviews = async (token) => {
-  //   try {
-  //     // Get message previews for all friends in one API call
-  //     const previewsData = await getAllMessagePreviews(token);
+  // Set up message listeners
+  useEffect(() => {
+    if (!socketReady) {
+      console.log('Socket not ready, skipping message listener setup');
+      return;
+    }
+  
+    console.log('Setting up message listeners');
+  
+    // Listen for incoming messages
+    const removeMessageListener = registerMessageListener((data) => {
+      const { sender, text } = data;
       
-  //     if (previewsData && previewsData.previews) {
-  //       // Create a new object to store messages by username
-  //       const newMessagesByUser = { ...messagesByUser };
-  //       const newPreviews = {};
-        
-  //       // Process each preview
-  //       previewsData.previews.forEach(preview => {
-  //         const { username, lastMessage } = preview;
-          
-  //         // Add to previews if there's a last message
-  //         if (lastMessage) {
-  //           newPreviews[username] = lastMessage;
-            
-  //           // If we don't already have messages for this user in state, initialize with the preview
-  //           if (!messagesByUser[username] || messagesByUser[username].length === 0) {
-  //             newMessagesByUser[username] = [lastMessage];
-  //           }
-  //         } else {
-  //           // No message yet for this friend
-  //           newPreviews[username] = { text: "No messages yet", time: "" };
-  //         }
-  //       });
-        
-  //       // Update both states
-  //       setMessagePreviews(newPreviews);
-  //       setMessagesByUser(newMessagesByUser);
-  //     }
-  //   } catch (err) {
-  //     console.error("Error loading message previews:", err);
-  //   }
-  // };
+      console.log('Received message event:', { sender, text });
+      
+      // Update message preview for this sender
+      setMessagePreviews(prev => {
+        console.log('Updating preview for:', sender);
+        return {
+          ...prev,
+          [sender]: {
+            sender,
+            text,
+            timestamp: new Date()
+          }
+        };
+      });
+    });
+  
+    // Listen for sent messages
+    const removeMessageSentListener = registerMessageSentListener((data) => {
+      const { recipient, text } = data;
+      
+      console.log('Message sent event received:', data);
+    
+      setMessagePreviews(prev => {
+        console.log('Updating preview for recipient:', recipient);
+        return {
+          ...prev,
+          [recipient]: {
+            sender: "Me",
+            text,
+            timestamp: new Date()
+          }
+        };
+      });
+    });
+  
+    console.log('Message listeners set up successfully');
+    
+    return () => {
+      console.log('Cleaning up message listeners');
+      removeMessageListener();
+      removeMessageSentListener();
+    };
+  }, [socketReady, selectedUser]);
+
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return '';
+    
+    const date = new Date(timestamp);
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    // Same day - show time
+    if (date.toDateString() === now.toDateString()) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    // Yesterday
+    else if (date.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday';
+    }
+    // This week - show day name
+    else if (now.getTime() - date.getTime() < 7 * 24 * 60 * 60 * 1000) {
+      return date.toLocaleDateString([], { weekday: 'short' });
+    }
+    // Older - show date
+    else {
+      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    }
+  };
 
   const filteredFriends = friends.filter(friend =>
     friend.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // // Get last message for each friend
-  // const getLastMessage = (username) => {
-  //   // First check message previews for initial load
-  //   if (messagePreviews[username]) {
-  //     return messagePreviews[username].text || "No messages yet";
-  //   }
-   
-  //   // Then check active message state for updates during session
-  //   if (messagesByUser[username] && messagesByUser[username].length > 0) {
-  //     const messages = messagesByUser[username];
-  //     const lastMessage = messages[messages.length - 1];
-  //     return lastMessage.text;
-  //   }
-   
-  //   return "No messages yet";
-  // };
+  // Sort friends by most recent message
+  const sortedFriends = [...filteredFriends].sort((a, b) => {
+    const previewA = messagePreviews[a.username];
+    const previewB = messagePreviews[b.username];
+    
+    if (!previewA && !previewB) return 0;
+    if (!previewA) return 1;
+    if (!previewB) return -1;
+    
+    return new Date(previewB.timestamp) - new Date(previewA.timestamp);
+  });
 
   return (
-    <div className="flex-1 bg-white flex flex-col shadow-lg rounded-lg p-3 overflow-hidden">
-      <div className="p-2">
+    <div 
+      className="flex-1 flex flex-col shadow-lg rounded-lg p-1 overflow-hidden"
+      style={{backgroundColor: theme.colors.background.secondary}}
+    >
+      <div className="p-3">
         <h2 className="text-2xl font-bold text-ucd-blue-900">Chats</h2>
       </div>
   
@@ -200,7 +261,8 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
           placeholder="Search for a user..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full h-8 p-1 pl-10 bg-ucd-blue-light border border-ucd-blue-300 rounded-full focus:outline-none focus:ring-2 focus:ring-ucd-gold-600"
+          className="w-full h-8 p-1 pl-10 rounded-full focus:outline-none focus:ring-1"
+          style={{backgroundColor: theme.colors.background.primary}}
         />
       </div>
   
@@ -209,42 +271,63 @@ export default function ChatList({ selectedUser, setSelectedUser, messagesByUser
           <LoadingAnimation size="medium" color="ucd-blue" />
         </div>
       ) : (
-        <ul className="flex-1 overflow-y-auto">
-          {filteredFriends.length === 0 ? (
+        <ul className="flex-1 overflow-y-auto p-1">
+          {sortedFriends.length === 0 ? (
             <p className="p-4 text-gray-500">No chats found</p>
           ) : (
-            filteredFriends.map((friend, index) => (
-              <li
-                key={index}
-                className={`my-1 p-2 cursor-pointer flex items-center space-x-3 rounded-lg ${
-                  selectedUser === friend.username ? 'bg-ucd-blue-light text-ucd-blue-900' : 'hover:bg-ucd-blue-light'
-                }`}
-                onClick={() => setSelectedUser(friend.username)}
-              >
-                <div className="relative">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center overflow-hidden ${
-                    selectedUser === friend.username ? 'bg-ucd-blue-200 text-ucd-blue-900' : 'bg-ucd-blue-600 text-white'
-                  }`}>
-                    {friend.avatar ? (
-                      <img
-                        src={friend.avatar}
-                        alt={friend.username.charAt(0).toUpperCase()}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      friend.username.charAt(0).toUpperCase()
+            sortedFriends.map((friend, index) => {
+              const preview = messagePreviews[friend.username];
+              
+              return (
+                <motion.li
+                  key={friend.username}
+                  className="flex items-center p-4 mb-2 rounded-lg h-[70px]"
+                  initial={false}
+                  animate={{ 
+                    backgroundColor: selectedUser === friend.username 
+                      ? theme.colors.background.primary 
+                      : theme.colors.background.secondary 
+                  }}
+                  whileHover={{ backgroundColor: theme.colors.background.primary }}
+                  whileTap={{ backgroundColor: theme.colors.background.secondary }}
+                  onClick={() => setSelectedUser(friend.username)}
+                >
+                  <div className="relative">
+                    <div className={'w-12 h-12 rounded-full flex items-center justify-center overflow-hidden'}>
+                      {friend.avatar ? (
+                        <img
+                          src={friend.avatar}
+                          alt={friend.username.charAt(0).toUpperCase()}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        friend.username.charAt(0).toUpperCase()
+                      )}
+                    </div>
+                    {/* Online indicator */}
+                    {onlineUsers[friend.username] && (
+                      <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
                     )}
                   </div>
-                  {/* Online indicator */}
-                  {onlineUsers[friend.username] && (
-                    <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-                  )}
-                </div>
-                <div className="flex flex-col justify-center flex-1 overflow-hidden">
-                  <span className="font-semibold truncate">{friend.username}</span>
-                </div>
-              </li>
-            ))
+                  <div className="flex flex-col justify-center flex-1 overflow-hidden ml-4">
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold truncate">{friend.username}</span>
+                      {preview && (
+                        <span className="text-xs text-gray-500">
+                          {formatTimestamp(preview.timestamp)}
+                        </span>
+                      )}
+                    </div>
+                    {preview && (
+                      <p className="text-sm text-gray-600 truncate mt-1">
+                        {preview.sender === "Me" ? "You: " : `${preview.sender}: `}
+                        {preview.text}
+                      </p>
+                    )}
+                  </div>
+                </motion.li>
+              );
+            })
           )}
         </ul>
       )}

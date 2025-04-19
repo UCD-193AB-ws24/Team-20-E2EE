@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getFriendList } from '../api/friends';
 import { getAvatar } from '../api/user';
 import { loginUser } from '../api/auth';
+import { darkTheme, lightTheme } from '../config/themes';
 import getCurrentUser from '../util/getCurrentUser.js';
 
 const AppContext = createContext();
@@ -9,7 +10,13 @@ const AppContext = createContext();
 export const AppProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [appReady, setAppReady] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [theme, setTheme] = useState(() => {
+    // Check for system's theme preference
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return darkTheme;
+    }
+    return lightTheme;
+  });
 
   // Check for an existing user on app load
   useEffect(() => {
@@ -17,7 +24,6 @@ export const AppProvider = ({ children }) => {
     if (storedUser) {
       setCurrentUser(storedUser);
     }
-    setLoading(false);
   }, []);
 
   // Preload avatars after the user logs in
@@ -54,12 +60,8 @@ export const AppProvider = ({ children }) => {
     return result;
   };
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
   return (
-    <AppContext.Provider value={{ appReady, currentUser, login }}>
+    <AppContext.Provider value={{ appReady, currentUser, login, theme, setTheme }}>
       {children}
     </AppContext.Provider>
   );

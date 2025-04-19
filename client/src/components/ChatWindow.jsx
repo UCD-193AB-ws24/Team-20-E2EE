@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { getAvatar } from '../api/user';
+import { useAppContext } from './AppContext';
 
 export default function ChatWindow({ messages, selectedUser }) {
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
   const [avatars, setAvatars] = useState({});
   const currentUsername = JSON.parse(localStorage.getItem('user'))?.username;
+  const { theme } = useAppContext();
 
   // Load avatars when selectedUser changes
   useEffect(() => {
@@ -48,7 +50,8 @@ export default function ChatWindow({ messages, selectedUser }) {
   return (
     <div
       ref={chatContainerRef}
-      className="flex-1 flex flex-col p-4 overflow-y-auto bg-white rounded-lg m-4"
+      className="flex-1 flex flex-col p-4 overflow-y-auto rounded-lg m-4"
+      style={{backgroundColor: theme.colors.background.secondary}}
     >
       {messages.map((msg, index) => {
         const showAvatar =
@@ -78,14 +81,11 @@ export default function ChatWindow({ messages, selectedUser }) {
           
               {/* Message bubble */}
               <div
-                className={`p-3 max-w-[75%] rounded-lg ${
-                  isMe
-                    ? 'bg-ucd-blue-500 text-white self-end'
-                    : 'bg-ucd-blue-300 text-black self-start'
-                }`}
+                className={'p-3 max-w-[75%] rounded-lg'}
+                style={{ backgroundColor: isMe ? theme.colors.chatBubble.primary: theme.colors.chatBubble.secondary}}
               >
                 <p>{msg.text}</p>
-                <span className="text-xs text-ucd-blue-700 block mt-1">
+                <span className="text-xs block mt-1">
                   {msg.time}
                 </span>
               </div>

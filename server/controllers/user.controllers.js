@@ -114,7 +114,7 @@ export const sendFriendRequest = async (req, res) => {
         // Find the recipient's document
         const recipient = await usersCollection.findOne({ username: recipientUsername });
         if (!recipient) {
-            return res.status(404).json({ error: "Recipient not found" });
+            return res.status(404).json({ error: "User not found" });
         }
 
         const recipientUid = recipient.uid;

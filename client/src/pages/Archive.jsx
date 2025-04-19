@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { MdSearch } from 'react-icons/md';
+import { useAppContext } from '../components';
 
 const archivedMessages = {
   Alice: {
@@ -20,6 +21,7 @@ const archivedMessages = {
 
 export default function Archive({ selectedUser, setSelectedUser }) {
   const [searchTerm, setSearchTerm] = useState('');
+  const { theme } = useAppContext();
 
   const filteredUsers = Object.keys(archivedMessages).filter(user =>
     user.toLowerCase().includes(searchTerm.toLowerCase())
@@ -30,18 +32,22 @@ export default function Archive({ selectedUser, setSelectedUser }) {
   );
 
   return (
-    <div className="flex-1 bg-white flex flex-col shadow-lg rounded-lg p-3 overflow-hidden">
+    <div 
+      className="flex-1 flex flex-col shadow-lg rounded-lg p-3 overflow-hidden"
+      style={{backgroundColor: theme.colors.background.secondary}}
+    >
       <div className="p-2">
-        <h2 className="text-2xl font-bold text-ucd-blue-900">Archived Chats</h2>
+        <h2 className="text-2xl font-bold">Archived Chats</h2>
       </div>
       <div className="px-2 pb-2 relative">
-        <MdSearch className="absolute left-6 top-4 transform -translate-y-1/2 text-ucd-blue-600" />
+        <MdSearch className="absolute left-6 top-4 transform -translate-y-1/2" />
         <input
           type="text"
           placeholder="Search for a user..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full h-8 p-1 pl-10 bg-ucd-blue-light border border-ucd-blue-300 rounded-full focus:outline-none focus:ring-2 focus:ring-ucd-gold-600"
+          className="w-full h-8 p-1 pl-10 rounded-full focus:outline-none focus:ring-1"
+          style={{backgroundColor: theme.colors.background.primary}}
         />
       </div>
       <ul className="flex-1 overflow-y-auto">

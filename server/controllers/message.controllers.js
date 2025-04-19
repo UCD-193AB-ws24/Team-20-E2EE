@@ -119,7 +119,7 @@ export const getMessagePreviews = async (req, res) => {
                     lastMessage: {
                         sender: senderUsername,
                         text: message.text,
-                        time: message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        timestamp: message.timestamp
                     }
                 });
             } else {
@@ -206,6 +206,12 @@ export const sendPrivateMessage = async (req, res) => {
         io.to(onlineUsers.get(uid)).emit("message_sent", {
             ...formattedMessage,
             recipient: recipientUsername
+        });
+
+        return res.status(200).json({ 
+            success: true, 
+            message: "Message sent successfully",
+            messageId: result.insertedId
         });
     } catch (error) {
         console.error("Error sending message:", error);

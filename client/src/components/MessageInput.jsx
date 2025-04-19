@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
+import { useAppContext } from './AppContext';
+import { motion } from "motion/react";
 
 export default function MessageInput({ sendMessage, onTyping, disabled = false }) {
   const [text, setText] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const { theme } = useAppContext();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -28,22 +31,30 @@ export default function MessageInput({ sendMessage, onTyping, disabled = false }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 bg-white rounded-lg m-4 flex">
+    <form onSubmit={handleSubmit} className="p-4 rounded-lg m-4 flex">
       <input
         type="text"
         value={text}
         onChange={handleChange}
-        className={`flex-1 p-2 border border-ucd-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ucd-gold-600 ${disabled ? 'bg-gray-100' : ''}`}
+        className={`flex-1 p-2 rounded-lg focus:outline-none ${disabled ? 'bg-gray-100' : ''}`}
+        style={{backgroundColor: theme.colors.background.primary}}
         placeholder={disabled ? "Select a user to chat" : "Type your message..."}
         disabled={disabled || isSending}
       />
-      <button 
-        type="submit" 
-        className={`ml-2 p-2 ${disabled || isSending ? 'bg-gray-400' : 'bg-ucd-gold-600'} text-black rounded-lg`}
-        disabled={disabled || isSending}
-      >
-        {isSending ? 'Sending...' : 'Send'}
-      </button>
+        <motion.button 
+          type="submit" 
+          className={'ml-2 p-2 rounded-lg'}
+          style={{
+            backgroundColor: theme.colors.button.primary,
+            display: disabled ? 'none' : 'block'
+          }}
+          whileHover={{
+            backgroundColor: theme.colors.button.primaryHover,
+          }}
+          disabled={isSending}
+        >
+          {isSending ? 'Sending...' : 'Send'}
+        </motion.button>
     </form>
   );
 }
