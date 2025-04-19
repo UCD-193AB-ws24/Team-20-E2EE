@@ -49,11 +49,9 @@ export default function Layout({ children }) {
       if (!selectedUser) return;
       
       try {
-        const user = JSON.parse(localStorage.getItem('user'));
-        if (!user?.idToken) return;
         
         // Always fetch the chat history from the server when a user is selected
-        const { messages: chatHistory } = await getChatHistory(user.idToken, selectedUser);
+        const { messages: chatHistory } = await getChatHistory(selectedUser);
         
         // Update messages for this user
         setMessagesByUser(prev => ({
@@ -165,9 +163,8 @@ export default function Layout({ children }) {
   // Send message function
   const sendMessage = async (text) => {
     if (!selectedUser || !text.trim()) return;
-    const token = getToken();
     
-    sendPrivateMessage(token, selectedUser, text);
+    sendPrivateMessage(selectedUser, text);
     
     // Clear typing indicator
     if (typingTimeout) {

@@ -1,5 +1,5 @@
 import { BACKEND_URL } from '../config/config.js';
-
+import fetchWithAuth from '../util/FetchWithAuth.jsx';
 // Local module cache
 const avatarCache = {};
 
@@ -11,7 +11,7 @@ export const getAvatar = async (username) => {
     }
 
     // If not in cache, fetch from backend
-    const response = await fetch(`${BACKEND_URL}/api/user/get-avatar/${username}`, {
+    const response = await fetchWithAuth(`${BACKEND_URL}/api/user/get-avatar/${username}`, {
       method: 'GET',
     });
 

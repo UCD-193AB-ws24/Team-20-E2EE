@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { logoutUser } from '../api/auth';
 import { BACKEND_URL } from '../config/config';
 import { getAvatar } from '../api/user';
 import { useAppContext } from '../components';
+import fetchWithAuth from '../util/FetchWithAuth';
+import { useCorbado } from '@corbado/react';
+import getCurrentUser from '../util/getCurrentUser.js';
 
 export default function Profile({ onClose }) {
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
@@ -11,25 +13,18 @@ export default function Profile({ onClose }) {
   const [isEditing, setIsEditing] = useState(false);
   const [avatar, setAvatar] = useState(null);
   const { theme } = useAppContext();
-
+  const { logout } = useCorbado();
+  const currentUser = getCurrentUser();
+  const loginMethod = currentUser?.loginMethod || null;
   useEffect(() => {
     const fetchUserInfo = async () => {
-      const user = JSON.parse(localStorage.getItem("user"));
-      const token = user?.idToken;
-      console.log("user: ", user.username);
-      const response = await fetch(`${BACKEND_URL}/api/user/get-user`, {
+      const response = await fetchWithAuth(`${BACKEND_URL}/api/user/get-user`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
         },
       });
 
-      // if (token) {
-      //   console.log("Token found:", token);
-      // } else {
-      //   console.log("No token found.");
-      // }
 
       if (response.ok) {
         const data = await response.json();
@@ -54,26 +49,46 @@ export default function Profile({ onClose }) {
     fetchUserInfo();
   }, []);
 
-  const handleLogout = async () => {
-    const response = await logoutUser();
-    if (response.success) {
-      console.log("Logout successful");
-      window.location.href = "/login";
+
+  const handleCorbadoLogout = async () => {
+    // Call the Corbado logout function
+    const response = await fetch(`${BACKEND_URL}/api/auth/logout`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+    });
+    if (response.ok) {
+      localStorage.clear();
+      await logout();
+    }else{
+      console.error("Logout failed");
+    }
+  };
+
+  const handleTraditionalLogout = async () => {
+    const response = await fetch(`${BACKEND_URL}/api/auth/logout`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+    });
+
+    if (response.ok) {
+      localStorage.clear();
     } else {
-      console.error("Logout failed:", response.error);
+      console.error("Logout failed");
     }
   };
 
   const handleSaveDescription = async () => {
 
-    const user = JSON.parse(localStorage.getItem("user"));
-    const token = user?.idToken;
-
-    const response = await fetch(`${BACKEND_URL}/api/user/update-description`, {
+    const response = await fetchWithAuth(`${BACKEND_URL}/api/user/update-description`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
       },
       body: JSON.stringify({ description }),
     });
@@ -98,20 +113,10 @@ export default function Profile({ onClose }) {
 
     formData.append("avatar", file);  // Append file to form data
   
-    const user = JSON.parse(localStorage.getItem("user"));
-    const token = user?.idToken;
-  
-    if (!token) {
-      console.error("Token is not available");
-      return;
-    }
   
     try {
-      const response = await fetch(`${BACKEND_URL}/api/user/update-avatar`, {
+      const response = await fetchWithAuth(`${BACKEND_URL}/api/user/update-avatar`, {
         method: "PUT",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-        },
         body: formData,
       });
   
@@ -210,7 +215,13 @@ export default function Profile({ onClose }) {
                 </button>
                 <button
                   onClick={() => {
-                    handleLogout()
+                    if(loginMethod === "corbado") {
+                      handleCorbadoLogout().then(() => window.location.href = "/passkey");
+
+                    }else if (loginMethod === "traditional") {
+                      handleTraditionalLogout().then(() => window.location.href = "/passkey");
+                    }
+                    
                   }}
                   className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300"
                 >

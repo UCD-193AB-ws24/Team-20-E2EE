@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getFriendList } from '../api/friends';
 import { getAvatar } from '../api/user';
-import { loginUser, getCurrentUser } from '../api/auth';
+import { loginUser } from '../api/auth';
 import { darkTheme, lightTheme } from '../config/themes';
+import getCurrentUser from '../util/getCurrentUser.js';
 
 const AppContext = createContext();
 

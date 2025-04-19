@@ -1,25 +1,19 @@
-import { auth } from "../config/firebaseConfig"; 
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 import { BACKEND_URL } from "../config/config";
+
 
 export const loginUser = async (email, password) => {
     try {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-        // console.log("User:", user.uid);
-
-        const idToken = await user.getIdToken();
 
         const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ idToken }),
+            body: JSON.stringify({ email, password }),
+            credentials: "include", // Include credentials for session management
         });
 
         const data = await response.json();
 
         if (response.ok) {
-
             // Store user info in localStorage (or sessionStorage)
             localStorage.setItem("user", JSON.stringify(data.user));
 
@@ -42,16 +36,11 @@ export const loginUser = async (email, password) => {
 // Sign up function remains the same
 export const signUpUser = async (email, password) => {
     try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-        
-        const userId = user.uid;
-        const idToken = await user.getIdToken();
 
         const response = await fetch(`${BACKEND_URL}/api/auth/signup`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ idToken, userId }),
+            body: JSON.stringify({ email, password }),
         });
 
         const data = await response.json();
@@ -69,53 +58,3 @@ export const signUpUser = async (email, password) => {
     }
 };
 
-// Logout function
-export const logoutUser = async () => {
-    try {
-        await signOut(auth);
-        localStorage.removeItem("user"); // Clear stored user data
-        return { success: true };
-    } catch (error) {
-        console.error("Logout error:", error.message);
-        return { success: false, error: error.message };
-    }
-};
-
-// Function to get the current user from localStorage
-export const getCurrentUser = () => {
-    const user = localStorage.getItem("user");
-    return user ? JSON.parse(user) : null;
-};
-
-// Listen for auth state changes and store user info
-onAuthStateChanged(auth, async (user) => {
-    try {
-        if (user) {
-            const idToken = await user.getIdToken();
-
-            const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ idToken }),
-                credentials: "include", // Use cookies for authentication
-            });
-
-            if (!response.ok) {
-                throw new Error("Failed to authenticate user");
-            }
-
-            const data = await response.json();
-
-            // Validate user data before storing
-            if (data.user && data.user.uid) {
-                localStorage.setItem("user", JSON.stringify(data.user));
-            } else {
-                console.error("Invalid user data received from backend");
-            }
-        } else {
-            localStorage.removeItem("user");
-        }
-    } catch (error) {
-        console.error("Error in auth state change handler:", error);
-    }
-});

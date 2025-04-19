@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { BACKEND_URL } from "../config/config.js";
-
+import fetchWithAuth from "../util/FetchWithAuth.jsx";
 export default function Welcome() {
   const [text1, setText1] = useState("");
   const [text2, setText2] = useState("");
@@ -54,20 +54,11 @@ export default function Welcome() {
         return;
       }
   
-      const user = JSON.parse(localStorage.getItem("user"));
-      const token = user?.idToken;
-      
-      if (!token) {
-        setError("Authentication failed. Please log in again.");
-        return;
-      }
-  
       try {
-        const response = await fetch(`${BACKEND_URL}/api/user/update-username`, {
+        const response = await fetchWithAuth(`${BACKEND_URL}/api/user/update-username`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ username }),
         });
@@ -75,6 +66,9 @@ export default function Welcome() {
         const data = await response.json();
   
         if (response.ok) {
+          const user = JSON.parse(localStorage.getItem("user")) || {};
+          user.username = username;
+          localStorage.setItem("user", JSON.stringify(user))
           navigate("/"); // Redirect to home after successful update
         } else {
           setError(data.error || "Failed to update username");

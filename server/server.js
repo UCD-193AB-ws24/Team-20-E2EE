@@ -4,14 +4,13 @@ import dotenv from 'dotenv';
 import { createServer } from "http";
 import { connectDB } from "./mongo/connection.js";
 import { initializeSocket } from "./socketManager.js";
-
+import cookieParser from "cookie-parser";
 // Import routes
 import authRoutes from "./routes/auth.routes.js";
 import messageRoutes from "./routes/message.routes.js";
 import userRoutes from "./routes/user.routes.js";
 
 dotenv.config();
-console.log("MongoDB URI in server.js:", process.env.ATLAS_URI);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -34,6 +33,7 @@ const initializeApp = async () => {
 };
 
 // Middleware setup
+app.use(cookieParser());
 app.use(express.json());
 app.use(
     cors({

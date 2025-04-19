@@ -1,29 +1,21 @@
 import { BACKEND_URL } from '../config/config.js';
-
+import fetchWithAuth from '../util/FetchWithAuth.jsx';
 // Get authenticated user's friend list
-export const getFriendList = async (token) => {
-  const response = await fetch(`${BACKEND_URL}/api/user/friendList`, {
-    method: 'GET',
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+export const getFriendList = async () => {
+  const response = await fetchWithAuth(`${BACKEND_URL}/api/user/friendList`);
   
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to fetch friend list');
   }
+  const data = response.json();
   
-  return response.json();
+  return data;
 };
 
 // Get all friend requests for authenticated user
-export const getFriendRequests = async (token) => {
-  const response = await fetch(`${BACKEND_URL}/api/user/friendRequestList`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+export const getFriendRequests = async () => {
+  const response = await fetchWithAuth(`${BACKEND_URL}/api/user/friendRequestList`);
   
   if (!response.ok) {
     const error = await response.json();
@@ -34,12 +26,11 @@ export const getFriendRequests = async (token) => {
 };
 
 // Send a friend request to a user
-export const sendFriendRequest = async (token, recipientUsername) => {
-  const response = await fetch(`${BACKEND_URL}/api/user/send-friend-request`, {
+export const sendFriendRequest = async (recipientUsername) => {
+  const response = await fetchWithAuth(`${BACKEND_URL}/api/user/send-friend-request`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ recipientUsername }),
   });
@@ -53,12 +44,11 @@ export const sendFriendRequest = async (token, recipientUsername) => {
 };
 
 // Accept a friend request
-export const acceptFriendRequest = async (token, friendUsername) => {
-  const response = await fetch(`${BACKEND_URL}/api/user/accept-friend-request`, {
+export const acceptFriendRequest = async (friendUsername) => {
+  const response = await fetchWithAuth(`${BACKEND_URL}/api/user/accept-friend-request`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ friendUsername }),
   });
@@ -72,12 +62,11 @@ export const acceptFriendRequest = async (token, friendUsername) => {
 };
 
 // Delete/decline a friend request
-export const deleteFriendRequest = async (token, friendUsername) => {
-  const response = await fetch(`${BACKEND_URL}/api/user/delete-friend-request`, {
+export const deleteFriendRequest = async (friendUsername) => {
+  const response = await fetchWithAuth(`${BACKEND_URL}/api/user/delete-friend-request`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ friendUsername }),
   });
@@ -91,12 +80,11 @@ export const deleteFriendRequest = async (token, friendUsername) => {
 };
 
 // Remove a user from friends list
-export const unfriendUser = async (token, friendUsername) => {
-  const response = await fetch(`${BACKEND_URL}/api/user/unfriend`, {
+export const unfriendUser = async (friendUsername) => {
+  const response = await fetchWithAuth(`${BACKEND_URL}/api/user/unfriend`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ friendUsername }),
   });
@@ -111,7 +99,7 @@ export const unfriendUser = async (token, friendUsername) => {
 
 // Search for users by username
 export const searchUsers = async (query) => {
-  const response = await fetch(`${BACKEND_URL}/api/user/searchUser?username=${query}`);
+  const response = await fetchWithAuth(`${BACKEND_URL}/api/user/searchUser?username=${query}`);
   
   if (!response.ok) {
     const error = await response.json();
