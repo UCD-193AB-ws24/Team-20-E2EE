@@ -28,7 +28,7 @@ export const AppProvider = ({ children }) => {
 
   // Preload avatars after the user logs in
   useEffect(() => {
-    if (!currentUser?.idToken) return;
+    if (!currentUser?.uid) return;
 
     const preloadAvatars = async () => {
       try {

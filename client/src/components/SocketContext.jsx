@@ -15,12 +15,12 @@ export const SocketProvider = ({ children }) => {
   useEffect(() => {
     console.log('SocketProvider initializing');
     const user = JSON.parse(localStorage.getItem('user'));
-
+    console.log('Current user from localStorage:', currentUser);
     if (currentUser) {
       try {
         // Initialize the socket connection
         console.log('Initializing socket from context');
-        initializeSocket(user.idToken, {
+        initializeSocket({
           onConnect: () => {
             console.log('Socket connected successfully');
             setSocketReady(true);

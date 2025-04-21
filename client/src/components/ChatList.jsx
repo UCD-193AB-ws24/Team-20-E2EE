@@ -26,9 +26,9 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
 
 
   // Load message previews for each friend
-  const loadMessagePreviews = async (token) => {
+  const loadMessagePreviews = async () => {
     try {
-      const data = await getAllMessagePreviews(token);
+      const data = await getAllMessagePreviews();
       const previews = {};
       
       (data.previews || []).forEach(preview => {
@@ -62,7 +62,7 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
         setFriends(friendsWithAvatars);
         
         // Load message previews
-        await loadMessagePreviews(token);
+        await loadMessagePreviews();
       } catch (err) {
         console.error("Error loading friends:", err);
       } finally {

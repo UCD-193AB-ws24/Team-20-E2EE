@@ -18,13 +18,15 @@ export const initializeSocket = (token, callbacks = {}) => {
   try {
     socket = io(BACKEND_URL, {
       autoConnect: false,
-      auth: { token },
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       timeout: 20000,
-    });
+      withCredentials: true,
+    }
+   
+    );
 
     // Connection handlers
     socket.on('connect', () => {

@@ -1,6 +1,6 @@
 import { Server } from "socket.io";
 import { connectDB } from "./mongo/connection.js";
-import admin from "./firebaseAdmin.js";
+import jwt from "jsonwebtoken";
 
 const onlineUsers = new Map(); // { uid: socketId }
 const socketToUser = new Map(); // { socketId: uid }
@@ -19,12 +19,22 @@ export const initializeSocket = (httpServer) => {
 
   io.use(async (socket, next) => {
     try {
-      const token = socket.handshake.auth.token;
-      if (!token) {
+
+      const rawCookies = socket.handshake.headers.cookie;
+      const refreshToken = rawCookies
+      .split(';')
+      .map(c => c.trim())
+      .find(c => c.startsWith('refreshToken='))
+      ?.split('=')[1];  
+      
+      console.log("Socket authentication token:", refreshToken);
+      if (!refreshToken) {
         return next(new Error("Authentication error: No token provided"));
       }
 
-      const decodedToken = await admin.auth().verifyIdToken(token);
+      // Verify access_token
+      const decodedToken = jwt.verify(refreshToken, process.env.JWT_REFRESH_TOKEN_SECRET);
+
       socket.user = decodedToken;
       next();
     } catch (error) {
