@@ -1,5 +1,6 @@
 import { KeyHelper } from '@privacyresearch/libsignal-protocol-typescript';
 import { storeKeys } from './keyStorage';
+import { getDeviceId } from '../deviceId';
 
 /**
  * The number of one-time pre-keys to generate
@@ -99,6 +100,7 @@ export function createKeyBundle(keys) {
   // Create the bundle with only public keys and necessary information
   return {
     uid: keys.uid,
+    deviceId: getDeviceId(),
     registrationId,
     identityPubKey: arrayBufferToBase64(identityKeyPair.pubKey),
     signedPreKeyId: signedPreKey.keyId,

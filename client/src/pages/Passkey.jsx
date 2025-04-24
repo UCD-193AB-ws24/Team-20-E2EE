@@ -2,11 +2,13 @@ import React from "react";
 import { CorbadoAuth } from "@corbado/react";
 import { BACKEND_URL } from "../config/config";
 import { useNavigate } from "react-router-dom";
-import { generateSignalProtocolKeys, createKeyBundle } from "../util/encryption";
-import { uploadKeyBundle } from "../api/keyBundle";
+import { generateSignalProtocolKeys, createKeyBundle, getKeys } from "../util/encryption";
+import { uploadKeyBundle, checkKeyBundle } from "../api/keyBundle";
+import { getDeviceId } from "../util/deviceId";
 
 const Passkey = () => {
   const navigate = useNavigate();
+  
   // Function to get the email from local storage
   const getEmailFromLocalStorage = () => {
     return new Promise((resolve) => {
@@ -19,63 +21,72 @@ const Passkey = () => {
   };
   
   const handleLogin = async () => {
-      const email = await getEmailFromLocalStorage();
-      // This function will be called when the user is successfully logged in
-      try {
-        const response = await fetch(`${BACKEND_URL}/api/auth/corbado-login`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email }),
-          credentials: "include", // include cookies if needed
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          localStorage.setItem("user", JSON.stringify(data.user));
-          
-          // Check if key generation is needed
-          if (data.user.needsKeyBundle) {
-            await setupEncryptionKeys(data.user.uid);
-          }
-          
-          window.location.href = "/";
-        } else {
-          console.error("Login failed:", data);
-        }
-      } catch (err) {
-        console.error("Request error:", err);
-      }
-  };
-  
-  // Function to set up encryption keys
-  const setupEncryptionKeys = async (userId) => {
+    const email = await getEmailFromLocalStorage();
+    // This function will be called when the user is successfully logged in
     try {
-      console.log('Generating new encryption keys');
-      // Generate Signal Protocol keys for the user
-      const keys = await generateSignalProtocolKeys(userId);
-      
-      // Create key bundle with public keys only
-      const keyBundle = createKeyBundle(keys);
-      
-      // Upload the key bundle to the server
-      const result = await uploadKeyBundle(keyBundle);
-      
-      if (result.success) {
-        console.log('Key bundle uploaded successfully');
-        // Update the user data in localStorage to reflect that key bundle is now set
-        const user = JSON.parse(localStorage.getItem("user"));
-        if (user) {
-          user.needsKeyBundle = false;
-          localStorage.setItem("user", JSON.stringify(user));
-        }
+      const response = await fetch(`${BACKEND_URL}/api/auth/corbado-login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, deviceId: getDeviceId() }), // Add device ID to login request
+        credentials: "include", // include cookies if needed
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        localStorage.setItem("user", JSON.stringify(data.user));
+        
+        // Check if key generation is needed for this device
+        const setupEncryptionKeys = async () => {
+          try {
+            // First check if this device needs a key bundle
+            const deviceStatus = await checkKeyBundle();
+            
+            // If server says we need a key bundle or user flag indicates need
+            if (deviceStatus.needsKeyBundle || data.user.needsKeyBundle) {
+              console.log('Generating new encryption keys for device');
+              const keys = await generateSignalProtocolKeys(data.user.uid);
+              const keyBundle = createKeyBundle(keys);
+              const result = await uploadKeyBundle(keyBundle);
+              
+              if (result.success) {
+                console.log('Key bundle uploaded successfully from passkey login');
+                // Update user data in localStorage
+                const user = JSON.parse(localStorage.getItem("user"));
+                if (user) {
+                  user.needsKeyBundle = false;
+                  localStorage.setItem("user", JSON.stringify(user));
+                }
+              } else {
+                console.error('Failed to upload key bundle:', result.error);
+              }
+            } else {
+              // Check if we have keys locally
+              const existingKeys = await getKeys(data.user.uid);
+              if (!existingKeys) {
+                console.log('No local keys found, generating for local use only');
+                // Generate keys for local use only, don't upload
+                await generateSignalProtocolKeys(data.user.uid);
+              } else {
+                console.log('Using existing local encryption keys');
+              }
+            }
+          } catch (error) {
+            console.error('Error setting up encryption keys:', error);
+          }
+        };
+        
+        await setupEncryptionKeys();
+        
+        // Navigate to home page after setting up keys
+        navigate("/");
       } else {
-        console.error('Failed to upload key bundle:', result.error);
+        console.error("Login failed:", data);
       }
-    } catch (error) {
-      console.error('Error setting up encryption keys:', error);
+    } catch (err) {
+      console.error("Request error:", err);
     }
   };
 

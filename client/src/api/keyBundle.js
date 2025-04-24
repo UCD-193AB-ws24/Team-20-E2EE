@@ -1,10 +1,11 @@
 import { BACKEND_URL } from "../config/config";
+import { getDeviceId } from "../util/deviceId";
 
 // Upload the user's key bundle to the server
-export const uploadKeyBundle = async (keyBundle) => {
+export const uploadKeyBundle = async (keyBundle, forceOverwrite) => {
   try {
     // Convert ArrayBuffer to base64 for JSON transport
-    const bundle = { ...keyBundle };
+    const bundle = { ...keyBundle, forceOverwrite };
 
     const response = await fetch(`${BACKEND_URL}/api/keys/store`, {
       method: 'POST',
@@ -54,3 +55,50 @@ export const fetchKeyBundle = async (username) => {
     return { success: false, error: error.message };
   }
 };
+
+// Check if a key bundle exists for the current device
+export const checkKeyBundle = async () => {
+  try {
+    const deviceId = getDeviceId();
+    const response = await fetch(`${BACKEND_URL}/api/keys/check?deviceId=${deviceId}`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to check key bundle status');
+    }
+
+    return { success: true, needsKeyBundle: data.needsKeyBundle };
+  } catch (error) {
+    console.error('Error checking key bundle status:', error);
+    // Default to generating a new key bundle on error
+    return { success: false, needsKeyBundle: true, error: error.message };
+  }
+};
+
+export const checkDeviceKeyConsistency = async () => {
+    try {
+      const deviceId = getDeviceId();
+      const response = await fetch(`${BACKEND_URL}/api/keys/device-check?deviceId=${deviceId}`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to check device key consistency');
+      }
+  
+      const data = await response.json();
+      return { 
+        hasKeysOnServer: data.hasKeysOnServer,
+        success: true 
+      };
+    } catch (error) {
+      console.error('Error checking device key consistency:', error);
+      // If we can't check, assume keys don't exist to be safe
+      return { hasKeysOnServer: false, success: false };
+    }
+  };

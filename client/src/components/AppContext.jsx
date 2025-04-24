@@ -6,6 +6,8 @@ import { darkTheme, lightTheme } from '../config/themes';
 import getCurrentUser from '../util/getCurrentUser.js';
 import { generateSignalProtocolKeys, createKeyBundle, getKeys } from '../util/encryption';
 import { uploadKeyBundle } from '../api/keyBundle';
+import { getDeviceId } from '../util/deviceId';
+import { checkKeyBundle, checkDeviceKeyConsistency } from '../api/keyBundle';
 
 const AppContext = createContext();
 
@@ -32,23 +34,21 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     if (!currentUser?.uid) return;
     
-    // Check if key generation is needed
-    if (currentUser.needsKeyBundle) {
-      const setupEncryptionKeys = async () => {
-        try {
-          console.log('Generating new encryption keys');
-          // Generate Signal Protocol keys for the user
+    const setupKeys = async () => {
+      try {
+        // First check if this device needs a key bundle
+        const deviceStatus = await checkKeyBundle();
+        
+        // If server says we need a key bundle
+        if (deviceStatus.needsKeyBundle || currentUser.needsKeyBundle) {
+          console.log('Generating new encryption keys for device');
           const keys = await generateSignalProtocolKeys(currentUser.uid);
-          
-          // Create key bundle with public keys only
           const keyBundle = createKeyBundle(keys);
-          
-          // Upload the key bundle to the server
           const result = await uploadKeyBundle(keyBundle);
           
           if (result.success) {
             console.log('Key bundle uploaded successfully');
-            // Clear the needs key bundle flag
+            // Update user data in localStorage
             const user = getCurrentUser();
             if (user) {
               user.needsKeyBundle = false;
@@ -57,33 +57,38 @@ export const AppProvider = ({ children }) => {
           } else {
             console.error('Failed to upload key bundle:', result.error);
           }
-        } catch (error) {
-          console.error('Error setting up encryption keys:', error);
-        }
-      };
-
-      setupEncryptionKeys();
-    } else {
-      // Check if we have keys locally
-      const checkExistingKeys = async () => {
-        try {
+        } else {
+          // Check if we have keys locally 
           const existingKeys = await getKeys(currentUser.uid);
           if (!existingKeys) {
-            console.log('No local keys found, generating new keys');
-            // Generate fresh keys since they're not found locally
-            const keys = await generateSignalProtocolKeys(currentUser.uid);
-            const keyBundle = createKeyBundle(keys);
-            await uploadKeyBundle(keyBundle);
+            console.log('No local keys found, checking if keys exist on server for this device');
+            
+            // Make a dedicated API call to see if keys exist for this specific device
+            const deviceKeyCheck = await checkDeviceKeyConsistency();
+            
+            if (deviceKeyCheck.hasKeysOnServer) {
+              // Keys exist on server but not locally - inconsistent state!
+              console.log('Keys exist on server but not locally - regenerating and re-uploading');
+              const keys = await generateSignalProtocolKeys(currentUser.uid);
+              const keyBundle = createKeyBundle(keys);
+              await uploadKeyBundle(keyBundle, true); // true flag for overwriting existing keys
+            } else {
+              // No keys on server for this device
+              console.log('No keys found on server for this device either, generating new key bundle');
+              const keys = await generateSignalProtocolKeys(currentUser.uid);
+              const keyBundle = createKeyBundle(keys);
+              await uploadKeyBundle(keyBundle);
+            }
           } else {
             console.log('Using existing local encryption keys');
           }
-        } catch (error) {
-          console.error('Error checking existing keys:', error);
         }
-      };
-      
-      checkExistingKeys();
-    }
+      } catch (error) {
+        console.error('Error in encryption setup:', error);
+      }
+    };
+    
+    setupKeys();
   }, [currentUser]);
 
   // Preload avatars after the user logs in

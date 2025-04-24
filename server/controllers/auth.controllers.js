@@ -112,7 +112,10 @@ export const corbadoLogin = async (req, res) => {
     });
 
     const keyBundlesCollection = db.collection("keyBundles");
-    const keyBundleExists = await keyBundlesCollection.findOne({ uid: user.uid });
+    const keyBundleExists = await keyBundlesCollection.findOne({ 
+      uid: user.uid,
+      deviceId: deviceId 
+    });
 
     const userData = {
       uid: user.uid,
