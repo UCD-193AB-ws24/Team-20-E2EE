@@ -56,7 +56,7 @@ describe('Signal Protocol Key Generation', () => {
     expect(bundle.identityPubKey).toBeDefined();
     expect(bundle.signedPreKeyId).toBe(1);
     expect(bundle.signedPreKeyPub).toBeDefined();
-    expect(bundle.signedPreKeySignature instanceof ArrayBuffer).toBe(true);
+    expect(typeof bundle.signedPreKeySignature).toBe('string');
     expect(bundle.preKeys.length).toBe(100);
     
     // Ensure no private keys are included
