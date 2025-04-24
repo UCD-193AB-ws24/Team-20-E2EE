@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import NavBar from './NavBar';
 import { ChatWindow, MessageInput, ProfileModal, useSocket } from './index';
 import { Archive, Friends, Requests } from '../pages';
-import { 
+import {
   registerMessageListener, registerMessageSentListener,
   removeListener, sendTypingStatus, registerTypingListener
 } from '../api/socket';
 import { getChatHistory, sendPrivateMessage } from '../api/messages';
 import { useAppContext } from './AppContext';
+import { BACKEND_URL } from '../config/config';
+
 
 // Initialize with empty data structure
 const initialMessagesState = {};
@@ -22,13 +24,15 @@ export default function Layout({ children }) {
   const [typingTimeout, setTypingTimeout] = useState(null);
   const { socketReady } = useSocket();
   const { appReady, theme } = useAppContext();
+  const prevSelectedUser = useRef(null);
+  const hasMounted = useRef(false);
 
   // Get the auth token from localStorage
   const getToken = () => {
     const user = JSON.parse(localStorage.getItem('user'));
     return user?.idToken;
   };
- 
+
   // Get initial view on mount
   useEffect(() => {
     const path = location.pathname;
@@ -43,31 +47,93 @@ export default function Layout({ children }) {
     }
   });
 
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user?.idToken) return;
+
+    const shouldDelete =
+      hasMounted.current &&
+      prevSelectedUser.current !== null &&
+      selectedUser !== prevSelectedUser.current;
+
+    console.log(`📤 Archiving messages with ${prevSelectedUser.current}...`);
+
+    const deleteMessages = async () => {
+      if (shouldDelete) {
+        try {
+          await fetch(`${BACKEND_URL}/api/message/vanish`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${user.idToken}`
+            },
+            body: JSON.stringify({
+              username: prevSelectedUser.current
+            })
+          });
+          console.log(`Archived messages with ${prevSelectedUser.current}`);
+        } catch (err) {
+          console.error('Error archiving messages:', err);
+        }
+      }
+
+      prevSelectedUser.current = selectedUser;
+      hasMounted.current = true;
+    };
+
+    deleteMessages();
+  }, [selectedUser]);
+
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('user'));
+
+    const handleBeforeUnload = async (event) => {
+      if (user?.idToken && selectedUser) {
+        navigator.sendBeacon(
+          `${BACKEND_URL}/api/message/vanish`,
+          JSON.stringify({
+            username: selectedUser
+          })
+        );
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [selectedUser]);
+
+
+
+
   // Load chat history when selected user changes
   useEffect(() => {
     const loadChatHistory = async () => {
       if (!selectedUser) return;
-      
+
       try {
         const user = JSON.parse(localStorage.getItem('user'));
         if (!user?.idToken) return;
-        
+
+        console.log(`📨 Loading chat history with ${selectedUser}...`);
+
         // Always fetch the chat history from the server when a user is selected
         const { messages: chatHistory } = await getChatHistory(user.idToken, selectedUser);
-        
+
         // Update messages for this user
         setMessagesByUser(prev => ({
           ...prev,
           [selectedUser]: chatHistory || []
         }));
-        
+
         // Set current messages
         setMessages(chatHistory || []);
       } catch (error) {
         console.error('Error loading chat history:', error);
       }
     };
-    
+
     if (view === 'chat' || view === 'friends') {
       loadChatHistory();
     }
@@ -82,7 +148,7 @@ export default function Layout({ children }) {
     // Handle incoming messages
     registerMessageListener((message) => {
       const { sender, text, time } = message;
-      
+
       // Add message to the appropriate user's message list
       setMessagesByUser(prev => {
         const userMessages = prev[sender] || [];
@@ -91,17 +157,17 @@ export default function Layout({ children }) {
           [sender]: [...userMessages, { sender, text, time }]
         };
       });
-      
+
       // If this is from the currently selected user, update current messages
       if (sender === selectedUser) {
         setMessages(prev => [...prev, { sender, text, time }]);
       }
     });
-    
+
     // Handle confirmation of sent messages
     registerMessageSentListener((message) => {
       const { recipient, text, time } = message;
-      
+
       // Add message to the appropriate user's message list
       setMessagesByUser(prev => {
         const userMessages = prev[recipient] || [];
@@ -110,13 +176,13 @@ export default function Layout({ children }) {
           [recipient]: [...userMessages, { sender: 'Me', text, time }]
         };
       });
-      
+
       // If this is for the currently selected user, update current messages
       if (recipient === selectedUser) {
         setMessages(prev => [...prev, { sender: 'Me', text, time }]);
       }
     });
-    
+
     // Handle typing indicators
     registerTypingListener((data) => {
       const { username, isTyping: typing } = data;
@@ -124,7 +190,7 @@ export default function Layout({ children }) {
         ...prev,
         [username]: typing
       }));
-      
+
       // Clear typing indicator after 3 seconds of inactivity
       if (typing) {
         setTimeout(() => {
@@ -135,7 +201,7 @@ export default function Layout({ children }) {
         }, 3000);
       }
     });
-    
+
     // Clean up listeners on unmount
     return () => {
       removeListener('receive_message');
@@ -147,18 +213,18 @@ export default function Layout({ children }) {
   // Handle typing indicator
   const handleTyping = useCallback(() => {
     if (!selectedUser) return;
-    
+
     // Clear previous timeout
     if (typingTimeout) clearTimeout(typingTimeout);
-    
+
     // Send typing indicator
     sendTypingStatus(selectedUser, true);
-    
+
     // Set timeout to stop typing indicator
     const timeout = setTimeout(() => {
       sendTypingStatus(selectedUser, false);
     }, 3000);
-    
+
     setTypingTimeout(timeout);
   }, [selectedUser, typingTimeout]);
 
@@ -166,9 +232,9 @@ export default function Layout({ children }) {
   const sendMessage = async (text) => {
     if (!selectedUser || !text.trim()) return;
     const token = getToken();
-    
+
     sendPrivateMessage(token, selectedUser, text);
-    
+
     // Clear typing indicator
     if (typingTimeout) {
       clearTimeout(typingTimeout);
@@ -190,11 +256,11 @@ export default function Layout({ children }) {
 
   return (
     <div
-     className="h-screen flex"
-     style={{
-      backgroundColor: theme.colors.background.primary,
-      color: theme.colors.text.primary
-     }}
+      className="h-screen flex"
+      style={{
+        backgroundColor: theme.colors.background.primary,
+        color: theme.colors.text.primary
+      }}
     >
       {/* Navigation Bar */}
       <NavBar onProfileClick={() => setShowProfileModal(true)} setView={setView} />
@@ -219,24 +285,24 @@ export default function Layout({ children }) {
       </div>
 
       {/* Chat Window */}
-      <div 
+      <div
         className="flex-1 flex flex-col shadow-lg rounded-lg m-3 ml-0"
-        style={{backgroundColor: theme.colors.background.secondary}}
+        style={{ backgroundColor: theme.colors.background.secondary }}
       >
         <div className="p-4">
           <h2 className="text-xl font-bold">
             {selectedUser || 'Select a user to start chatting'}
             {selectedUser && view === 'archive' && ' (Archive)'}
-            {selectedUser && isTyping[selectedUser] && 
+            {selectedUser && isTyping[selectedUser] &&
               <span className="ml-2 text-sm text-gray-500 italic">typing...</span>
             }
           </h2>
         </div>
-        <ChatWindow 
+        <ChatWindow
           messages={messages}
           selectedUser={selectedUser}
         />
-        <MessageInput 
+        <MessageInput
           sendMessage={sendMessage}
           onTyping={handleTyping}
           disabled={!selectedUser || view === 'archive'}
