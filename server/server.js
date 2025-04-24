@@ -9,6 +9,7 @@ import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth.routes.js";
 import messageRoutes from "./routes/message.routes.js";
 import userRoutes from "./routes/user.routes.js";
+import keyBundleRoutes from './routes/keyBundle.routes.js';
 
 dotenv.config();
 
@@ -48,6 +49,7 @@ app.use(
 app.use("/api/message", messageRoutes);
 app.use("/api/auth", authRoutes);  
 app.use("/api/user", userRoutes);
+app.use('/api/keys', keyBundleRoutes);
 
 // Initialize the app and start the server
 initializeApp().then(() => {
