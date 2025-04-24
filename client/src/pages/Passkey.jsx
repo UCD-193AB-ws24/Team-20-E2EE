@@ -2,6 +2,8 @@ import React from "react";
 import { CorbadoAuth } from "@corbado/react";
 import { BACKEND_URL } from "../config/config";
 import { useNavigate } from "react-router-dom";
+import { generateSignalProtocolKeys, createKeyBundle } from "../util/encryption";
+import { uploadKeyBundle } from "../api/keyBundle";
 
 const Passkey = () => {
   const navigate = useNavigate();
@@ -33,6 +35,12 @@ const Passkey = () => {
 
         if (response.ok) {
           localStorage.setItem("user", JSON.stringify(data.user));
+          
+          // Check if key generation is needed
+          if (data.user.needsKeyBundle) {
+            await setupEncryptionKeys(data.user.uid);
+          }
+          
           window.location.href = "/";
         } else {
           console.error("Login failed:", data);
@@ -40,6 +48,35 @@ const Passkey = () => {
       } catch (err) {
         console.error("Request error:", err);
       }
+  };
+  
+  // Function to set up encryption keys
+  const setupEncryptionKeys = async (userId) => {
+    try {
+      console.log('Generating new encryption keys');
+      // Generate Signal Protocol keys for the user
+      const keys = await generateSignalProtocolKeys(userId);
+      
+      // Create key bundle with public keys only
+      const keyBundle = createKeyBundle(keys);
+      
+      // Upload the key bundle to the server
+      const result = await uploadKeyBundle(keyBundle);
+      
+      if (result.success) {
+        console.log('Key bundle uploaded successfully');
+        // Update the user data in localStorage to reflect that key bundle is now set
+        const user = JSON.parse(localStorage.getItem("user"));
+        if (user) {
+          user.needsKeyBundle = false;
+          localStorage.setItem("user", JSON.stringify(user));
+        }
+      } else {
+        console.error('Failed to upload key bundle:', result.error);
+      }
+    } catch (error) {
+      console.error('Error setting up encryption keys:', error);
+    }
   };
 
   return (

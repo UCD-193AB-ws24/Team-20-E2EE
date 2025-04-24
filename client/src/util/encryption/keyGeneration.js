@@ -34,6 +34,7 @@ export async function generateSignalProtocolKeys(userId) {
     
     // Bundle all keys together
     const keys = {
+      uid: userId, 
       identityKeyPair,
       registrationId,
       signedPreKey,
@@ -68,6 +69,20 @@ async function generatePreKeys(startId, count) {
 }
 
 /**
+ * Converts an ArrayBuffer to a Base64 string
+ * @param {ArrayBuffer} buffer - The buffer to convert
+ * @returns {string} Base64 encoded string
+ */
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return window.btoa(binary);
+}
+
+/**
  * Creates a key bundle suitable for uploading to the server
  * @param {import('./types').KeyGenerationResult} keys - The generated keys
  * @returns {import('./types').KeyBundle} Bundle of public keys for the server
@@ -75,19 +90,20 @@ async function generatePreKeys(startId, count) {
 export function createKeyBundle(keys) {
   const { identityKeyPair, registrationId, signedPreKey, preKeys } = keys;
   
-  // Format pre-keys for the bundle (public keys only)
+  // Format pre-keys for the bundle (public keys only, converted to base64)
   const preKeysPublic = preKeys.map(pk => ({
     keyId: pk.keyId,
-    pubKey: pk.keyPair.pubKey
+    pubKey: arrayBufferToBase64(pk.keyPair.pubKey)
   }));
   
   // Create the bundle with only public keys and necessary information
   return {
+    uid: keys.uid,
     registrationId,
-    identityPubKey: identityKeyPair.pubKey,
+    identityPubKey: arrayBufferToBase64(identityKeyPair.pubKey),
     signedPreKeyId: signedPreKey.keyId,
-    signedPreKeyPub: signedPreKey.keyPair.pubKey,
-    signedPreKeySignature: signedPreKey.signature,
+    signedPreKeyPub: arrayBufferToBase64(signedPreKey.keyPair.pubKey),
+    signedPreKeySignature: arrayBufferToBase64(signedPreKey.signature),
     preKeys: preKeysPublic
   };
 }

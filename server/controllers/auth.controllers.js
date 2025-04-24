@@ -111,6 +111,9 @@ export const corbadoLogin = async (req, res) => {
       maxAge: 604800000,
     });
 
+    const keyBundlesCollection = db.collection("keyBundles");
+    const keyBundleExists = await keyBundlesCollection.findOne({ uid: user.uid });
+
     const userData = {
       uid: user.uid,
       email,
@@ -118,6 +121,7 @@ export const corbadoLogin = async (req, res) => {
       emailVerified: true,
       loginMethod: "corbado",
       description: user.description,
+      needsKeyBundle: !keyBundleExists,
     };
 
     if (!user.username) {

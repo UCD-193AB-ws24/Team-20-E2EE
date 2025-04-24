@@ -5,15 +5,6 @@ export const uploadKeyBundle = async (keyBundle) => {
   try {
     // Convert ArrayBuffer to base64 for JSON transport
     const bundle = { ...keyBundle };
-    
-    if (bundle.signedPreKeySignature instanceof ArrayBuffer) {
-      const bytes = new Uint8Array(bundle.signedPreKeySignature);
-      let binary = '';
-      for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
-      }
-      bundle.signedPreKeySignature = btoa(binary);
-    }
 
     const response = await fetch(`${BACKEND_URL}/api/keys/store`, {
       method: 'POST',

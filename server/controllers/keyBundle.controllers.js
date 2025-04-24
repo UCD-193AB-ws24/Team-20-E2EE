@@ -18,17 +18,6 @@ export const storeKeyBundle = async (req, res) => {
       return res.status(400).json({ error: "Invalid key bundle format" });
     }
 
-    // Check if we received an ArrayBuffer or a base64 encoded string for the signature
-    if (typeof keyBundle.signedPreKeySignature === 'string') {
-      // Convert base64 to ArrayBuffer
-      const binaryString = atob(keyBundle.signedPreKeySignature);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-      keyBundle.signedPreKeySignature = bytes.buffer;
-    }
-
     const db = await connectDB();
     const keyBundlesCollection = db.collection("keyBundles");
 

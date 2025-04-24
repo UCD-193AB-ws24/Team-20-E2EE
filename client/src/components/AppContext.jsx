@@ -4,6 +4,8 @@ import { getAvatar } from '../api/user';
 import { loginUser } from '../api/auth';
 import { darkTheme, lightTheme } from '../config/themes';
 import getCurrentUser from '../util/getCurrentUser.js';
+import { generateSignalProtocolKeys, createKeyBundle, getKeys } from '../util/encryption';
+import { uploadKeyBundle } from '../api/keyBundle';
 
 const AppContext = createContext();
 
@@ -25,6 +27,64 @@ export const AppProvider = ({ children }) => {
       setCurrentUser(storedUser);
     }
   }, []);
+
+  // Generate E2EE keys if needed after user logs in
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    
+    // Check if key generation is needed
+    if (currentUser.needsKeyBundle) {
+      const setupEncryptionKeys = async () => {
+        try {
+          console.log('Generating new encryption keys');
+          // Generate Signal Protocol keys for the user
+          const keys = await generateSignalProtocolKeys(currentUser.uid);
+          
+          // Create key bundle with public keys only
+          const keyBundle = createKeyBundle(keys);
+          
+          // Upload the key bundle to the server
+          const result = await uploadKeyBundle(keyBundle);
+          
+          if (result.success) {
+            console.log('Key bundle uploaded successfully');
+            // Clear the needs key bundle flag
+            const user = getCurrentUser();
+            if (user) {
+              user.needsKeyBundle = false;
+              localStorage.setItem('user', JSON.stringify(user));
+            }
+          } else {
+            console.error('Failed to upload key bundle:', result.error);
+          }
+        } catch (error) {
+          console.error('Error setting up encryption keys:', error);
+        }
+      };
+
+      setupEncryptionKeys();
+    } else {
+      // Check if we have keys locally
+      const checkExistingKeys = async () => {
+        try {
+          const existingKeys = await getKeys(currentUser.uid);
+          if (!existingKeys) {
+            console.log('No local keys found, generating new keys');
+            // Generate fresh keys since they're not found locally
+            const keys = await generateSignalProtocolKeys(currentUser.uid);
+            const keyBundle = createKeyBundle(keys);
+            await uploadKeyBundle(keyBundle);
+          } else {
+            console.log('Using existing local encryption keys');
+          }
+        } catch (error) {
+          console.error('Error checking existing keys:', error);
+        }
+      };
+      
+      checkExistingKeys();
+    }
+  }, [currentUser]);
 
   // Preload avatars after the user logs in
   useEffect(() => {

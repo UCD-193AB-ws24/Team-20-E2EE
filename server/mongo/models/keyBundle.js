@@ -24,7 +24,7 @@ const keyBundleSchema = new mongoose.Schema({
     required: true
   },
   signedPreKeySignature: {
-    type: Buffer,
+    type: String,
     required: true
   },
   preKeys: [{
