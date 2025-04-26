@@ -1,5 +1,5 @@
 import { BACKEND_URL } from '../config/config.js';
-import fetchWithAuth from '../util/FetchWithAuth.jsx';
+import fetchWithAuth from '../util/FetchWithAuth';
 // Get chat history between current user and another user
 export const getChatHistory = async (username) => {
   try {

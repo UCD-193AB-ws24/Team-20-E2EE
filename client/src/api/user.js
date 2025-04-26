@@ -1,5 +1,5 @@
 import { BACKEND_URL } from '../config/config.js';
-import fetchWithAuth from '../util/FetchWithAuth.jsx';
+import fetchWithAuth from '../util/FetchWithAuth';
 // Local module cache
 const avatarCache = {};
 

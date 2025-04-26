@@ -1,5 +1,6 @@
 import { BACKEND_URL } from "../config/config";
 import { getDeviceId } from "../util/deviceId";
+import fetchWithAuth from '../util/FetchWithAuth';
 
 // Upload the user's key bundle to the server
 export const uploadKeyBundle = async (keyBundle, forceOverwrite) => {
@@ -79,26 +80,54 @@ export const checkKeyBundle = async () => {
 };
 
 export const checkDeviceKeyConsistency = async () => {
-    try {
-      const deviceId = getDeviceId();
-      const response = await fetch(`${BACKEND_URL}/api/keys/device-check?deviceId=${deviceId}`, {
-        method: 'GET',
-        credentials: 'include',
-      });
-  
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to check device key consistency');
-      }
-  
-      const data = await response.json();
-      return { 
-        hasKeysOnServer: data.hasKeysOnServer,
-        success: true 
-      };
-    } catch (error) {
-      console.error('Error checking device key consistency:', error);
-      // If we can't check, assume keys don't exist to be safe
-      return { hasKeysOnServer: false, success: false };
+  try {
+    const deviceId = getDeviceId();
+    const response = await fetch(`${BACKEND_URL}/api/keys/device-check?deviceId=${deviceId}`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to check device key consistency');
     }
-  };
+
+    const data = await response.json();
+    return { 
+      hasKeysOnServer: data.hasKeysOnServer,
+      success: true 
+    };
+  } catch (error) {
+    console.error('Error checking device key consistency:', error);
+    // If we can't check, assume keys don't exist to be safe
+    return { hasKeysOnServer: false, success: false };
+  }
+};
+
+/**
+ * Fetches the key bundle for a specific user
+ * @param {string} userId - ID of the user whose key bundle is requested
+ * @returns {Promise<Object>} - The user's key bundle or error information
+ */
+export async function getContactKeyBundle(userId) {
+  try {
+    const response = await fetchWithAuth(`${BACKEND_URL}/api/keybundle/${userId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      console.error('Error fetching key bundle:', data.error);
+      return { success: false, error: data.error || 'Failed to fetch key bundle' };
+    }
+    
+    return { success: true, keyBundle: data.keyBundle };
+  } catch (error) {
+    console.error('Error in getContactKeyBundle:', error);
+    return { success: false, error: 'Network error while fetching key bundle' };
+  }
+}

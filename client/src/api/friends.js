@@ -1,5 +1,5 @@
 import { BACKEND_URL } from '../config/config.js';
-import fetchWithAuth from '../util/FetchWithAuth.jsx';
+import fetchWithAuth from '../util/FetchWithAuth';
 // Get authenticated user's friend list
 export const getFriendList = async () => {
   const response = await fetchWithAuth(`${BACKEND_URL}/api/user/friendList`);

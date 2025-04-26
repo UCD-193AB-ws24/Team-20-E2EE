@@ -1,6 +1,7 @@
 import { KeyHelper } from '@privacyresearch/libsignal-protocol-typescript';
 import { storeKeys } from './keyStorage';
 import { getDeviceId } from '../deviceId';
+import { base64ToArrayBuffer, arrayBufferToBase64 } from './encyrptionUtil';
 
 /**
  * The number of one-time pre-keys to generate
@@ -67,20 +68,6 @@ async function generatePreKeys(startId, count) {
   }
   
   return preKeys;
-}
-
-/**
- * Converts an ArrayBuffer to a Base64 string
- * @param {ArrayBuffer} buffer - The buffer to convert
- * @returns {string} Base64 encoded string
- */
-function arrayBufferToBase64(buffer) {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return window.btoa(binary);
 }
 
 /**
