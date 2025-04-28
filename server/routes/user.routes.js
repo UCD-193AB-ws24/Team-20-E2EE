@@ -11,7 +11,8 @@ import {
   updateDescription,
   updateAvatar,
   getAvatar,
-  unfriendUser
+  unfriendUser,
+  getFriendIdByUsername
 } from "../controllers/user.controllers.js";
 import { authenticateUser } from "../middlewares/authMiddleware.js"; // Import middleware
 
@@ -32,5 +33,6 @@ router.post("/delete-friend-request", authenticateUser, deleteFriendRequest);
 router.get("/friendList", authenticateUser, getFriendlist);
 router.get("/friendRequestList", authenticateUser, getFriendRequests);
 router.post("/unfriend", authenticateUser, unfriendUser);
+router.get("/friend-id", authenticateUser, getFriendIdByUsername);
 
 export default router;

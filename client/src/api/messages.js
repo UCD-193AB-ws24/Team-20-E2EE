@@ -14,8 +14,8 @@ export const getChatHistory = async (username) => {
       const error = await response.json();
       throw new Error(error.error || 'Failed to fetch chat history');
     }
-    
-    return await response.json();
+    const data = await response.json();
+    return data;
   } catch (error) {
     console.error('Error fetching chat history:', error);
     return { messages: [] };
@@ -59,7 +59,7 @@ export const sendPrivateMessage = async (recipientUsername, text) => {
       throw new Error(error.error || 'Failed to send message');
     }
 
-    return response.json();
+    return await response.json();
   } catch (error) {
     console.error('Error sending message', error);
     return;

@@ -24,15 +24,16 @@ export async function establishSession(userId, recipientId, recipientKeyBundle) 
       console.error('Local keys not found, cannot establish session');
       return false;
     }
-    
+    console.log("1");
     // Create a Signal Protocol store with our keys
     const store = await createSignalProtocolStore(userId, localKeys);
     
+    console.log("2");
     // Create address for the recipient (using deviceId from their bundle)
     const recipientAddress = new SignalProtocolAddress(
       recipientId, 
       recipientKeyBundle.deviceId
-    );
+    );  
     
     console.log(`Created recipient address for ${recipientId}:${recipientKeyBundle.deviceId}`);
     
@@ -41,8 +42,11 @@ export async function establishSession(userId, recipientId, recipientKeyBundle) 
       store,
       recipientAddress
     );
+
+
+    console.log("3");
     
-    // Format the recipient's prekey bundle for the session builder
+    //Format the recipient's prekey bundle for the session builder
     const preKeyBundle = {
       registrationId: recipientKeyBundle.registrationId,
       identityKey: base64ToArrayBuffer(recipientKeyBundle.identityPubKey),
@@ -57,6 +61,23 @@ export async function establishSession(userId, recipientId, recipientKeyBundle) 
         publicKey: base64ToArrayBuffer(recipientKeyBundle.preKeys[0].pubKey)
       }
     };
+
+    // const preKeyBundle = {
+    //   registrationId: recipientKeyBundle.registrationId,
+    //   identityKey: recipientKeyBundle.identityPubKey,
+    //   signedPreKey: {
+    //     keyId: recipientKeyBundle.signedPreKeyId,
+    //     publicKey: recipientKeyBundle.signedPreKeyPub,
+    //     signature: recipientKeyBundle.signedPreKeySignature
+    //   },
+    //   preKey: {
+    //     // Use the first available preKey from the bundle
+    //     keyId: recipientKeyBundle.preKeys[0].keyId,
+    //     publicKey: recipientKeyBundle.preKeys[0].pubKey
+    //   }
+    // };
+
+    // Call Mongodb to remove first element from prekey bundle
     
     console.log('Processing prekey bundle to establish session');
     

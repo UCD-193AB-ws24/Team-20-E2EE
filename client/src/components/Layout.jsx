@@ -8,6 +8,10 @@ import {
 } from '../api/socket';
 import { getChatHistory, sendPrivateMessage } from '../api/messages';
 import { useAppContext } from './AppContext';
+import getCurrentUser from '../util/getCurrentUser';
+import {establishSession} from '../util/encryption/sessionManager';
+import {getFriendIdByUsername} from '../api/friends';
+import {fetchKeyBundle} from '../api/keyBundle';
 
 // Initialize with empty data structure
 const initialMessagesState = {};
@@ -22,6 +26,9 @@ export default function Layout({ children }) {
   const [typingTimeout, setTypingTimeout] = useState(null);
   const { socketReady } = useSocket();
   const { appReady, theme } = useAppContext();
+  const user = getCurrentUser();
+  const userId = user?.uid;
+
 
   // Get the auth token from localStorage
   const getToken = () => {
@@ -52,7 +59,18 @@ export default function Layout({ children }) {
         
         // Always fetch the chat history from the server when a user is selected
         const { messages: chatHistory } = await getChatHistory(selectedUser);
+        console.log("Selcted user:", selectedUser);
+        const receipientId = await getFriendIdByUsername(selectedUser);
+        console.log("Recipient ID:", receipientId);
+        const receipientKeyBundle = await fetchKeyBundle(selectedUser);
         
+        console.log("Recipient Key Bundle:", receipientKeyBundle.keyBundle);
+
+        console.log("User ID:", userId);
+
+        const response = await establishSession(userId, receipientId, receipientKeyBundle.keyBundle);
+        console.log("Response from establishSession:", response);
+
         // Update messages for this user
         setMessagesByUser(prev => ({
           ...prev,

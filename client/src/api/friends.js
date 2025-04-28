@@ -108,3 +108,17 @@ export const searchUsers = async (query) => {
   
   return response.json();
 };
+
+export const getFriendIdByUsername = async (friendUsername) => {
+  const response = await fetchWithAuth(`${BACKEND_URL}/api/user/friend-id?username=${friendUsername}`, {method: 'GET'});
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to get friend ID');
+  }
+  const data = await response.json();
+
+  console.log('Friend ID:', data.friendId);
+  
+  return data.friendId;
+}
