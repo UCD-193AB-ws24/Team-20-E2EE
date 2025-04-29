@@ -1,133 +1,209 @@
 import { Direction } from '@privacyresearch/libsignal-protocol-typescript';
 
 /**
- * Creates a Signal Protocol store backed by localStorage
- * @param {string} userId - User ID for whom the store is created
- * @param {import('./types').KeyGenerationResult} keys - User's keys
- * @returns {Promise<Object>} - A store compatible with Signal Protocol library
+ * Convert ArrayBuffer to Base64 string.
+ */
+function arrayBufferToBase64(buffer) {
+  return btoa(String.fromCharCode(...new Uint8Array(buffer)));
+}
+
+/**
+ * Convert Base64 string to ArrayBuffer.
+ */
+function base64ToArrayBuffer(base64) {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
+/**
+ * Ensure input is properly Base64-encoded string.
+ */
+function ensureBase64(input) {
+  if (typeof input === 'string') return input;
+  if (input instanceof ArrayBuffer) return arrayBufferToBase64(input);
+  if (input instanceof Uint8Array) return arrayBufferToBase64(input.buffer);
+  throw new Error('Invalid input type for Base64 encoding');
+}
+
+/**
+ * Create a Signal Protocol store backed by localStorage.
+ * @param {string} userId
+ * @param {Object} keys
+ * @returns {Promise<Object>}
  */
 export async function createSignalProtocolStore(userId, keys) {
-  const SESSIONS_KEY = `${userId}_sessions`;
-  const IDENTITY_KEY = `${userId}_identityKeys`;
-  const PREKEYS_KEY = `${userId}_preKeys`;
-  const SIGNED_PREKEYS_KEY = `${userId}_signedPreKeys`;
+  const PREFIX = `${userId}_signal_store`;
+  const SESSION_KEY = `${PREFIX}_sessions`;
+  const IDENTITY_KEY = `${PREFIX}_identityKeys`;
+  const PREKEYS_KEY = `${PREFIX}_preKeys`;
+  const SIGNED_PREKEYS_KEY = `${PREFIX}_signedPreKeys`;
 
   function load(key) {
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : {};
+    const item = localStorage.getItem(key);
+    return item ? JSON.parse(item) : {};
   }
 
-  function save(key, obj) {
-    localStorage.setItem(key, JSON.stringify(obj));
+  function save(key, value) {
+    localStorage.setItem(key, JSON.stringify(value));
   }
 
-  // Initialize localStorage if not already
-  if (!localStorage.getItem(IDENTITY_KEY)) {
-    save(IDENTITY_KEY, {
-      [userId]: {
-        pub: keys.identityKeyPair.pubKey,
-        priv: keys.identityKeyPair.privKey
-      }
-    });
+  function getSessionKey(address) {
+    if (typeof address === "string") {
+      // Already session key
+      return address;
+    }
+    return `${address.getName()}:${address.getDeviceId()}`;
   }
 
-  if (!localStorage.getItem(PREKEYS_KEY)) {
+  // Initialize if not present
+  const identityData = load(IDENTITY_KEY);
+  if (!identityData[userId]) {
+    identityData[userId] = {
+      pub: ensureBase64(keys.identityKeyPair.pubKey),
+      priv: ensureBase64(keys.identityKeyPair.privKey)
+    };
+    save(IDENTITY_KEY, identityData);
+  }
+
+  const preKeysData = load(PREKEYS_KEY);
+  if (Object.keys(preKeysData).length === 0) {
     const preKeyObj = {};
     keys.preKeys.forEach(pk => {
-      preKeyObj[pk.keyId] = { keyPair: pk.keyPair };
+      preKeyObj[pk.keyId] = {
+        pubKey: ensureBase64(pk.keyPair.pubKey),
+        privKey: ensureBase64(pk.keyPair.privKey)
+      };
     });
     save(PREKEYS_KEY, preKeyObj);
   }
 
-  if (!localStorage.getItem(SIGNED_PREKEYS_KEY)) {
-    save(SIGNED_PREKEYS_KEY, {
-      [keys.signedPreKey.keyId]: {
-        keyPair: keys.signedPreKey.keyPair,
-        signature: keys.signedPreKey.signature
-      }
-    });
+  const signedPreKeysData = load(SIGNED_PREKEYS_KEY);
+  if (Object.keys(signedPreKeysData).length === 0) {
+    signedPreKeysData[keys.signedPreKey.keyId] = {
+      pubKey: ensureBase64(keys.signedPreKey.keyPair.pubKey),
+      privKey: ensureBase64(keys.signedPreKey.keyPair.privKey),
+      signature: ensureBase64(keys.signedPreKey.signature)
+    };
+    save(SIGNED_PREKEYS_KEY, signedPreKeysData);
   }
 
   return {
+    // Identity
     getIdentityKeyPair: async () => {
-      console.log('Getting identity key pair for', userId);
-      const identityKeys = load(IDENTITY_KEY);
-      return identityKeys[userId];
+      const identities = load(IDENTITY_KEY);
+      const key = identities[userId];
+      return {
+        pubKey: base64ToArrayBuffer(key.pub),
+        privKey: base64ToArrayBuffer(key.priv)
+      };
     },
+
     getLocalRegistrationId: async () => {
       return keys.registrationId;
     },
+
     saveIdentity: async (address, publicKey) => {
-      const id = address; // address is a string!
-      const identityKeys = load(IDENTITY_KEY);
-      identityKeys[id] = publicKey;
-      save(IDENTITY_KEY, identityKeys);
+      const id = typeof address === 'string' ? address : address.getName();
+      const identities = load(IDENTITY_KEY);
+      identities[id] = ensureBase64(publicKey);
+      save(IDENTITY_KEY, identities);
       console.log(`Saved identity for ${id}`);
       return true;
     },
-    isTrustedIdentity: async (address, publicKey, direction) => {
-      console.log(`Trusting identity for ${address}`);
-      // Here, address is a simple string like "recipientId:deviceId"
-      return true; // For now, blindly trusting first time
-    },
+
     getIdentity: async (address) => {
-      const id = address; // address is a string!
-      const identityKeys = load(IDENTITY_KEY);
-      console.log(`Getting identity for ${id}`);
-      return identityKeys[id] || null;
+      const id = typeof address === 'string' ? address : address.getName();
+      const identities = load(IDENTITY_KEY);
+      if (!identities[id]) return null;
+      return base64ToArrayBuffer(identities[id]);
     },
 
-    loadSession: async (address) => {
-      const id = `${address.getName()}:${address.getDeviceId()}`;
-      const sessions = load(SESSIONS_KEY);
-      console.log(`Loading session for ${id}`);
-      return sessions[id] || null;
+    isTrustedIdentity: async (address, publicKey, direction) => {
+      const id = typeof address === 'string' ? address : address.getName();
+      const identities = load(IDENTITY_KEY);
+      const trusted = identities[id];
+      if (!trusted) return true; // first time seeing, trust
+      const trustedBuffer = base64ToArrayBuffer(trusted);
+      return arrayBufferToBase64(trustedBuffer) === arrayBufferToBase64(publicKey);
     },
+
+    // Sessions
+    loadSession: async (address) => {
+      const sessions = load(SESSION_KEY);
+      const id = getSessionKey(address);
+      const record = sessions[id];
+      return record !== undefined ? record : undefined;
+    },
+
     storeSession: async (address, record) => {
-      const id = `${address.getName()}:${address.getDeviceId()}`;
-      const sessions = load(SESSIONS_KEY);
+      const sessions = load(SESSION_KEY);
+      const id = getSessionKey(address);
       sessions[id] = record;
-      save(SESSIONS_KEY, sessions);
+      save(SESSION_KEY, sessions);
       console.log(`Stored session for ${id}`);
       return true;
     },
 
+    // PreKeys
     loadPreKey: async (keyId) => {
       const preKeys = load(PREKEYS_KEY);
-      console.log(`Loading prekey ${keyId}`);
-      return preKeys[keyId] ? preKeys[keyId].keyPair : null;
+      const preKey = preKeys[keyId];
+      return preKey ? {
+        pubKey: base64ToArrayBuffer(preKey.pubKey),
+        privKey: base64ToArrayBuffer(preKey.privKey)
+      } : null;
     },
+
     storePreKey: async (keyId, keyPair) => {
       const preKeys = load(PREKEYS_KEY);
-      preKeys[keyId] = { keyPair };
+      preKeys[keyId] = {
+        pubKey: ensureBase64(keyPair.pubKey),
+        privKey: ensureBase64(keyPair.privKey)
+      };
       save(PREKEYS_KEY, preKeys);
       console.log(`Stored prekey ${keyId}`);
       return true;
     },
+
     removePreKey: async (keyId) => {
       const preKeys = load(PREKEYS_KEY);
       delete preKeys[keyId];
       save(PREKEYS_KEY, preKeys);
       console.log(`Removed prekey ${keyId}`);
+      return true;
     },
 
+    // Signed PreKeys
     loadSignedPreKey: async (keyId) => {
       const signedPreKeys = load(SIGNED_PREKEYS_KEY);
-      console.log(`Loading signed prekey ${keyId}`);
-      return signedPreKeys[keyId] ? signedPreKeys[keyId].keyPair : null;
+      const signedPreKey = signedPreKeys[keyId];
+      return signedPreKey ? {
+        pubKey: base64ToArrayBuffer(signedPreKey.pubKey),
+        privKey: base64ToArrayBuffer(signedPreKey.privKey)
+      } : null;
     },
+
     storeSignedPreKey: async (keyId, keyPair) => {
       const signedPreKeys = load(SIGNED_PREKEYS_KEY);
-      signedPreKeys[keyId] = { keyPair };
+      signedPreKeys[keyId] = {
+        pubKey: ensureBase64(keyPair.pubKey),
+        privKey: ensureBase64(keyPair.privKey)
+      };
       save(SIGNED_PREKEYS_KEY, signedPreKeys);
       console.log(`Stored signed prekey ${keyId}`);
       return true;
     },
+
     removeSignedPreKey: async (keyId) => {
       const signedPreKeys = load(SIGNED_PREKEYS_KEY);
       delete signedPreKeys[keyId];
       save(SIGNED_PREKEYS_KEY, signedPreKeys);
       console.log(`Removed signed prekey ${keyId}`);
+      return true;
     }
   };
 }

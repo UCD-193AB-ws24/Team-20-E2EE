@@ -32,7 +32,7 @@ export async function establishSession(userId, recipientId, recipientKeyBundle) 
     // Create address for the recipient (using deviceId from their bundle)
     const recipientAddress = new SignalProtocolAddress(
       recipientId, 
-      recipientKeyBundle.deviceId
+      recipientKeyBundle.deviceId 
     );  
     
     console.log(`Created recipient address for ${recipientId}:${recipientKeyBundle.deviceId}`);
@@ -46,21 +46,26 @@ export async function establishSession(userId, recipientId, recipientKeyBundle) 
 
     console.log("3");
     
+    console.log('Local identityKey:', localKeys.identityKey);  // your public identity key
+    console.log('Local privateKey:', localKeys.privateKey);    // your private identity key
+    console.log('Local signedPreKey:', localKeys.signedPreKey); // your signed prekey
+    console.log('Local preKeys:', localKeys.preKeys);           // your one-time prekeys
+
     //Format the recipient's prekey bundle for the session builder
-    const preKeyBundle = {
-      registrationId: recipientKeyBundle.registrationId,
-      identityKey: base64ToArrayBuffer(recipientKeyBundle.identityPubKey),
-      signedPreKey: {
-        keyId: recipientKeyBundle.signedPreKeyId,
-        publicKey: base64ToArrayBuffer(recipientKeyBundle.signedPreKeyPub),
-        signature: base64ToArrayBuffer(recipientKeyBundle.signedPreKeySignature)
-      },
-      preKey: {
-        // Use the first available preKey from the bundle
-        keyId: recipientKeyBundle.preKeys[0].keyId,
-        publicKey: base64ToArrayBuffer(recipientKeyBundle.preKeys[0].pubKey)
-      }
-    };
+    // const preKeyBundle = {
+    //   registrationId: recipientKeyBundle.registrationId,
+    //   identityKey: base64ToArrayBuffer(recipientKeyBundle.identityPubKey),
+    //   signedPreKey: {
+    //     keyId: recipientKeyBundle.signedPreKeyId,
+    //     publicKey: base64ToArrayBuffer(recipientKeyBundle.signedPreKeyPub),
+    //     signature: base64ToArrayBuffer(recipientKeyBundle.signedPreKeySignature)
+    //   },
+    //   preKey: {
+    //     // Use the first available preKey from the bundle
+    //     keyId: recipientKeyBundle.preKeys[0].keyId,
+    //     publicKey: base64ToArrayBuffer(recipientKeyBundle.preKeys[0].pubKey)
+    //   }
+    // };
 
     // const preKeyBundle = {
     //   registrationId: recipientKeyBundle.registrationId,
@@ -76,6 +81,22 @@ export async function establishSession(userId, recipientId, recipientKeyBundle) 
     //     publicKey: recipientKeyBundle.preKeys[0].pubKey
     //   }
     // };
+
+    const preKeyBundle = {
+      registrationId: recipientKeyBundle.registrationId,
+      identityKey: base64ToArrayBuffer(recipientKeyBundle.identityPubKey),
+      signedPreKey: {
+        keyId: recipientKeyBundle.signedPreKeyId,
+        publicKey: base64ToArrayBuffer(recipientKeyBundle.signedPreKeyPub),
+        signature: typeof recipientKeyBundle.signedPreKeySignature === 'string'
+          ? base64ToArrayBuffer(recipientKeyBundle.signedPreKeySignature)
+          : recipientKeyBundle.signedPreKeySignature // already ArrayBuffer
+      },
+      preKey: {
+        keyId: recipientKeyBundle.preKeys[0].keyId,
+        publicKey: base64ToArrayBuffer(recipientKeyBundle.preKeys[0].pubKey)
+      }
+    };
 
     // Call Mongodb to remove first element from prekey bundle
     
