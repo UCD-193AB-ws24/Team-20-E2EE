@@ -116,8 +116,6 @@ export default function Layout({ children }) {
         const user = JSON.parse(localStorage.getItem('user'));
         if (!user?.idToken) return;
 
-        console.log(`📨 Loading chat history with ${selectedUser}...`);
-
         // Always fetch the chat history from the server when a user is selected
         const { messages: chatHistory } = await getChatHistory(user.idToken, selectedUser);
         
