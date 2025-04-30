@@ -22,6 +22,28 @@ export const getChatHistory = async (username) => {
   }
 };
 
+export const getArchivedChatHistory = async (token, username) => {
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/message/history?username=${username}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to fetch chat history');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching chat history:', error);
+    return { messages: [] };
+  }
+};
+
 // Get message previews for all friends
 export const getAllMessagePreviews = async () => {
   try {

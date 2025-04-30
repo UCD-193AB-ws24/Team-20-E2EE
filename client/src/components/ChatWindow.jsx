@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { getAvatar } from '../api/user';
 import { useAppContext } from './AppContext';
 
+
 export default function ChatWindow({ messages, selectedUser }) {
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);

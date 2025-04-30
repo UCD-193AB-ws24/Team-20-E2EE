@@ -1,5 +1,7 @@
-import { connectDB, upload, gfs, storeFileInGridFS, gridfsBucket, connectToGridFS, disconnectFromGridFS} from "../mongo/connection.js";
+import { connectDB, upload, gfs, storeFileInGridFS, gridfsBucket, connectToGridFS, disconnectFromGridFS } from "../mongo/connection.js";
 import mongoose from "mongoose";
+import path from 'path';
+import fs from 'fs';
 import { getSocketInstance, getOnlineUsers } from "../socketManager.js";
 
 export const updateUsername = async (req, res) => {
@@ -17,10 +19,10 @@ export const updateUsername = async (req, res) => {
 
         const db = await connectDB();
         const usersCollection = db.collection("users");
-        
+
         const existingUser = await usersCollection.findOne({ username: username });
-        if(existingUser){
-            return res.status(409).json({error: "Username already exists"});
+        if (existingUser) {
+            return res.status(409).json({ error: "Username already exists" });
         }
         // Update username in MongoDB
         const result = await usersCollection.updateOne(
@@ -40,11 +42,11 @@ export const updateUsername = async (req, res) => {
     }
 };
 
-export const searchUser = async(req, res) => {
-    try{
+export const searchUser = async (req, res) => {
+    try {
         const { username } = req.query;
 
-        if(!username){
+        if (!username) {
             return res.status(400).json({ error: "Username is required" });
         }
 
@@ -54,7 +56,7 @@ export const searchUser = async(req, res) => {
         const users = await usersCollection.find({ username: { $regex: username, $options: "i" } }).toArray();
 
         res.json({ users });
-    }catch(error){
+    } catch (error) {
         console.error("Error searching user:", error);
         res.status(500).json({ error: "Internal server error" });
     }
@@ -70,7 +72,7 @@ export const getUser = async (req, res) => {
 
         const db = await connectDB();
         const usersCollection = db.collection("users");
-        
+
         const foundUser = await usersCollection.findOne({ uid: uid });
 
         if (!foundUser) {
@@ -163,11 +165,11 @@ export const sendFriendRequest = async (req, res) => {
     }
 };
 
-export const getFriendRequests = async (req, res) => {  
-    try{
+export const getFriendRequests = async (req, res) => {
+    try {
         const uid = req.user?.uid;
 
-        if(!uid){
+        if (!uid) {
             return res.status(401).json({ error: "Unauthorized - No user ID found" });
         }
 
@@ -175,7 +177,7 @@ export const getFriendRequests = async (req, res) => {
         const usersCollection = db.collection("users");
 
         const currentUser = await usersCollection.findOne({ uid: uid });
-        if(!currentUser){
+        if (!currentUser) {
             return res.status(404).json({ error: "Current user not found" });
         }
 
@@ -183,7 +185,7 @@ export const getFriendRequests = async (req, res) => {
 
         res.json({ friendRequests });
 
-    }catch(error){
+    } catch (error) {
         console.error("Error getting friend requests:", error);
         res.status(500).json({ error: "Internal server error" });
     }
@@ -241,7 +243,7 @@ export const acceptFriendRequest = async (req, res) => {
         io.to(onlineUsers.get(uid)).emit('friend_request_handled');
 
         res.json({ message: "Friend request accepted successfully" });
-        
+
     } catch (error) {
         console.error("Error accepting friend request:", error);
         res.status(500).json({ error: "Internal server error" });
@@ -250,15 +252,15 @@ export const acceptFriendRequest = async (req, res) => {
 
 export const deleteFriendRequest = async (req, res) => {
     console.log("Deleting friend request");
-    try{
+    try {
         const { friendUsername } = req.body;
         const uid = req.user?.uid;
 
-        if(!uid){
+        if (!uid) {
             return res.status(401).json({ error: "Unauthorized - No user ID found" });
         }
 
-        if(!friendUsername){
+        if (!friendUsername) {
             return res.status(400).json({ error: "Friend username is required" });
         }
 
@@ -266,7 +268,7 @@ export const deleteFriendRequest = async (req, res) => {
         const usersCollection = db.collection("users");
 
         const friend = await usersCollection.findOne({ username: friendUsername });
-        if(!friend){
+        if (!friend) {
             return res.status(404).json({ error: "Friend not found" });
         }
 
@@ -277,7 +279,7 @@ export const deleteFriendRequest = async (req, res) => {
             { $pull: { friendsRequests: friendUid } }
         );
 
-        if(result.modifiedCount === 0){
+        if (result.modifiedCount === 0) {
             return res.status(400).json({ error: "Friend request not found" });
         }
 
@@ -287,7 +289,7 @@ export const deleteFriendRequest = async (req, res) => {
 
         res.json({ message: "Friend request deleted successfully" });
 
-    }catch(error){
+    } catch (error) {
         console.error("Error deleting friend request:", error);
         res.status(500).json({ error: "Internal server error" });
     }
@@ -295,57 +297,57 @@ export const deleteFriendRequest = async (req, res) => {
 
 export const unfriendUser = async (req, res) => {
     try {
-      const { friendUsername } = req.body;
-      const uid = req.user?.uid;
-  
-      if (!uid) {
-        return res.status(401).json({ error: "Unauthorized - No user ID found" });
-      }
-  
-      if (!friendUsername) {
-        return res.status(400).json({ error: "Friend username is required" });
-      }
-  
-      const db = await connectDB();
-      const usersCollection = db.collection("users");
-  
-      // Find the friend by username
-      const friend = await usersCollection.findOne({ username: friendUsername });
-      if (!friend) {
-        return res.status(404).json({ error: "Friend not found" });
-      }
-  
-      const friendUid = friend.uid;
-  
-      // Remove each other from friends list
-      const removeFromFriends = await Promise.all([
-        usersCollection.updateOne(
-          { uid: uid },
-          { $pull: { friends: friendUid } }
-        ),
-        usersCollection.updateOne(
-          { uid: friendUid },
-          { $pull: { friends: uid } }
-        )
-      ]);
-  
-      if (removeFromFriends[0].modifiedCount === 0 && removeFromFriends[1].modifiedCount === 0) {
-        return res.status(400).json({ error: "Users are not friends" });
-      }
-  
-      res.json({ message: "Friend removed successfully" });
-  
-    } catch (error) {
-      console.error("Error removing friend:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  };
-  
-export const getFriendlist = async (req, res) => {
-    try{
+        const { friendUsername } = req.body;
         const uid = req.user?.uid;
 
-        if(!uid){
+        if (!uid) {
+            return res.status(401).json({ error: "Unauthorized - No user ID found" });
+        }
+
+        if (!friendUsername) {
+            return res.status(400).json({ error: "Friend username is required" });
+        }
+
+        const db = await connectDB();
+        const usersCollection = db.collection("users");
+
+        // Find the friend by username
+        const friend = await usersCollection.findOne({ username: friendUsername });
+        if (!friend) {
+            return res.status(404).json({ error: "Friend not found" });
+        }
+
+        const friendUid = friend.uid;
+
+        // Remove each other from friends list
+        const removeFromFriends = await Promise.all([
+            usersCollection.updateOne(
+                { uid: uid },
+                { $pull: { friends: friendUid } }
+            ),
+            usersCollection.updateOne(
+                { uid: friendUid },
+                { $pull: { friends: uid } }
+            )
+        ]);
+
+        if (removeFromFriends[0].modifiedCount === 0 && removeFromFriends[1].modifiedCount === 0) {
+            return res.status(400).json({ error: "Users are not friends" });
+        }
+
+        res.json({ message: "Friend removed successfully" });
+
+    } catch (error) {
+        console.error("Error removing friend:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const getFriendlist = async (req, res) => {
+    try {
+        const uid = req.user?.uid;
+
+        if (!uid) {
             return res.status(401).json({ error: "Unauthorized - No user ID found" });
         }
 
@@ -353,7 +355,7 @@ export const getFriendlist = async (req, res) => {
         const usersCollection = db.collection("users");
 
         const currentUser = await usersCollection.findOne({ uid: uid });
-        if(!currentUser){
+        if (!currentUser) {
             return res.status(404).json({ error: "Current user not found" });
         }
 
@@ -361,7 +363,7 @@ export const getFriendlist = async (req, res) => {
 
         res.json({ friends });
 
-    }catch(error){
+    } catch (error) {
         console.error("Error getting friend list:", error);
         res.status(500).json({ error: "Internal server error" });
     }
@@ -378,7 +380,7 @@ export const updateDescription = async (req, res) => {
 
         const db = await connectDB();
         const usersCollection = db.collection("users");
-        
+
         const result = await usersCollection.updateOne(
             { uid: uid },
             { $set: { description: description } }
@@ -410,7 +412,6 @@ export const updateAvatar = async (req, res) => {
 
             console.log("Multer File Object:", req.file);
 
-            // Store file manually in GridFS
             const fileId = await storeFileInGridFS(req.file);
             if (!fileId) {
                 return res.status(500).json({ error: "File upload failed - No file ID received" });
@@ -443,8 +444,7 @@ export const updateAvatar = async (req, res) => {
 export const getAvatar = async (req, res) => {
     try {
         const { username } = req.params;
-        
-        // Connect to database
+
         const db = await connectDB();
         const usersCollection = db.collection("users");
         const user = await usersCollection.findOne({ username });
@@ -453,23 +453,48 @@ export const getAvatar = async (req, res) => {
             return res.status(404).json({ error: "User not found" });
         }
 
-        const fileId = user.avatar;
-        console.log(fileId);
-        
+        let fileId = user.avatar;
+        console.log("File id: ", fileId);
+
+        if (!fileId) {
+            console.log("No avatar found.");
+            const defaultPath = path.resolve('public/images/default_avatar.jpg');
+            const gridfsConnection = await connectToGridFS();
+            const uploadStream = gridfsBucket.openUploadStream(`default_avatar_${user._id}`, {
+                contentType: 'image/jpeg',
+            });
+            const readStream = fs.createReadStream(defaultPath);
+            await new Promise((resolve, reject) => {
+                readStream
+                    .pipe(uploadStream)
+                    .on('error', reject)
+                    .on('finish', resolve);
+            });
+
+            fileId = uploadStream.id;
+
+            await usersCollection.updateOne(
+                { _id: user._id },
+                { $set: { avatar: fileId } }
+            );
+
+            console.log(`Default avatar uploaded for ${username}, file ID: ${fileId}`);
+
+        }
+
         let gridfsConnection = await connectToGridFS();
         const fileArray = await gridfsBucket.find({ _id: new mongoose.Types.ObjectId(fileId) }).toArray();
-        
+
         if (!fileArray || fileArray.length === 0) {
             return res.status(404).json({ error: "File not found" });
         }
 
         const file = fileArray[0];
 
-        // Set Content-Type header
         res.set("Content-Type", file.contentType);
 
-        // Create a readable stream and pipe to response
         const readStream = gridfsBucket.openDownloadStream(new mongoose.Types.ObjectId(fileId));
+
         readStream.pipe(res);
 
 

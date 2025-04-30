@@ -22,16 +22,16 @@ export const getChatHistory = async (req, res) => {
 
         const db = await connectDB();
         const usersCollection = db.collection("users");
-        
+
         // Find the recipient user by username
         const recipientUser = await usersCollection.findOne({ username });
-        
+
         if (!recipientUser) {
             return res.status(404).json({ error: "User not found" });
         }
-        
+
         const recipientId = recipientUser.uid;
-        
+
         // Get messages between the two users
         const messagesCollection = db.collection("messages");
         const messages = await messagesCollection.find({
@@ -40,7 +40,7 @@ export const getChatHistory = async (req, res) => {
                 { sender: recipientId, recipient: currentUserId }
             ]
         }).sort({ timestamp: 1 }).toArray();
-        
+
         // Format messages for client
         const formattedMessages = await Promise.all(messages.map(async (msg) => {
             // Get sender username if needed
@@ -49,7 +49,7 @@ export const getChatHistory = async (req, res) => {
                 const sender = await usersCollection.findOne({ uid: msg.sender });
                 senderUsername = sender?.username || "Unknown";
             }
-            
+
             return {
                 _id: msg._id,
                 sender: msg.sender === currentUserId ? "Me" : senderUsername,
@@ -57,16 +57,80 @@ export const getChatHistory = async (req, res) => {
                 time: msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             };
         }));
-        
+
         // Mark messages as read
         await messagesCollection.updateMany(
             { sender: recipientId, recipient: currentUserId, read: false },
             { $set: { read: true } }
         );
-        
+
         res.json({ messages: formattedMessages });
     } catch (error) {
         console.error("Error fetching chat history:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const getChatArchive = async (req, res) => {
+    try {
+        const { username } = req.query;
+        const currentUserId = req.user?.uid;
+
+        if (!currentUserId) {
+            return res.status(401).json({ error: "Unauthorized - No user ID found" });
+        }
+
+        if (!username) {
+            return res.status(400).json({ error: "Username parameter is required" });
+        }
+
+        const db = await connectDB();
+        const usersCollection = db.collection("users");
+
+        // Find the recipient user by username
+        const recipientUser = await usersCollection.findOne({ username });
+
+        if (!recipientUser) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        const recipientId = recipientUser.uid;
+
+        // Get messages between the two users
+        const messagesCollection = db.collection("archive");
+        const messages = await messagesCollection.find({
+            $or: [
+                { sender: currentUserId, recipient: recipientId },
+                { sender: recipientId, recipient: currentUserId }
+            ]
+        }).sort({ timestamp: 1 }).toArray();
+
+        // Format messages for client
+        const formattedMessages = await Promise.all(messages.map(async (msg) => {
+            // Get sender username if needed
+            let senderUsername = msg.senderUsername;
+            if (!senderUsername) {
+                const sender = await usersCollection.findOne({ uid: msg.sender });
+                senderUsername = sender?.username || "Unknown";
+            }
+
+            return {
+                _id: msg._id,
+                sender: msg.sender === currentUserId ? "Me" : senderUsername,
+                text: msg.text,
+                time: msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+        }));
+
+        // Mark messages as read
+        await messagesCollection.updateMany(
+            { sender: recipientId, recipient: currentUserId, read: false },
+            { $set: { read: true } }
+        );
+
+        res.json({ messages: formattedMessages });
+    } catch (error) {
+        console.error("Error fetching chat archive:", error);
         res.status(500).json({ error: "Internal server error" });
     }
 };
@@ -82,23 +146,23 @@ export const getMessagePreviews = async (req, res) => {
         const db = await connectDB();
         const usersCollection = db.collection("users");
         const messagesCollection = db.collection("messages");
-        
+
         // Get current user
         const currentUser = await usersCollection.findOne({ uid: currentUserId });
         if (!currentUser) {
             return res.status(404).json({ error: "User not found" });
         }
-        
+
         const friends = currentUser.friends || [];
-        
+
         // Get the last message exchanged with each friend
         const previews = [];
-        
+
         for (const friendId of friends) {
             // Find the friend's username
             const friend = await usersCollection.findOne({ uid: friendId });
             if (!friend) continue;
-            
+
             // Get the last message between current user and this friend
             const lastMessage = await messagesCollection.find({
                 $or: [
@@ -106,14 +170,14 @@ export const getMessagePreviews = async (req, res) => {
                     { sender: friendId, recipient: currentUserId }
                 ]
             })
-            .sort({ timestamp: -1 })
-            .limit(1)
-            .toArray();
-            
+                .sort({ timestamp: -1 })
+                .limit(1)
+                .toArray();
+
             if (lastMessage.length > 0) {
                 const message = lastMessage[0];
                 const senderUsername = message.sender === currentUserId ? "Me" : friend.username;
-                
+
                 previews.push({
                     username: friend.username,
                     lastMessage: {
@@ -130,7 +194,7 @@ export const getMessagePreviews = async (req, res) => {
                 });
             }
         }
-        
+
         res.json({ previews });
     } catch (error) {
         console.error("Error fetching message previews:", error);
@@ -162,7 +226,7 @@ export const sendPrivateMessage = async (req, res) => {
         }
 
         const recipientUser = await usersCollection.findOne({ username: recipientUsername });
-        
+
         if (!recipientUser) {
             return res.status(404).json({ error: "Recipient not found" });
         }
@@ -171,7 +235,7 @@ export const sendPrivateMessage = async (req, res) => {
 
         const message = {
             sender: uid,
-            recipient: recipientId, 
+            recipient: recipientId,
             senderUsername: senderUser.username,
             recipientUsername,
             text,
@@ -181,7 +245,7 @@ export const sendPrivateMessage = async (req, res) => {
 
         const messagesCollection = db.collection("messages");
         const result = await messagesCollection.insertOne(message);
-        
+
         // Format message for sending
         const formattedMessage = {
             _id: result.insertedId,
@@ -189,7 +253,7 @@ export const sendPrivateMessage = async (req, res) => {
             text,
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
-        
+
         const io = getSocketInstance();
         const onlineUsers = getOnlineUsers();
         console.log(senderUser.username);
@@ -201,15 +265,15 @@ export const sendPrivateMessage = async (req, res) => {
                 sender: senderUser.username
             });
         }
-        
+
         // Confirm to sender
         io.to(onlineUsers.get(uid)).emit("message_sent", {
             ...formattedMessage,
             recipient: recipientUsername
         });
 
-        return res.status(200).json({ 
-            success: true, 
+        return res.status(200).json({
+            success: true,
             message: "Message sent successfully",
             messageId: result.insertedId
         });
@@ -218,3 +282,48 @@ export const sendPrivateMessage = async (req, res) => {
         res.status(500).json({ error: "Internal server error" })
     }
 }
+
+export const deleteMessages = async (req, res) => {
+    try {
+      const userId = req.user?.uid;
+      const { username } = req.body;
+  
+      if (!userId || !username) {
+        return res.status(400).json({ error: "Missing user ID or username" });
+      }
+  
+      const db = await connectDB();
+      const users = db.collection("users");
+  
+      const recipientUser = await users.findOne({ username });
+      if (!recipientUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+  
+      const otherUserId = recipientUser.uid;
+  
+      const messages = db.collection("messages");
+      const deleted = db.collection("deleted_messages");
+  
+      const chatMessages = await messages.find({
+        $or: [
+          { sender: userId, recipient: otherUserId },
+          { sender: otherUserId, recipient: userId }
+        ]
+      }).toArray();
+  
+      console.log(`Found ${chatMessages.length} messages to archive`);
+  
+      if (chatMessages.length > 0) {
+        await deleted.insertMany(chatMessages);
+        await messages.deleteMany({ _id: { $in: chatMessages.map(m => m._id) } });
+        console.log(`Archived and deleted ${chatMessages.length} messages`);
+      }
+  
+      res.status(200).json({ success: true, count: chatMessages.length });
+    } catch (err) {
+      console.error("Error in deleteMessages:", err);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  };
+  
