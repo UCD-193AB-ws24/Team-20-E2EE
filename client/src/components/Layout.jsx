@@ -30,7 +30,7 @@ export default function Layout({ children }) {
   // Get the auth token from localStorage
   const getToken = () => {
     const user = JSON.parse(localStorage.getItem('user'));
-    return user?.idToken;
+    return user?.accessToken;
   };
 
   // Get initial view on mount
@@ -48,32 +48,53 @@ export default function Layout({ children }) {
   });
 
   useEffect(() => {
+    console.log("🔁 useEffect triggered for selectedUser");
+
     const user = JSON.parse(localStorage.getItem('user'));
-    if (!user?.idToken) return;
+    console.log("🧠 Loaded user from localStorage:", user);
+
+    if (!user?.accessToken) {
+      setTimeout(() => {
+        console.log("No accessToken");
+        const delayedUser = JSON.parse(localStorage.getItem("user"));
+        if (delayedUser?.accessToken) {
+          console.log("No accessToken for delayed user");
+          setSelectedUser((prev) => prev); // trigger re-run
+        }
+      }, 300);
+      return;
+    }
+
+    console.log("accessToken:", user.accessToken);
 
     const shouldDelete =
       hasMounted.current &&
       prevSelectedUser.current !== null &&
       selectedUser !== prevSelectedUser.current;
 
-    console.log(`📤 Archiving messages with ${prevSelectedUser.current}...`);
+    console.log("💡 hasMounted:", hasMounted.current);
+    console.log("💡 prevSelectedUser:", prevSelectedUser.current);
+    console.log("💡 selectedUser:", selectedUser);
+    console.log("💡 shouldDelete:", shouldDelete);
 
     const deleteMessages = async () => {
       if (shouldDelete) {
         try {
-          await fetch(`${BACKEND_URL}/api/message/vanish`, {
+          const res = await fetch(`${BACKEND_URL}/api/message/vanish`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${user.idToken}`
+              'Authorization': `Bearer ${user.accessToken}`
             },
             body: JSON.stringify({
               username: prevSelectedUser.current
             })
           });
-          console.log(`Archived messages with ${prevSelectedUser.current}`);
+
+          const result = await res.json();
+          console.log(`📦 Archived messages with ${prevSelectedUser.current}:`, result);
         } catch (err) {
-          console.error('Error archiving messages:', err);
+          console.error('❌ Error archiving messages:', err);
         }
       }
 
@@ -84,11 +105,12 @@ export default function Layout({ children }) {
     deleteMessages();
   }, [selectedUser]);
 
+
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user'));
 
     const handleBeforeUnload = async (event) => {
-      if (user?.idToken && selectedUser) {
+      if (user?.accessToken && selectedUser) {
         navigator.sendBeacon(
           `${BACKEND_URL}/api/message/vanish`,
           JSON.stringify({
@@ -114,11 +136,12 @@ export default function Layout({ children }) {
 
       try {
         const user = JSON.parse(localStorage.getItem('user'));
-        if (!user?.idToken) return;
-
+        if (!user?.accessToken) {
+          return;
+        }
         // Always fetch the chat history from the server when a user is selected
-        const { messages: chatHistory } = await getChatHistory(user.idToken, selectedUser);
-        
+        const { messages: chatHistory } = await getChatHistory(user.accessToken, selectedUser);
+
         // Update messages for this user
         setMessagesByUser(prev => ({
           ...prev,
@@ -230,9 +253,10 @@ export default function Layout({ children }) {
   const sendMessage = async (text) => {
     if (!selectedUser || !text.trim()) return;
     const token = getToken();
-    
-    sendPrivateMessage(token, selectedUser, text);
-    
+    console.log("Selected user when sending message:", selectedUser);
+
+    sendPrivateMessage(selectedUser, text);
+
     // Clear typing indicator
     if (typingTimeout) {
       clearTimeout(typingTimeout);
@@ -297,7 +321,7 @@ export default function Layout({ children }) {
           </h2>
         </div>
         <ChatWindow
-          messages={messages}
+          messages={messagesByUser[selectedUser] || []}
           selectedUser={selectedUser}
         />
         <MessageInput

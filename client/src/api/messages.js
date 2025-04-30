@@ -1,11 +1,12 @@
 import { BACKEND_URL } from '../config/config.js';
 import fetchWithAuth from '../util/FetchWithAuth.jsx';
 // Get chat history between current user and another user
-export const getChatHistory = async (username) => {
+export const getChatHistory = async (token, username) => {
   try {
     const response = await fetchWithAuth(`${BACKEND_URL}/api/message/history?username=${username}`, {
       method: 'GET',
       headers: {
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     });
@@ -68,6 +69,8 @@ export const getAllMessagePreviews = async () => {
 
 export const sendPrivateMessage = async (recipientUsername, text) => {
   try {
+    console.log("recipientUsername:", recipientUsername);
+    console.log("text:", text);
     const response = await fetchWithAuth(`${BACKEND_URL}/api/message/send`, {
       method: 'POST',
       headers: {

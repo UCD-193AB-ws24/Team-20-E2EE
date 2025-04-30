@@ -124,13 +124,13 @@ export const corbadoLogin = async (req, res) => {
       return res.json({
         message: "User authenticated successfully",
         warning: "Please set your username to continue",
-        user: userData,
+        user: userData, accessToken
       });
     }
 
     return res.status(200).json({
       message: "User authenticated successfully",
-      user: userData,
+      user: userData, accessToken
     });
 
   } catch (error) {

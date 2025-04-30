@@ -221,6 +221,11 @@ export const sendPrivateMessage = async (req, res) => {
 
         const { recipientUsername, text } = req.body;
 
+        console.log("Raw request body:", req.body);
+        console.log("recipientUsername:", recipientUsername);
+        console.log("text:", text);
+
+
         if (!recipientUsername || !text) {
             return res.status(406).json({ error: "Invalid message format" });
         }
@@ -228,6 +233,7 @@ export const sendPrivateMessage = async (req, res) => {
         const recipientUser = await usersCollection.findOne({ username: recipientUsername });
 
         if (!recipientUser) {
+            console.log("No recipient");
             return res.status(404).json({ error: "Recipient not found" });
         }
 
@@ -285,45 +291,45 @@ export const sendPrivateMessage = async (req, res) => {
 
 export const deleteMessages = async (req, res) => {
     try {
-      const userId = req.user?.uid;
-      const { username } = req.body;
-  
-      if (!userId || !username) {
-        return res.status(400).json({ error: "Missing user ID or username" });
-      }
-  
-      const db = await connectDB();
-      const users = db.collection("users");
-  
-      const recipientUser = await users.findOne({ username });
-      if (!recipientUser) {
-        return res.status(404).json({ error: "User not found" });
-      }
-  
-      const otherUserId = recipientUser.uid;
-  
-      const messages = db.collection("messages");
-      const deleted = db.collection("deleted_messages");
-  
-      const chatMessages = await messages.find({
-        $or: [
-          { sender: userId, recipient: otherUserId },
-          { sender: otherUserId, recipient: userId }
-        ]
-      }).toArray();
-  
-      console.log(`Found ${chatMessages.length} messages to archive`);
-  
-      if (chatMessages.length > 0) {
-        await deleted.insertMany(chatMessages);
-        await messages.deleteMany({ _id: { $in: chatMessages.map(m => m._id) } });
-        console.log(`Archived and deleted ${chatMessages.length} messages`);
-      }
-  
-      res.status(200).json({ success: true, count: chatMessages.length });
+        console.log("Received request to vanish messages with:", req.body.username);
+        const userId = req.user?.uid;
+        const { username } = req.body;
+
+        if (!userId || !username) {
+            return res.status(400).json({ error: "Missing user ID or username" });
+        }
+
+        const db = await connectDB();
+        const users = db.collection("users");
+
+        const recipientUser = await users.findOne({ username });
+        if (!recipientUser) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        const otherUserId = recipientUser.uid;
+
+        const messages = db.collection("messages");
+        const deleted = db.collection("deleted_messages");
+
+        const chatMessages = await messages.find({
+            $or: [
+                { sender: userId, recipient: otherUserId },
+                { sender: otherUserId, recipient: userId }
+            ]
+        }).toArray();
+
+        console.log(`Found ${chatMessages.length} messages to archive`);
+
+        if (chatMessages.length > 0) {
+            await deleted.insertMany(chatMessages);
+            await messages.deleteMany({ _id: { $in: chatMessages.map(m => m._id) } });
+            console.log(`Archived and deleted ${chatMessages.length} messages`);
+        }
+
+        res.status(200).json({ success: true, count: chatMessages.length });
     } catch (err) {
-      console.error("Error in deleteMessages:", err);
-      res.status(500).json({ error: "Internal server error" });
+        console.error("Error in deleteMessages:", err);
+        res.status(500).json({ error: "Internal server error" });
     }
-  };
-  
+};

@@ -15,31 +15,34 @@ const Passkey = () => {
       }, 2000);
     });
   };
-  
+
   const handleLogin = async () => {
-      const email = await getEmailFromLocalStorage();
-      // This function will be called when the user is successfully logged in
-      try {
-        const response = await fetch(`${BACKEND_URL}/api/auth/corbado-login`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email }),
-          credentials: "include", // include cookies if needed
-        });
+    const email = await getEmailFromLocalStorage();
+    // This function will be called when the user is successfully logged in
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/auth/corbado-login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+        credentials: "include", // include cookies if needed
+      });
 
-        const data = await response.json();
+      const data = await response.json();
 
-        if (response.ok) {
-          localStorage.setItem("user", JSON.stringify(data.user));
-          window.location.href = "/";
-        } else {
-          console.error("Login failed:", data);
-        }
-      } catch (err) {
-        console.error("Request error:", err);
+      if (response.ok) {
+        localStorage.setItem("user", JSON.stringify({
+          ...data.user,
+          accessToken: data.accessToken
+        }));
+        window.location.href = "/";
+      } else {
+        console.error("Login failed:", data);
       }
+    } catch (err) {
+      console.error("Request error:", err);
+    }
   };
 
   return (
@@ -64,7 +67,7 @@ const Passkey = () => {
           <hr className="flex-grow border-t border-gray-400" />
         </div>
         <div>
-          <button className="p-4 bg-[#1D4776] rounded-lg text-[#FFC519] font-bold hover:brightness-105 cursor-pointer hover:translate-y-[-5px] transition-transform" onClick={() => {navigate("/login")}}>
+          <button className="p-4 bg-[#1D4776] rounded-lg text-[#FFC519] font-bold hover:brightness-105 cursor-pointer hover:translate-y-[-5px] transition-transform" onClick={() => { navigate("/login") }}>
             Normal email login
           </button>
         </div>
