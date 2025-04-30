@@ -53,7 +53,8 @@ export const getChatHistory = async (req, res) => {
             return {
                 _id: msg._id,
                 sender: msg.sender === currentUserId ? "Me" : senderUsername,
-                text: msg.text,
+                encryptedMessage: msg.encryptedMessage,
+                isEncrypted: msg.isEncrypted,
                 time: msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             };
         }));

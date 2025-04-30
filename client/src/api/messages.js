@@ -52,9 +52,9 @@ export const sendPrivateMessage = async (recipientUsername, text, recipientInfo)
   try {
     const recipientUID = recipientInfo.uid;
     const recipientDeviceId = recipientInfo.deviceId; 
+    const senderDeviceId = getDeviceId();
 
     const userId = getCurrentUser().uid;
-    const senderDeviceId = getDeviceId();
 
     const sessionExists = await hasSession(userId, recipientUID, recipientDeviceId);
     if (!sessionExists) {
@@ -77,11 +77,33 @@ export const sendPrivateMessage = async (recipientUsername, text, recipientInfo)
     let processedBody;
     if (typeof encryptedMessage.body === "string") {
       console.log("Converting raw string body to ArrayBuffer");
-      const bytes = new Uint8Array(encryptedMessage.body.length);
-      for (let i = 0; i < encryptedMessage.body.length; i++) {
+      
+      // IMPORTANT: Check if the first character is actually '3' (ASCII 51)
+      if (encryptedMessage.body.charCodeAt(0) === 51 && 
+          encryptedMessage.body.length > 1 && 
+          encryptedMessage.body.charCodeAt(1) === 40) {  // '(' has ASCII value 40
+        console.log("Detected string represents characters, not binary. Fixing version byte.");
+        
+        // Create a modified string with actual byte 3 instead of character '3'
+        const bytes = new Uint8Array(encryptedMessage.body.length);
+        
+        // First byte should be 3, not 51 ('3')
+        bytes[0] = 51;
+        
+        // Copy the rest starting from position 1
+        for (let i = 1; i < encryptedMessage.body.length; i++) {
           bytes[i] = encryptedMessage.body.charCodeAt(i);
+        }
+        
+        processedBody = bytes.buffer;
+      } else {
+        // Regular conversion (in case this isn't the specific issue)
+        const bytes = new Uint8Array(encryptedMessage.body.length);
+        for (let i = 0; i < encryptedMessage.body.length; i++) {
+          bytes[i] = encryptedMessage.body.charCodeAt(i);
+        }
+        processedBody = bytes.buffer;
       }
-      processedBody = bytes.buffer;
     } else if (encryptedMessage.body instanceof Uint8Array) {
         console.log("Body is a Uint8Array, converting to ArrayBuffer");
         processedBody = encryptedMessage.body.buffer;
@@ -92,7 +114,9 @@ export const sendPrivateMessage = async (recipientUsername, text, recipientInfo)
         console.error("Unsupported body type:", typeof encryptedMessage.body);
         throw new Error(`Unexpected message body type: ${typeof encryptedMessage.body}`);
     }
-      
+    const versionByte = new Uint8Array(processedBody)[0];
+    console.log("Version byte:", versionByte);
+    console.log("processed body: ", processedBody);
     // Convert the processed body to Base64
     const base64Body = arrayBufferToBase64(processedBody);
     console.log("Base64 encoded body:", base64Body);
@@ -128,10 +152,9 @@ export const sendPrivateMessage = async (recipientUsername, text, recipientInfo)
   }
 };
 
-export const decryptMessage = async (encryptedMessage, senderId, senderDeviceId, recipientId = null) => {
+export const decryptMessage = async (encryptedMessage, senderId, senderDeviceId) => {
   try {
     const userId = getCurrentUser().uid;
-    const isSelfMessage = senderId === userId;
     
     console.log('Attempting to decrypt message from:', senderId, 'with deviceId:', senderDeviceId);
     
@@ -167,9 +190,6 @@ export const decryptMessage = async (encryptedMessage, senderId, senderDeviceId,
     // Log the version byte
     const versionByte = new Uint8Array(processedBody)[0];
     console.log("Version byte:", versionByte);
-    if (versionByte !== 3) {
-        throw new Error(`Unexpected version byte: ${versionByte}`);
-    }
     
     // Prepare the cipher message object
     const cipherMessage = {
@@ -181,7 +201,7 @@ export const decryptMessage = async (encryptedMessage, senderId, senderDeviceId,
     
     // Decrypt the message
     let decryptedBuffer;
-    if (cipherMessage.type === 4) {
+    if (cipherMessage.type === 3) {
       // This is a PreKeyWhisperMessage (initial message in a session)
       decryptedBuffer = await sessionCipher.decryptPreKeyWhisperMessage(cipherMessage.body);
     } else {

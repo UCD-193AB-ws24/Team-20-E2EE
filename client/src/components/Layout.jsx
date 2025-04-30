@@ -55,39 +55,106 @@ export default function Layout({ children }) {
       if (!selectedUser) return;
       
       try {
+        console.log("Loading chat history for:", selectedUser);
+        
+        // 1. First fetch the recipient's key bundle
         const recipientKeyBundle = await fetchKeyBundle(selectedUser);
         const recipientUid = recipientKeyBundle.keyBundle.uid;
         const recipientDeviceId = recipientKeyBundle.keyBundle.deviceId;
 
-        // Always fetch the chat history from the server when a user is selected
-        const { messages: chatHistory } = await getChatHistory(selectedUser);
-
         console.log("Recipient Key Bundle:", recipientKeyBundle.keyBundle);
 
-        const sessionExist = await hasSession(userId, recipientUid, recipientDeviceId);
-        console.log(sessionExist);
-
-        if (!sessionExist) {
-          const response = await establishSession(userId, recipientKeyBundle.keyBundle.uid, recipientKeyBundle.keyBundle);
-          console.log("Response from establishSession:", response);        
-        }
-
-        console.log("Selected User DID:", recipientKeyBundle.keyBundle.deviceId);
-        console.log("Selected User ID:", recipientKeyBundle.keyBundle.uid);
-
+        // 2. Fetch the chat history from the server
+        const { messages: encryptedHistory } = await getChatHistory(selectedUser);
+        console.log("Fetched encrypted history:", encryptedHistory);
+        
+        // 3. Update the recipient info state
         setSelectedUserInfo({
-          deviceId: recipientKeyBundle.keyBundle.deviceId,
-          uid: recipientKeyBundle.keyBundle.uid
+          deviceId: recipientDeviceId,
+          uid: recipientUid
         });
 
-        // Update messages for this user
+        // 4. Check if we have any messages before trying to establish a session
+        // This is important because the first message might be a prekey message
+        const hasMessages = encryptedHistory && encryptedHistory.length > 0;
+        const sessionExists = await hasSession(userId, recipientUid, recipientDeviceId);
+        
+        console.log("Existing session found:", sessionExists);
+        console.log("Chat history contains messages:", hasMessages);
+
+        // Only establish a session if there are no messages and no existing session
+        if (!sessionExists && !hasMessages) {
+          console.log("No session and no messages, establishing new session");
+          await establishSession(userId, recipientUid, recipientKeyBundle.keyBundle);
+        }
+
+        // 5. Decrypt the messages if we have any
+        let decryptedMessages = [];
+        if (hasMessages) {
+          console.log("Beginning message decryption process");
+          
+          // Sort messages by time to ensure oldest first
+          const sortedMessages = [...encryptedHistory].sort((a, b) => 
+            new Date(a.time) - new Date(b.time)
+          );
+          
+          // Process messages sequentially instead of using Promise.all
+          for (let i = 0; i < sortedMessages.length; i++) {
+            const msg = sortedMessages[i];
+            console.log(`Decrypting message ${i+1}/${sortedMessages.length}`);
+            console.log(msg);
+            
+            if (msg.encryptedMessage) {
+              try {
+                console.log('11111111')
+                // Determine the sender for proper decryption
+                const isIncoming = msg.sender !== 'Me';
+                const senderUid = isIncoming ? recipientUid : userId;
+                const senderDeviceId = isIncoming ? recipientDeviceId : 'self';
+                
+                console.log(`Processing ${isIncoming ? 'incoming' : 'outgoing'} message from ${senderUid}`);
+                
+                // Decrypt the message
+                const decryptedText = await decryptMessage(
+                  msg.encryptedMessage, 
+                  senderUid, 
+                  senderDeviceId
+                );
+                
+                console.log(`Successfully decrypted message: "${decryptedText.substring(0, 20)}${decryptedText.length > 20 ? '...' : ''}"`);
+                
+                decryptedMessages.push({
+                  ...msg,
+                  text: decryptedText, // Replace encrypted content with decrypted text
+                  decrypted: true
+                });
+              } catch (error) {
+                console.warn(`Failed to decrypt message: ${error.message}`);
+                decryptedMessages.push({
+                  ...msg,
+                  text: "⚠️ Could not decrypt this message",
+                  decryptionFailed: true
+                });
+              }
+            } else {
+              // Pass through messages without encryption (e.g., system messages)
+              decryptedMessages.push(msg);
+            }
+          }
+          
+          console.log("Message decryption complete");
+        }
+
+        // 6. Update state with decrypted messages
+        console.log("Setting decrypted messages in state", decryptedMessages);
         setMessagesByUser(prev => ({
           ...prev,
-          [selectedUser]: chatHistory || []
+          [selectedUser]: decryptedMessages || []
         }));
         
         // Set current messages
-        setMessages(chatHistory || []);
+        setMessages(decryptedMessages || []);
+        
       } catch (error) {
         console.error('Error loading chat history:', error);
       }
