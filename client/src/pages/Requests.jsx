@@ -164,13 +164,13 @@ export default function Requests() {
                 style={{
                   backgroundColor: isLoading || !username.trim() 
                     ? '#9CA3AF'
-                    : theme.colors.button.secondary,
+                    : theme.colors.button.primary,
                   color: theme.colors.text.secondary,
                   cursor: isLoading || !username.trim() ? 'not-allowed' : 'pointer'
                 }}
                 whileHover={
                   !(isLoading || !username.trim()) && {
-                    backgroundColor: theme.colors.button.secondaryHover
+                    backgroundColor: theme.colors.button.primaryHover
                   }
                 }
                 className="px-4 py-2 rounded-lg flex items-center"
