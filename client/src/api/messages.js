@@ -1,7 +1,8 @@
 import { BACKEND_URL } from '../config/config.js';
 import fetchWithAuth from '../util/FetchWithAuth';
 import getCurrentUser from '../util/getCurrentUser.js';
-import { getSessionCipher, hasSession, arrayBufferToBase64 } from '../util/encryption';
+import { getSessionCipher, hasSession, arrayBufferToBase64, base64ToArrayBuffer } from '../util/encryption';
+import { getDeviceId } from '../util/deviceId.js';
 
 // Get chat history between current user and another user
 export const getChatHistory = async (username) => {
@@ -49,8 +50,6 @@ export const getAllMessagePreviews = async () => {
 
 export const sendPrivateMessage = async (recipientUsername, text, recipientInfo) => {
   try {
-
-
     const recipientUID = recipientInfo.uid;
     const recipientDeviceId = recipientInfo.deviceId; 
 
@@ -81,23 +80,91 @@ export const sendPrivateMessage = async (recipientUsername, text, recipientInfo)
 
     console.log('Encrypted message:', encryptedMessage);
 
-    const response = await fetchWithAuth(`${BACKEND_URL}/api/message/send`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ 
-        recipientUsername,
-        encryptedMessage: {
-          type: encryptedMessage.type,
-          body: encryptedMessage.body
-        }
-      }),
-    });
+    // const response = await fetchWithAuth(`${BACKEND_URL}/api/message/send`, {
+    //   method: 'POST',
+    //   headers: {
+    //     'Content-Type': 'application/json',
+    //   },
+    //   body: JSON.stringify({ 
+    //     recipientUsername,
+    //     encryptedMessage: {
+    //       type: encryptedMessage.type,
+    //       body: encryptedMessage.body
+    //     }
+    //   }),
+    // });
 
-    return await response.json();
+    // return await response.json();
+    await testDecryption(encryptedMessage);
+
+    return;
   } catch (error) {
     console.error('Error sending message', error);
     return;
   }
 };
+
+export const decryptMessage = async (encryptedMessage, senderId, senderDeviceId, recipientId = null) => {
+  try {
+    const userId = getCurrentUser().uid;
+    const isSelfMessage = senderId === userId;
+    
+    console.log('Attempting to decrypt message from:', senderId, 'with deviceId:', senderDeviceId);
+    console.log('Is own message:', isSelfMessage);
+    
+    let sessionCipher;
+    
+    if (isSelfMessage) {
+      // For messages sent by yourself, you need the recipient's info to get the right cipher
+      if (!recipientId) {
+        console.error('Recipient ID is required to decrypt your own messages');
+        throw new Error('Cannot decrypt own message without recipient information');
+      }
+      
+      // For messages you sent, you need to use the same cipher you used to encrypt
+      sessionCipher = await getSessionCipher(recipientId, userId, senderDeviceId);
+      console.log('Using cipher for recipient:', recipientId);
+    } else {
+      // For messages from others, use their sender info for the cipher
+      sessionCipher = await getSessionCipher(userId, senderId, senderDeviceId);
+    }
+    
+    if (!sessionCipher) {
+      throw new Error('Failed to create session cipher for decryption');
+    }
+    
+    console.log('Session cipher created successfully, decrypting message...');
+    
+    // Prepare the cipher message object
+    const cipherMessage = {
+      type: encryptedMessage.type,
+      body: base64ToArrayBuffer(encryptedMessage.body)
+    };
+
+    console.log("cipher message: ", cipherMessage);
+    
+    // Decrypt the message
+    let decryptedBuffer;
+    if (cipherMessage.type === 3) {
+      // This is a PreKeyWhisperMessage (initial message in a session)
+      decryptedBuffer = await sessionCipher.decryptPreKeyWhisperMessage(cipherMessage.body);
+    } else {
+      // This is a normal WhisperMessage
+      decryptedBuffer = await sessionCipher.decryptWhisperMessage(cipherMessage.body);
+    }
+    
+    // Convert buffer to string
+    const decryptedText = new TextDecoder().decode(decryptedBuffer);
+    console.log('Message decrypted successfully');
+    
+    return decryptedText;
+  } catch (error) {
+    console.error('Error decrypting message:', error);
+    throw error;
+  }
+};
+
+const testDecryption = async (encryptedMessage) => {
+  const message = await decryptMessage(encryptedMessage, getCurrentUser().uid , getDeviceId , "68116367f612b650597d7ec1");
+  console.log("Decrypted message:", message);
+}
