@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { MdSearch, MdPersonRemove } from 'react-icons/md';
+import { MdSearch } from 'react-icons/md';
+import { RiChatDeleteFill } from "react-icons/ri";
 import { getFriendList, unfriendUser } from '../api/friends';
 import { getAvatar } from '../api/user';
 import { useAppContext } from '../components';
@@ -109,12 +110,14 @@ export default function Archive({ selectedUser, setSelectedUser }) {
               >
                 {unfriendConfirm === friend.username ? (
                   <div className="w-full flex justify-center items-center">
-                    <div className="flex space-x-2">
+                    <div className="flex space-x-2 items-center">
+                    <span className="text-sm font-medium ">Delete chat?</span>
+
                       <button
                         onClick={() => handleUnfriend(friend.username)}
                         className="px-3 py-1 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700"
                       >
-                        Confirm
+                        Delete
                       </button>
                       <button
                         onClick={() => setUnfriendConfirm(null)}
@@ -144,9 +147,9 @@ export default function Archive({ selectedUser, setSelectedUser }) {
                     <button
                       onClick={() => setUnfriendConfirm(friend.username)}
                       className="ml-2 p-2 rounded-full hover:bg-gray-600"
-                      title="Unfriend"
+                      title="Delete Chat"
                     >
-                      <MdPersonRemove size={20} />
+                      <RiChatDeleteFill size={20} />
                     </button>
                   </>
                 )}

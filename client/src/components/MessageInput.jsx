@@ -46,6 +46,7 @@ export default function MessageInput({ sendMessage, onTyping, disabled = false }
           className={'ml-2 p-2 rounded-lg'}
           style={{
             backgroundColor: theme.colors.button.primary,
+            color: theme.colors.text.secondary,
             display: disabled ? 'none' : 'block'
           }}
           whileHover={{

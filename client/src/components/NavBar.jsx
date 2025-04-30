@@ -185,7 +185,7 @@ export default function NavBar({ onProfileClick, setView }) {
           {/* Profile Link */}
           <button
             onClick={onProfileClick}
-            className="w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px]"
+            className="w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] cursor-pointer"
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = theme.colors.background.accent;
             }}

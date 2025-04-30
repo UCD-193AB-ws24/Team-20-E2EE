@@ -180,6 +180,7 @@ export default function Profile({ onClose }) {
               <button
                 onClick={handleSaveDescription}
                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg text-lg shadow-md transition duration-300"
+                style={{ cursor: "pointer" }}
               >
                 Save Description
               </button>
@@ -187,6 +188,8 @@ export default function Profile({ onClose }) {
               <button
                 onClick={() => setIsEditing(true)}
                 className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg text-lg shadow-md transition duration-300"
+                style={{ cursor: "pointer" }}
+
               >
                 Edit Description
               </button>
@@ -196,6 +199,7 @@ export default function Profile({ onClose }) {
             <button
               onClick={() => setShowLogoutConfirmation(true)}
               className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-lg shadow-md transition duration-300"
+              style={{ cursor: "pointer" }}
             >
               Logout
             </button>

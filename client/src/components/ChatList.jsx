@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { MdSearch } from 'react-icons/md';
 import { getFriendList } from '../api/friends';
 import { getAllMessagePreviews } from '../api/messages';
-import { 
-  registerUserOnlineListener, 
-  registerUserOfflineListener, 
+import {
+  registerUserOnlineListener,
+  registerUserOfflineListener,
   registerInitialStatusListener,
   requestInitialStatus,
   removeListener,
@@ -30,11 +30,11 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
     try {
       const data = await getAllMessagePreviews();
       const previews = {};
-      
+
       (data.previews || []).forEach(preview => {
         previews[preview.username] = preview.lastMessage;
       });
-      
+
       setMessagePreviews(previews);
     } catch (err) {
       console.error("Error loading message previews:", err);
@@ -47,7 +47,7 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
       setIsLoading(true);
       try {
         const data = await getFriendList();
-        
+
         // Load avatars for each friend
         const friendsWithAvatars = await Promise.all((data.friends || []).map(async (friend) => {
           try {
@@ -58,9 +58,9 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
             return friend;
           }
         }));
-        
+
         setFriends(friendsWithAvatars);
-        
+
         // Load message previews
         await loadMessagePreviews();
       } catch (err) {
@@ -69,7 +69,7 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
         setIsLoading(false);
       }
     };
-    
+
     loadFriends();
   }, []);
 
@@ -79,15 +79,15 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
       console.log('Socket not ready, waiting to set up listeners');
       return;
     }
-    
-    registerUserOnlineListener((data) => {   
+
+    registerUserOnlineListener((data) => {
       const username = data.username;
-      
+
       if (!username) {
         console.error('Missing username in user_online event:', data);
         return;
       }
-      
+
       setOnlineUsers(prev => {
         return {
           ...prev,
@@ -95,20 +95,20 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
         };
       });
     });
-    
-    registerUserOfflineListener((data) => {      
+
+    registerUserOfflineListener((data) => {
       if (!data) {
         console.error('Received empty data in user_offline event');
         return;
       }
-      
+
       const { username } = data;
-      
+
       if (!username) {
         console.error('Missing username in user_offline event:', data);
         return;
       }
-      
+
       setOnlineUsers(prev => {
         return {
           ...prev,
@@ -116,18 +116,18 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
         };
       });
     });
-    
+
     // Set up initial status listener
     registerInitialStatusListener((data) => {
       if (!data || !data.friends) {
         console.log('No friends in initial status data');
         return;
       }
-    
+
       // Update all online friends at once
       setOnlineUsers((prev) => {
         const newState = { ...prev };
-    
+
         data.friends.forEach((friend) => {
           if (friend && friend.username) {
             newState[friend.username] = friend.online;
@@ -136,9 +136,9 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
         return newState;
       });
     });
-    
+
     requestInitialStatus();
-    
+
     return () => {
       removeListener('user_online');
       removeListener('user_offline');
@@ -152,15 +152,15 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
       console.log('Socket not ready, skipping message listener setup');
       return;
     }
-  
+
     console.log('Setting up message listeners');
-  
+
     // Listen for incoming messages
     const removeMessageListener = registerMessageListener((data) => {
       const { sender, text } = data;
-      
+
       console.log('Received message event:', { sender, text });
-      
+
       // Update message preview for this sender
       setMessagePreviews(prev => {
         console.log('Updating preview for:', sender);
@@ -174,13 +174,13 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
         };
       });
     });
-  
+
     // Listen for sent messages
     const removeMessageSentListener = registerMessageSentListener((data) => {
       const { recipient, text } = data;
-      
+
       console.log('Message sent event received:', data);
-    
+
       setMessagePreviews(prev => {
         console.log('Updating preview for recipient:', recipient);
         return {
@@ -193,9 +193,9 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
         };
       });
     });
-  
+
     console.log('Message listeners set up successfully');
-    
+
     return () => {
       console.log('Cleaning up message listeners');
       removeMessageListener();
@@ -205,12 +205,12 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
 
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return '';
-    
+
     const date = new Date(timestamp);
     const now = new Date();
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
-    
+
     // Same day - show time
     if (date.toDateString() === now.toDateString()) {
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -237,23 +237,23 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
   const sortedFriends = [...filteredFriends].sort((a, b) => {
     const previewA = messagePreviews[a.username];
     const previewB = messagePreviews[b.username];
-    
+
     if (!previewA && !previewB) return 0;
     if (!previewA) return 1;
     if (!previewB) return -1;
-    
+
     return new Date(previewB.timestamp) - new Date(previewA.timestamp);
   });
 
   return (
-    <div 
+    <div
       className="flex-1 flex flex-col shadow-lg rounded-lg p-1 overflow-hidden"
-      style={{backgroundColor: theme.colors.background.secondary}}
+      style={{ backgroundColor: theme.colors.background.secondary }}
     >
       <div className="p-3">
         <h2 className="text-2xl font-bold text-ucd-blue-900">Chats</h2>
       </div>
-  
+
       <div className="px-2 pb-2 relative">
         <MdSearch className="absolute left-6 top-4 transform -translate-y-1/2 text-ucd-blue-600" />
         <input
@@ -262,10 +262,10 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full h-8 p-1 pl-10 rounded-full focus:outline-none focus:ring-1"
-          style={{backgroundColor: theme.colors.background.primary}}
+          style={{ backgroundColor: theme.colors.background.primary }}
         />
       </div>
-  
+
       {isLoading ? (
         <div className="flex justify-center p-5">
           <LoadingAnimation size="medium" color="ucd-blue" />
@@ -277,18 +277,18 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
           ) : (
             sortedFriends.map((friend, index) => {
               const preview = messagePreviews[friend.username];
-              
+
               return (
                 <motion.li
                   key={friend.username}
                   className="flex items-center p-4 mb-2 rounded-lg h-[70px]"
                   initial={false}
-                  animate={{ 
-                    backgroundColor: selectedUser === friend.username 
-                      ? theme.colors.background.primary 
-                      : theme.colors.background.secondary 
+                  animate={{
+                    backgroundColor: selectedUser === friend.username
+                      ? theme.colors.background.primary
+                      : theme.colors.background.secondary
                   }}
-                  whileHover={{ backgroundColor: theme.colors.background.primary }}
+                  whileHover={{ backgroundColor: theme.colors.background.primary, cursor: "pointer" }}
                   whileTap={{ backgroundColor: theme.colors.background.secondary }}
                   onClick={() => setSelectedUser(friend.username)}
                 >

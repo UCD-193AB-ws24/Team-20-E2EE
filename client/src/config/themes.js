@@ -12,8 +12,8 @@ export const lightTheme = {
             muted: "#6a7282"
         },
         button: {
-            primary: "#FFD966",
-            primaryHover: "#FFBF00",
+            primary: "#4f7094",
+            primaryHover: "#033278",
             secondary: "#4F7094",
             secondaryHover: "#033266"
         },
