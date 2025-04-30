@@ -24,11 +24,10 @@ export async function establishSession(userId, recipientId, recipientKeyBundle) 
       console.error('Local keys not found, cannot establish session');
       return false;
     }
-    console.log("1");
     // Create a Signal Protocol store with our keys
     const store = await createSignalProtocolStore(userId, localKeys);
     
-    console.log("2");
+    console.log('recipient device id: ', recipientKeyBundle.deviceId);
     // Create address for the recipient (using deviceId from their bundle)
     const recipientAddress = new SignalProtocolAddress(
       recipientId, 
@@ -44,43 +43,11 @@ export async function establishSession(userId, recipientId, recipientKeyBundle) 
     );
 
 
-    console.log("3");
-    
-    console.log('Local identityKey:', localKeys.identityKey);  // your public identity key
-    console.log('Local privateKey:', localKeys.privateKey);    // your private identity key
+    console.log('Local: ', localKeys); 
+    console.log('Local identityKey:', localKeys.identityKeyPair.pubKey);  // your public identity key
+    console.log('Local privateKey:', localKeys.identityKeyPair.privKey);    // your private identity key
     console.log('Local signedPreKey:', localKeys.signedPreKey); // your signed prekey
     console.log('Local preKeys:', localKeys.preKeys);           // your one-time prekeys
-
-    //Format the recipient's prekey bundle for the session builder
-    // const preKeyBundle = {
-    //   registrationId: recipientKeyBundle.registrationId,
-    //   identityKey: base64ToArrayBuffer(recipientKeyBundle.identityPubKey),
-    //   signedPreKey: {
-    //     keyId: recipientKeyBundle.signedPreKeyId,
-    //     publicKey: base64ToArrayBuffer(recipientKeyBundle.signedPreKeyPub),
-    //     signature: base64ToArrayBuffer(recipientKeyBundle.signedPreKeySignature)
-    //   },
-    //   preKey: {
-    //     // Use the first available preKey from the bundle
-    //     keyId: recipientKeyBundle.preKeys[0].keyId,
-    //     publicKey: base64ToArrayBuffer(recipientKeyBundle.preKeys[0].pubKey)
-    //   }
-    // };
-
-    // const preKeyBundle = {
-    //   registrationId: recipientKeyBundle.registrationId,
-    //   identityKey: recipientKeyBundle.identityPubKey,
-    //   signedPreKey: {
-    //     keyId: recipientKeyBundle.signedPreKeyId,
-    //     publicKey: recipientKeyBundle.signedPreKeyPub,
-    //     signature: recipientKeyBundle.signedPreKeySignature
-    //   },
-    //   preKey: {
-    //     // Use the first available preKey from the bundle
-    //     keyId: recipientKeyBundle.preKeys[0].keyId,
-    //     publicKey: recipientKeyBundle.preKeys[0].pubKey
-    //   }
-    // };
 
     const preKeyBundle = {
       registrationId: recipientKeyBundle.registrationId,
@@ -116,11 +83,11 @@ export async function establishSession(userId, recipientId, recipientKeyBundle) 
 /**
  * Gets a session cipher for encrypting/decrypting messages with a specific contact
  * @param {string} userId - Current user's ID
- * @param {string} recipientUsername - Username of the contact
+ * @param {string} recipientId - ID of the contact
  * @param {number} deviceId - Device ID of the contact
  * @returns {Promise<SessionCipher>} - Session cipher for this contact
  */
-export const getSessionCipher = async (userId, recipientUsername, deviceId) => {
+export const getSessionCipher = async (userId, recipientId, deviceId) => {
   try {
     // Get user keys
     const localKeys = await getKeys(userId);
@@ -133,7 +100,7 @@ export const getSessionCipher = async (userId, recipientUsername, deviceId) => {
     const store = await createSignalProtocolStore(userId, localKeys);
     
     const address = new SignalProtocolAddress(
-      recipientUsername,
+      recipientId, // Changed from recipientUsername to recipientId
       deviceId
     );
     
@@ -147,11 +114,11 @@ export const getSessionCipher = async (userId, recipientUsername, deviceId) => {
 /**
  * Checks if a session exists with a specific contact
  * @param {string} userId - Current user's ID
- * @param {string} recipientUsername - Username of the contact
+ * @param {string} recipientId - ID of the contact
  * @param {number} deviceId - Device ID of the contact
  * @returns {Promise<boolean>} - Whether a session exists
  */
-export const hasSession = async (userId, recipientUsername, deviceId) => {
+export const hasSession = async (userId, recipientId, deviceId) => {
   try {
     // Get user keys
     const localKeys = await getKeys(userId);
@@ -164,7 +131,7 @@ export const hasSession = async (userId, recipientUsername, deviceId) => {
     const store = await createSignalProtocolStore(userId, localKeys);
     
     const address = new SignalProtocolAddress(
-      recipientUsername,
+      recipientId, // Changed from recipientUsername to recipientId
       deviceId
     );
     

@@ -1,5 +1,8 @@
 import { BACKEND_URL } from '../config/config.js';
 import fetchWithAuth from '../util/FetchWithAuth';
+import getCurrentUser from '../util/getCurrentUser.js';
+import { getSessionCipher, hasSession, arrayBufferToBase64 } from '../util/encryption';
+
 // Get chat history between current user and another user
 export const getChatHistory = async (username) => {
   try {
@@ -44,20 +47,53 @@ export const getAllMessagePreviews = async () => {
   }
 };
 
-export const sendPrivateMessage = async (recipientUsername, text) => {
+export const sendPrivateMessage = async (recipientUsername, text, recipientInfo) => {
   try {
+
+
+    const recipientUID = recipientInfo.uid;
+    const recipientDeviceId = recipientInfo.deviceId; 
+
+    // return await response.json();
+    console.log('Sending message to:', recipientUsername, 'with text:', text, 'and UID:', recipientUID, 'and deviceID:', recipientDeviceId);
+    console.log('UID:', getCurrentUser().uid);
+
+    const userId = getCurrentUser().uid;
+
+    const sessionExists = await hasSession(userId, recipientUID, recipientDeviceId);
+    if (!sessionExists) {
+      console.error('No secure session established with this recipient');
+      throw new Error('No secure session established with this recipient');
+    }
+
+    console.log('Session exists, proceeding to send message');
+
+    const sessionCipher = await getSessionCipher(userId, recipientUID, recipientDeviceId);
+    if (!sessionCipher) {
+      throw new Error('Failed to create session cipher');
+    }
+    
+    console.log('Session cipher created successfully, encrypting message...');
+
+    const plaintextBuffer = new TextEncoder().encode(text).buffer;
+    
+    const encryptedMessage = await sessionCipher.encrypt(plaintextBuffer);
+
+    console.log('Encrypted message:', encryptedMessage);
+
     const response = await fetchWithAuth(`${BACKEND_URL}/api/message/send`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ recipientUsername, text }),
+      body: JSON.stringify({ 
+        recipientUsername,
+        encryptedMessage: {
+          type: encryptedMessage.type,
+          body: encryptedMessage.body
+        }
+      }),
     });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to send message');
-    }
 
     return await response.json();
   } catch (error) {

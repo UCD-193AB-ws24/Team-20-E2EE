@@ -155,10 +155,15 @@ export const sendPrivateMessage = async (req, res) => {
             return res.status(404).json({ error: "User not found" });
         }
 
-        const { recipientUsername, text } = req.body;
+        const { recipientUsername, encryptedMessage } = req.body;
 
-        if (!recipientUsername || !text) {
-            return res.status(406).json({ error: "Invalid message format" });
+        // Validate the request body
+        if (!recipientUsername) {
+            return res.status(406).json({ error: "Recipient username is required" });
+        }
+
+        if (!encryptedMessage || !encryptedMessage.type || !encryptedMessage.body) {
+            return res.status(406).json({ error: "Invalid message format - encrypted message required" });
         }
 
         const recipientUser = await usersCollection.findOne({ username: recipientUsername });
@@ -169,32 +174,40 @@ export const sendPrivateMessage = async (req, res) => {
 
         const recipientId = recipientUser.uid;
 
+        // Store the encrypted message
         const message = {
             sender: uid,
             recipient: recipientId, 
             senderUsername: senderUser.username,
             recipientUsername,
-            text,
+            encryptedMessage: {
+                type: encryptedMessage.type,
+                body: encryptedMessage.body
+            },
+            isEncrypted: true,
             timestamp: new Date(),
-            read: false
+            read: false,
+            senderDeviceId: senderUser.deviceId || 1 // Include sender's device ID
         }
 
         const messagesCollection = db.collection("messages");
         const result = await messagesCollection.insertOne(message);
         
         // Format message for sending
+        // Don't include the actual text since it's encrypted
         const formattedMessage = {
             _id: result.insertedId,
             sender: senderUser.username,
-            text,
+            encryptedMessage: encryptedMessage,
+            isEncrypted: true,
+            senderDeviceId: senderUser.deviceId || 1,
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
         
         const io = getSocketInstance();
         const onlineUsers = getOnlineUsers();
-        console.log(senderUser.username);
-
-        // Send to recipient if online
+        
+        // Send encrypted message to recipient if online
         if (onlineUsers.has(recipientId)) {
             io.to(onlineUsers.get(recipientId)).emit("receive_message", {
                 ...formattedMessage,
@@ -210,7 +223,7 @@ export const sendPrivateMessage = async (req, res) => {
 
         return res.status(200).json({ 
             success: true, 
-            message: "Message sent successfully",
+            message: "Encrypted message sent successfully",
             messageId: result.insertedId
         });
     } catch (error) {

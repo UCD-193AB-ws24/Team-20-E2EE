@@ -17,7 +17,7 @@ import {fetchKeyBundle} from '../api/keyBundle';
 const initialMessagesState = {};
 
 export default function Layout({ children }) {
-  const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedUser, setSelectedUser] = useState()
   const [messages, setMessages] = useState([]);
   const [messagesByUser, setMessagesByUser] = useState(initialMessagesState);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -29,12 +29,10 @@ export default function Layout({ children }) {
   const user = getCurrentUser();
   const userId = user?.uid;
 
-
-  // Get the auth token from localStorage
-  const getToken = () => {
-    const user = JSON.parse(localStorage.getItem('user'));
-    return user?.idToken;
-  };
+  const [selectedUserInfo, setSelectedUserInfo] = useState({
+    deviceId: null,
+    uid: null
+  });
  
   // Get initial view on mount
   useEffect(() => {
@@ -56,20 +54,23 @@ export default function Layout({ children }) {
       if (!selectedUser) return;
       
       try {
-        
+        const receipientKeyBundle = await fetchKeyBundle(selectedUser);
+
         // Always fetch the chat history from the server when a user is selected
         const { messages: chatHistory } = await getChatHistory(selectedUser);
-        console.log("Selcted user:", selectedUser);
-        const receipientId = await getFriendIdByUsername(selectedUser);
-        console.log("Recipient ID:", receipientId);
-        const receipientKeyBundle = await fetchKeyBundle(selectedUser);
-        
+
         console.log("Recipient Key Bundle:", receipientKeyBundle.keyBundle);
 
-        console.log("User ID:", userId);
-
-        const response = await establishSession(userId, receipientId, receipientKeyBundle.keyBundle);
+        const response = await establishSession(userId, receipientKeyBundle.keyBundle.uid, receipientKeyBundle.keyBundle);
         console.log("Response from establishSession:", response);
+
+        console.log("Selected User DID:", receipientKeyBundle.keyBundle.deviceId);
+        console.log("Selected User ID:", receipientKeyBundle.keyBundle.uid);
+
+        setSelectedUserInfo({
+          deviceId: receipientKeyBundle.keyBundle.deviceId,
+          uid: receipientKeyBundle.keyBundle.uid
+        });
 
         // Update messages for this user
         setMessagesByUser(prev => ({
@@ -182,7 +183,7 @@ export default function Layout({ children }) {
   const sendMessage = async (text) => {
     if (!selectedUser || !text.trim()) return;
     
-    sendPrivateMessage(selectedUser, text);
+    sendPrivateMessage(selectedUser, text, selectedUserInfo);
     
     // Clear typing indicator
     if (typingTimeout) {
