@@ -6,12 +6,13 @@ import {
   registerMessageListener, registerMessageSentListener,
   removeListener, sendTypingStatus, registerTypingListener
 } from '../api/socket';
-import { getChatHistory, sendPrivateMessage } from '../api/messages';
+import { getChatHistory, sendPrivateMessage, decryptMessage} from '../api/messages';
 import { useAppContext } from './AppContext';
 import getCurrentUser from '../util/getCurrentUser';
-import {establishSession} from '../util/encryption/sessionManager';
-import {getFriendIdByUsername} from '../api/friends';
+import {establishSession, hasSession} from '../util/encryption/sessionManager';
 import {fetchKeyBundle} from '../api/keyBundle';
+import {getFriendIdByUsername} from '../api/friends';
+
 
 // Initialize with empty data structure
 const initialMessagesState = {};
@@ -54,22 +55,29 @@ export default function Layout({ children }) {
       if (!selectedUser) return;
       
       try {
-        const receipientKeyBundle = await fetchKeyBundle(selectedUser);
+        const recipientKeyBundle = await fetchKeyBundle(selectedUser);
+        const recipientUid = recipientKeyBundle.keyBundle.uid;
+        const recipientDeviceId = recipientKeyBundle.keyBundle.deviceId;
 
         // Always fetch the chat history from the server when a user is selected
         const { messages: chatHistory } = await getChatHistory(selectedUser);
 
-        console.log("Recipient Key Bundle:", receipientKeyBundle.keyBundle);
+        console.log("Recipient Key Bundle:", recipientKeyBundle.keyBundle);
 
-        const response = await establishSession(userId, receipientKeyBundle.keyBundle.uid, receipientKeyBundle.keyBundle);
-        console.log("Response from establishSession:", response);
+        const sessionExist = await hasSession(userId, recipientUid, recipientDeviceId);
+        console.log(sessionExist);
 
-        console.log("Selected User DID:", receipientKeyBundle.keyBundle.deviceId);
-        console.log("Selected User ID:", receipientKeyBundle.keyBundle.uid);
+        if (!sessionExist) {
+          const response = await establishSession(userId, recipientKeyBundle.keyBundle.uid, recipientKeyBundle.keyBundle);
+          console.log("Response from establishSession:", response);        
+        }
+
+        console.log("Selected User DID:", recipientKeyBundle.keyBundle.deviceId);
+        console.log("Selected User ID:", recipientKeyBundle.keyBundle.uid);
 
         setSelectedUserInfo({
-          deviceId: receipientKeyBundle.keyBundle.deviceId,
-          uid: receipientKeyBundle.keyBundle.uid
+          deviceId: recipientKeyBundle.keyBundle.deviceId,
+          uid: recipientKeyBundle.keyBundle.uid
         });
 
         // Update messages for this user
@@ -98,22 +106,36 @@ export default function Layout({ children }) {
     }
     // Handle incoming messages
     registerMessageListener((message) => {
-      const { sender, text, time } = message;
-      
-      // Add message to the appropriate user's message list
-      setMessagesByUser(prev => {
-        const userMessages = prev[sender] || [];
-        return {
-          ...prev,
-          [sender]: [...userMessages, { sender, text, time }]
-        };
+      const { sender, encryptedMessage, time, senderUid, senderDeviceId } = message;
+
+      console.log("message received: ", message);
+
+      console.log("encrypted text: ", encryptedMessage.body);
+
+      console.log("sender id: ", senderUid);
+
+      decryptMessage(encryptedMessage, senderUid, senderDeviceId)
+      .then(text => {
+        console.log("decrypted text: ", text);
+        
+        // Add message to the appropriate user's message list
+        setMessagesByUser(prev => {
+          const userMessages = prev[sender] || [];
+          return {
+            ...prev,
+            [sender]: [...userMessages, { sender, text, time }]
+          };
+        });
+        
+        // If this is from the currently selected user, update current messages
+        if (sender === selectedUser) {
+          setMessages(prev => [...prev, { sender, text, time }]);
+        }
+      })
+      .catch(error => {
+        console.error("Failed to decrypt message:", error);
       });
-      
-      // If this is from the currently selected user, update current messages
-      if (sender === selectedUser) {
-        setMessages(prev => [...prev, { sender, text, time }]);
-      }
-    });
+  });
     
     // Handle confirmation of sent messages
     registerMessageSentListener((message) => {

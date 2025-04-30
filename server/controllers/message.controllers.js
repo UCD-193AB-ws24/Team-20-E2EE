@@ -155,7 +155,7 @@ export const sendPrivateMessage = async (req, res) => {
             return res.status(404).json({ error: "User not found" });
         }
 
-        const { recipientUsername, encryptedMessage } = req.body;
+        const { recipientUsername, encryptedMessage, senderDeviceId } = req.body;
 
         // Validate the request body
         if (!recipientUsername) {
@@ -179,6 +179,7 @@ export const sendPrivateMessage = async (req, res) => {
             sender: uid,
             recipient: recipientId, 
             senderUsername: senderUser.username,
+            senderDeviceId,
             recipientUsername,
             encryptedMessage: {
                 type: encryptedMessage.type,
@@ -187,7 +188,6 @@ export const sendPrivateMessage = async (req, res) => {
             isEncrypted: true,
             timestamp: new Date(),
             read: false,
-            senderDeviceId: senderUser.deviceId || 1 // Include sender's device ID
         }
 
         const messagesCollection = db.collection("messages");
@@ -197,10 +197,11 @@ export const sendPrivateMessage = async (req, res) => {
         // Don't include the actual text since it's encrypted
         const formattedMessage = {
             _id: result.insertedId,
+            senderUid: uid,
             sender: senderUser.username,
+            senderDeviceId,
             encryptedMessage: encryptedMessage,
             isEncrypted: true,
-            senderDeviceId: senderUser.deviceId || 1,
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
         

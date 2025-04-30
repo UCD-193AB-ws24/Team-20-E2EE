@@ -42,7 +42,6 @@ export async function establishSession(userId, recipientId, recipientKeyBundle) 
       recipientAddress
     );
 
-
     console.log('Local: ', localKeys); 
     console.log('Local identityKey:', localKeys.identityKeyPair.pubKey);  // your public identity key
     console.log('Local privateKey:', localKeys.identityKeyPair.privKey);    // your private identity key

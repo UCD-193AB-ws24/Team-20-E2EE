@@ -1,15 +1,11 @@
 /**
- * Converts an ArrayBuffer to a Base64 string
+ * Converts an ArrayBuffer to a Base64 string using built-in browser functions
  * @param {ArrayBuffer} buffer - The buffer to convert
  * @returns {string} Base64 encoded string
  */
 export function arrayBufferToBase64(buffer) {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return window.btoa(binary);
+  // Convert ArrayBuffer to Base64
+  return btoa(String.fromCharCode.apply(null, new Uint8Array(buffer)));
 }
 
 /**
@@ -18,10 +14,11 @@ export function arrayBufferToBase64(buffer) {
  * @returns {ArrayBuffer} - Resulting ArrayBuffer
  */
 export function base64ToArrayBuffer(base64) {
-  const binary = window.atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
+  // Convert Base64 to ArrayBuffer
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
   }
   return bytes.buffer;
 }
