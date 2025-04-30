@@ -6,7 +6,7 @@ import {
   registerMessageListener, registerMessageSentListener,
   removeListener, sendTypingStatus, registerTypingListener
 } from '../api/socket';
-import { getChatHistory, sendPrivateMessage } from '../api/messages';
+import { getChatHistory, getArchivedChatHistory, sendPrivateMessage } from '../api/messages';
 import { useAppContext } from './AppContext';
 import { BACKEND_URL } from '../config/config';
 
@@ -136,26 +136,31 @@ export default function Layout({ children }) {
 
       try {
         const user = JSON.parse(localStorage.getItem('user'));
-        if (!user?.accessToken) {
-          return;
+        if (!user?.accessToken) return;
+
+        let chatHistory = [];
+
+        if (view === 'archive') {
+          const { messages: archiveMessages } = await getArchivedChatHistory(user.accessToken, selectedUser);
+          chatHistory = archiveMessages || [];
+        } else {
+          const { messages: historyMessages } = await getChatHistory(user.accessToken, selectedUser);
+          chatHistory = historyMessages || [];
         }
-        // Always fetch the chat history from the server when a user is selected
-        const { messages: chatHistory } = await getChatHistory(user.accessToken, selectedUser);
 
         // Update messages for this user
         setMessagesByUser(prev => ({
           ...prev,
-          [selectedUser]: chatHistory || []
+          [selectedUser]: chatHistory
         }));
 
-        // Set current messages
-        setMessages(chatHistory || []);
+        setMessages(chatHistory);
       } catch (error) {
-        console.error('Error loading chat history:', error);
+        console.error('Error loading chat messages:', error);
       }
     };
 
-    if (view === 'chat' || view === 'friends') {
+    if (selectedUser && (view === 'chat' || view === 'friends' || view === 'archive')) {
       loadChatHistory();
     }
   }, [selectedUser, view]);

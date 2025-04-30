@@ -97,7 +97,7 @@ export const getChatArchive = async (req, res) => {
         const recipientId = recipientUser.uid;
 
         // Get messages between the two users
-        const messagesCollection = db.collection("archive");
+        const messagesCollection = db.collection("deleted_messages");
         const messages = await messagesCollection.find({
             $or: [
                 { sender: currentUserId, recipient: recipientId },

@@ -25,7 +25,7 @@ export const getChatHistory = async (token, username) => {
 
 export const getArchivedChatHistory = async (token, username) => {
   try {
-    const response = await fetch(`${BACKEND_URL}/api/message/history?username=${username}`, {
+    const response = await fetch(`${BACKEND_URL}/api/message/archive?username=${username}`, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${token}`,
