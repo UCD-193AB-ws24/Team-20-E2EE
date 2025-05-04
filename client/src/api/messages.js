@@ -3,11 +3,18 @@ import fetchWithAuth from '../util/FetchWithAuth';
 import getCurrentUser from '../util/getCurrentUser.js';
 import { getSessionCipher, hasSession, arrayBufferToBase64, base64ToArrayBuffer } from '../util/encryption';
 import { getDeviceId } from '../util/deviceId.js';
+import { storeMessage } from '../util/messagesStore.js';
 
 // Get chat history between current user and another user
-export const getChatHistory = async (username) => {
+export const getChatHistory = async (username, onlyUnread = false) => {
   try {
-    const response = await fetchWithAuth(`${BACKEND_URL}/api/message/history?username=${username}`, {
+    // Add query parameter for unread messages if needed
+    const queryParams = new URLSearchParams({ username });
+    if (onlyUnread) {
+      queryParams.append('unreadOnly', 'true');
+    }
+    
+    const response = await fetchWithAuth(`${BACKEND_URL}/api/message/history?${queryParams}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json'
@@ -143,8 +150,24 @@ export const sendPrivateMessage = async (recipientUsername, text, recipientInfo)
 
     const result = await response.json();
 
-    console.log("result: ", result);
+    // Store message in IndexedDB
+    if (result.success) {
+      try {
+        const messageObject = {
+          messageId: result.messageId,
+          recipientId: recipientUID,
+          text,
+          isOutgoing: true,
+          timestamp: new Date().toISOString(), // Store full ISO timestamp for sorting
+          formattedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          sender: 'Me',
+        };
 
+        await storeMessage(messageObject);
+      } catch (error) {
+        console.log("Error saving sent message to IndexedDB: ", error);
+      }
+    } 
     return result;
   } catch (error) {
     console.error('Error sending message', error);
@@ -152,9 +175,11 @@ export const sendPrivateMessage = async (recipientUsername, text, recipientInfo)
   }
 };
 
-export const decryptMessage = async (encryptedMessage, senderId, senderDeviceId) => {
+export const decryptMessage = async (msg) => {
   try {
     const userId = getCurrentUser().uid;
+    const senderId = msg.senderUid;
+    const senderDeviceId = msg.senderDeviceId;
     
     console.log('Attempting to decrypt message from:', senderId, 'with deviceId:', senderDeviceId);
     
@@ -167,23 +192,23 @@ export const decryptMessage = async (encryptedMessage, senderId, senderDeviceId)
     console.log('Session cipher created successfully, decrypting message...');
     console.log(sessionCipher);
     
-    console.log("encrypted body: ", encryptedMessage.body);
+    console.log("encrypted body: ", msg.encryptedMessage.body);
 
     let processedBody;
     
-    if (typeof encryptedMessage.body === 'string') {
+    if (typeof msg.encryptedMessage.body === 'string') {
       console.log("Decoding Base64 string to binary buffer");
-      processedBody = base64ToArrayBuffer(encryptedMessage.body);
+      processedBody = base64ToArrayBuffer(msg.encryptedMessage.body);
       console.log(`Decoded Base64 string to ArrayBuffer of byteLength ${processedBody.byteLength}`);
-    } else if (encryptedMessage.body instanceof ArrayBuffer) {
+    } else if (msg.encryptedMessage.body instanceof ArrayBuffer) {
         console.log("Body is already an ArrayBuffer");
         processedBody = encryptedMessage.body;
-    } else if (encryptedMessage.body instanceof Uint8Array) {
+    } else if (msg.encryptedMessage.body instanceof Uint8Array) {
         console.log("Body is a Uint8Array, converting to ArrayBuffer");
-        processedBody = encryptedMessage.body.buffer;
+        processedBody = msg.encryptedMessage.body.buffer;
     } else {
-        console.error("Unsupported body type:", typeof encryptedMessage.body);
-        throw new Error(`Unexpected message body type: ${typeof encryptedMessage.body}`);
+        console.error("Unsupported body type:", typeof msg.encryptedMessage.body);
+        throw new Error(`Unexpected message body type: ${typeof msg.encryptedMessage.body}`);
     }
     
     console.log("Decoded ArrayBuffer:", processedBody);
@@ -193,7 +218,7 @@ export const decryptMessage = async (encryptedMessage, senderId, senderDeviceId)
     
     // Prepare the cipher message object
     const cipherMessage = {
-      type: encryptedMessage.type,
+      type: msg.encryptedMessage.type,
       body: processedBody
     };
 
@@ -211,7 +236,23 @@ export const decryptMessage = async (encryptedMessage, senderId, senderDeviceId)
     
     // Convert buffer to string
     const decryptedText = new TextDecoder().decode(decryptedBuffer);
-    console.log('Message decrypted successfully');
+    console.log('Message decrypted successfully: ', msg);
+
+
+    // Store message in IndexedDB
+    try {
+      await storeMessage({
+        messageId: msg._id,
+        recipientId: userId,
+        senderId: senderId,
+        text: decryptedText,
+        isOutgoing: false,
+        timestamp: msg.time,
+        status: 'received'
+      });
+    } catch (error) {
+      console.log("Error saving decrypted Message to storage:" , error);
+    }
     
     return decryptedText;
   } catch (error) {
@@ -219,8 +260,3 @@ export const decryptMessage = async (encryptedMessage, senderId, senderDeviceId)
     throw error;
   }
 };
-
-const testDecryption = async (encryptedMessage) => {
-  const message = await decryptMessage(encryptedMessage, getCurrentUser().uid , getDeviceId , "68116367f612b650597d7ec1");
-  console.log("Decrypted message:", message);
-}

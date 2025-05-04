@@ -9,7 +9,7 @@ export const messageController = async (req, res) => {
 
 export const getChatHistory = async (req, res) => {
     try {
-        const { username } = req.query;
+        const { username, unreadOnly } = req.query;
         const currentUserId = req.user?.uid;
 
         if (!currentUserId) {
@@ -34,12 +34,22 @@ export const getChatHistory = async (req, res) => {
         
         // Get messages between the two users
         const messagesCollection = db.collection("messages");
-        const messages = await messagesCollection.find({
+        
+        // Build the query based on whether we want only unread messages
+        const query = {
             $or: [
                 { sender: currentUserId, recipient: recipientId },
                 { sender: recipientId, recipient: currentUserId }
             ]
-        }).sort({ timestamp: 1 }).toArray();
+        };
+        
+        // Add read filter if unreadOnly is set to true
+        if (unreadOnly === 'true') {
+            query.read = false;
+        }
+        
+        const messages = await messagesCollection.find(query)
+            .sort({ timestamp: 1 }).toArray();
         
         // Format messages for client
         const formattedMessages = await Promise.all(messages.map(async (msg) => {
@@ -178,7 +188,7 @@ export const sendPrivateMessage = async (req, res) => {
         // Store the encrypted message
         const message = {
             sender: uid,
-            recipient: recipientId, 
+            recipientUid: recipientId, 
             senderUsername: senderUser.username,
             senderDeviceId,
             recipientUsername,
@@ -195,7 +205,6 @@ export const sendPrivateMessage = async (req, res) => {
         const result = await messagesCollection.insertOne(message);
         
         // Format message for sending
-        // Don't include the actual text since it's encrypted
         const formattedMessage = {
             _id: result.insertedId,
             senderUid: uid,
@@ -216,12 +225,6 @@ export const sendPrivateMessage = async (req, res) => {
                 sender: senderUser.username
             });
         }
-        
-        // Confirm to sender
-        io.to(onlineUsers.get(uid)).emit("message_sent", {
-            ...formattedMessage,
-            recipient: recipientUsername
-        });
 
         return res.status(200).json({ 
             success: true, 
