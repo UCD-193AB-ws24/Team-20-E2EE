@@ -5,16 +5,17 @@ import { getSessionCipher, hasSession, arrayBufferToBase64, base64ToArrayBuffer 
 import { getDeviceId } from '../util/deviceId.js';
 import { storeMessage } from '../util/messagesStore.js';
 
-// Get chat history between current user and another user
-export const getChatHistory = async (username, onlyUnread = false) => {
+// Get all unread messages or specific chat history
+export const getChatHistory = async (username = null) => {
   try {
-    // Add query parameter for unread messages if needed
-    const queryParams = new URLSearchParams({ username });
-    if (onlyUnread) {
-      queryParams.append('unreadOnly', 'true');
+    let url = `${BACKEND_URL}/api/message/history`;
+    
+    // Only add username parameter if provided
+    if (username) {
+      url += `?username=${encodeURIComponent(username)}`;
     }
     
-    const response = await fetchWithAuth(`${BACKEND_URL}/api/message/history?${queryParams}`, {
+    const response = await fetchWithAuth(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json'
@@ -23,12 +24,13 @@ export const getChatHistory = async (username, onlyUnread = false) => {
     
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Failed to fetch chat history');
+      throw new Error(error.error || 'Failed to fetch messages');
     }
+    
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error('Error fetching chat history:', error);
+    console.error('Error fetching messages:', error);
     return { messages: [] };
   }
 };
@@ -159,7 +161,7 @@ export const sendPrivateMessage = async (recipientUsername, text, recipientInfo)
           text,
           isOutgoing: true,
           timestamp: new Date().toISOString(), // Store full ISO timestamp for sorting
-          formattedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           sender: 'Me',
         };
 
@@ -227,10 +229,36 @@ export const decryptMessage = async (msg) => {
     // Decrypt the message
     let decryptedBuffer;
     if (cipherMessage.type === 3) {
-      // This is a PreKeyWhisperMessage (initial message in a session)
-      decryptedBuffer = await sessionCipher.decryptPreKeyWhisperMessage(cipherMessage.body);
+      try {
+        console.log("Decrypting PreKeyWhisperMessage, establishing session...");
+        // This is a PreKeyWhisperMessage (initial message in a session)
+        decryptedBuffer = await sessionCipher.decryptPreKeyWhisperMessage(cipherMessage.body);
+        console.log("Successfully decrypted PreKeyWhisperMessage and established session");
+        
+        // Verify session was established
+        const sessionExists = await hasSession(userId, senderId, senderDeviceId);
+        console.log("Session established status:", sessionExists);
+        
+        // Log the first few bytes of decrypted content for debugging
+        const firstBytes = new Uint8Array(decryptedBuffer.slice(0, 10));
+        console.log("First bytes of decrypted content:", Array.from(firstBytes));
+      } catch (prekeyError) {
+        console.error("PreKeyWhisperMessage decryption failed:", prekeyError);
+        console.error("Error details:", prekeyError.message);
+        
+        // Try to get more info about the session state
+        try {
+          const sessionExists = await hasSession(userId, senderId, senderDeviceId);
+          console.log("Session exists despite error?", sessionExists);
+        } catch (e) {
+          console.error("Failed to check session status:", e);
+        }
+        
+        // Re-throw the error to be handled by the outer catch
+        throw prekeyError;
+      }
     } else {
-      // This is a normal WhisperMessage
+      // Regular message handling
       decryptedBuffer = await sessionCipher.decryptWhisperMessage(cipherMessage.body);
     }
     
@@ -247,7 +275,8 @@ export const decryptMessage = async (msg) => {
         senderId: senderId,
         text: decryptedText,
         isOutgoing: false,
-        timestamp: msg.time,
+        time: msg.time,
+        timestamp: msg.timestamp,
         status: 'received'
       });
     } catch (error) {

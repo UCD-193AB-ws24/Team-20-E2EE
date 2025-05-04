@@ -9,21 +9,56 @@ export const messageController = async (req, res) => {
 
 export const getChatHistory = async (req, res) => {
     try {
-        const { username, unreadOnly } = req.query;
+        const { username } = req.query;
         const currentUserId = req.user?.uid;
 
         if (!currentUserId) {
             return res.status(401).json({ error: "Unauthorized - No user ID found" });
         }
 
-        if (!username) {
-            return res.status(400).json({ error: "Username parameter is required" });
-        }
-
         const db = await connectDB();
         const usersCollection = db.collection("users");
+        const messagesCollection = db.collection("messages");
         
-        // Find the recipient user by username
+        // If no username is provided, fetch ALL unread messages for the current user
+        if (!username) {
+            // Query for all unread messages where current user is the recipient
+            const query = {
+                recipientUid: currentUserId,
+                read: false
+            };
+            
+            const messages = await messagesCollection.find(query)
+                .sort({ timestamp: 1 }).toArray();
+            
+            // Format messages for client
+            const formattedMessages = await Promise.all(messages.map(async (msg) => {
+                // Get sender username if needed
+                let senderUsername = msg.senderUsername;
+                if (!senderUsername) {
+                    const sender = await usersCollection.findOne({ uid: msg.sender });
+                    senderUsername = sender?.username || "Unknown";
+                }
+                
+                return {
+                    _id: msg._id,
+                    sender: senderUsername,
+                    senderUid: msg.sender,
+                    senderDeviceId: msg.senderDeviceId,
+                    recipientUid: currentUserId,
+                    recipientUsername: msg.recipientUsername,
+                    encryptedMessage: msg.encryptedMessage,
+                    isEncrypted: msg.isEncrypted,
+                    time: msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    timestamp: msg.timestamp
+                };
+            }));
+            
+            // Return all unread messages without marking them as read
+            return res.json({ messages: formattedMessages });
+        }
+        
+        // Normal conversation history logic for when username is provided
         const recipientUser = await usersCollection.findOne({ username });
         
         if (!recipientUser) {
@@ -32,21 +67,13 @@ export const getChatHistory = async (req, res) => {
         
         const recipientId = recipientUser.uid;
         
-        // Get messages between the two users
-        const messagesCollection = db.collection("messages");
-        
-        // Build the query based on whether we want only unread messages
+        // Build the query for conversation history
         const query = {
             $or: [
-                { sender: currentUserId, recipient: recipientId },
-                { sender: recipientId, recipient: currentUserId }
+                { sender: currentUserId, recipientUid: recipientId },
+                { sender: recipientId, recipientUid: currentUserId }
             ]
         };
-        
-        // Add read filter if unreadOnly is set to true
-        if (unreadOnly === 'true') {
-            query.read = false;
-        }
         
         const messages = await messagesCollection.find(query)
             .sort({ timestamp: 1 }).toArray();
@@ -68,10 +95,10 @@ export const getChatHistory = async (req, res) => {
                 time: msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             };
         }));
-        
-        // Mark messages as read
+
+        // Mark messages as read when fetching a specific conversation
         await messagesCollection.updateMany(
-            { sender: recipientId, recipient: currentUserId, read: false },
+            { sender: recipientId, recipientUid: currentUserId, read: false },
             { $set: { read: true } }
         );
         
@@ -184,7 +211,11 @@ export const sendPrivateMessage = async (req, res) => {
         }
 
         const recipientId = recipientUser.uid;
-
+        const onlineUsers = getOnlineUsers();
+        
+        // Check if recipient is online
+        const isRecipientOnline = onlineUsers.has(recipientId);
+        
         // Store the encrypted message
         const message = {
             sender: uid,
@@ -198,7 +229,7 @@ export const sendPrivateMessage = async (req, res) => {
             },
             isEncrypted: true,
             timestamp: new Date(),
-            read: false,
+            read: isRecipientOnline, // Mark as read immediately if recipient is online
         }
 
         const messagesCollection = db.collection("messages");
@@ -212,24 +243,35 @@ export const sendPrivateMessage = async (req, res) => {
             senderDeviceId,
             encryptedMessage: encryptedMessage,
             isEncrypted: true,
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            timestamp: new Date(),
+            read: isRecipientOnline // Include read status in the response
         };
         
         const io = getSocketInstance();
-        const onlineUsers = getOnlineUsers();
         
         // Send encrypted message to recipient if online
-        if (onlineUsers.has(recipientId)) {
+        if (isRecipientOnline) {
             io.to(onlineUsers.get(recipientId)).emit("receive_message", {
                 ...formattedMessage,
                 sender: senderUser.username
             });
+            
+            // You could also emit an event to inform the sender that the message was delivered
+            if (onlineUsers.has(uid)) {
+                io.to(onlineUsers.get(uid)).emit("message_delivered", {
+                    messageId: result.insertedId,
+                    recipientUsername
+                });
+            }
         }
 
         return res.status(200).json({ 
             success: true, 
             message: "Encrypted message sent successfully",
-            messageId: result.insertedId
+            messageId: result.insertedId,
+            read: isRecipientOnline,
+            delivered: isRecipientOnline
         });
     } catch (error) {
         console.error("Error sending message:", error);

@@ -13,7 +13,7 @@ export default function NavBar({ onProfileClick, setView }) {
   const location = useLocation();
   const [friendRequestsCount, setFriendRequestsCount] = useState(0);
   const { socketReady } = useSocket();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const { theme, setTheme } = useAppContext();
   const isDarkMode = theme.type === 'dark';
 

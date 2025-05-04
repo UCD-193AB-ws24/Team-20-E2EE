@@ -30,18 +30,18 @@ function inspectArrayBuffer(buffer, label) {
  */
 export async function storeKeys(userId, keys) {
   // Inspect key buffers to see actual content
-  console.log("Identity Key Details:");
-  inspectArrayBuffer(keys.identityKeyPair.pubKey, "Public Key");
-  inspectArrayBuffer(keys.identityKeyPair.privKey, "Private Key");
+  // console.log("Identity Key Details:");
+  // inspectArrayBuffer(keys.identityKeyPair.pubKey, "Public Key");
+  // inspectArrayBuffer(keys.identityKeyPair.privKey, "Private Key");
   
-  console.log("Signed PreKey Details:");
-  inspectArrayBuffer(keys.signedPreKey.keyPair.pubKey, "Public Key");
-  inspectArrayBuffer(keys.signedPreKey.keyPair.privKey, "Private Key");
-  inspectArrayBuffer(keys.signedPreKey.signature, "Signature");
+  // console.log("Signed PreKey Details:");
+  // inspectArrayBuffer(keys.signedPreKey.keyPair.pubKey, "Public Key");
+  // inspectArrayBuffer(keys.signedPreKey.keyPair.privKey, "Private Key");
+  // inspectArrayBuffer(keys.signedPreKey.signature, "Signature");
   
-  console.log("First PreKey Details:");
-  inspectArrayBuffer(keys.preKeys[0].keyPair.pubKey, "Public Key");
-  inspectArrayBuffer(keys.preKeys[0].keyPair.privKey, "Private Key");
+  // console.log("First PreKey Details:");
+  // inspectArrayBuffer(keys.preKeys[0].keyPair.pubKey, "Public Key");
+  // inspectArrayBuffer(keys.preKeys[0].keyPair.privKey, "Private Key");
   try {
     // Store keys for each part separately to preserve ArrayBuffers
     await keyStorage.setItem(`${userId}-identity-pub`, keys.identityKeyPair.pubKey);
@@ -114,11 +114,11 @@ export async function getKeys(userId) {
       });
     }
     
-    console.log("Retrieved ArrayBuffer Inspection:");
-    inspectArrayBuffer(keys.identityKeyPair.pubKey, "Retrieved Public Key");
-    inspectArrayBuffer(keys.identityKeyPair.privKey, "Retrieved Private Key");
-    inspectArrayBuffer(keys.signedPreKey.keyPair.pubKey, "Retrieved Signed PreKey Public");
-    inspectArrayBuffer(keys.signedPreKey.signature, "Retrieved Signature");
+    // console.log("Retrieved ArrayBuffer Inspection:");
+    // inspectArrayBuffer(keys.identityKeyPair.pubKey, "Retrieved Public Key");
+    // inspectArrayBuffer(keys.identityKeyPair.privKey, "Retrieved Private Key");
+    // inspectArrayBuffer(keys.signedPreKey.keyPair.pubKey, "Retrieved Signed PreKey Public");
+    // inspectArrayBuffer(keys.signedPreKey.signature, "Retrieved Signature");
       
     return keys;
   } catch (error) {

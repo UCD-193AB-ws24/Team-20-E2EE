@@ -9,17 +9,6 @@ function base64ToArrayBuffer(base64) {
   return bytes.buffer;
 }
 
-// Ensures input is an ArrayBuffer, converting if necessary
-function ensureArrayBuffer(input) {
-  if (input instanceof ArrayBuffer) {
-    console.log("Input is ArrayBuffer: ", input)
-    return input;
-  } 
-  if (input instanceof Uint8Array) return input.buffer;
-  if (typeof input === 'string') return base64ToArrayBuffer(input);
-  throw new Error('Invalid input type for ArrayBuffer conversion');
-}
-
 // IndexedDB helpers
 const DB_NAME = "SignalProtocolStore";
 const DB_VERSION = 1;
@@ -90,25 +79,25 @@ export async function createSignalProtocolStore(userId, keys) {
   // Initialize identities, prekeys, signed prekeys if needed
   if (!(await idbGet("identities", userId))) {
     await idbPut("identities", userId, {
-      pub: ensureArrayBuffer(keys.identityKeyPair.pubKey),
-      priv: ensureArrayBuffer(keys.identityKeyPair.privKey)
+      pub: (keys.identityKeyPair.pubKey),
+      priv: (keys.identityKeyPair.privKey)
     });
   }
 
   if (!(await idbGet("preKeys", keys.preKeys[0].keyId))) {
     for (const preKey of keys.preKeys) {
       await idbPut("preKeys", preKey.keyId, {
-        pubKey: ensureArrayBuffer(preKey.keyPair.pubKey),
-        privKey: ensureArrayBuffer(preKey.keyPair.privKey)
+        pubKey: (preKey.keyPair.pubKey),
+        privKey: (preKey.keyPair.privKey)
       });
     }
   }
 
   if (!(await idbGet("signedPreKeys", keys.signedPreKey.keyId))) {
     await idbPut("signedPreKeys", keys.signedPreKey.keyId, {
-      pubKey: ensureArrayBuffer(keys.signedPreKey.keyPair.pubKey),
-      privKey: ensureArrayBuffer(keys.signedPreKey.keyPair.privKey),
-      signature: ensureArrayBuffer(keys.signedPreKey.signature)
+      pubKey: (keys.signedPreKey.keyPair.pubKey),
+      privKey: (keys.signedPreKey.keyPair.privKey),
+      signature: (keys.signedPreKey.signature)
     });
   }
 
@@ -126,7 +115,7 @@ export async function createSignalProtocolStore(userId, keys) {
 
     saveIdentity: async (address, publicKey) => {
       const id = typeof address === 'string' ? address : address.getName();
-      await idbPut("identities", id, ensureArrayBuffer(publicKey));
+      await idbPut("identities", id, (publicKey));
       console.log(`Saved identity for ${id}`);
     },
 
@@ -141,7 +130,7 @@ export async function createSignalProtocolStore(userId, keys) {
       if (!trusted) return true;
       
       // Compare ArrayBuffers directly
-      const publicKeyBuffer = ensureArrayBuffer(publicKey);
+      const publicKeyBuffer = (publicKey);
       if (trusted.byteLength !== publicKeyBuffer.byteLength) return false;
       
       const trustedArray = new Uint8Array(trusted);
@@ -178,8 +167,8 @@ export async function createSignalProtocolStore(userId, keys) {
 
     storePreKey: async (keyId, keyPair) => {
       await idbPut("preKeys", keyId, {
-        pubKey: ensureArrayBuffer(keyPair.pubKey),
-        privKey: ensureArrayBuffer(keyPair.privKey)
+        pubKey: (keyPair.pubKey),
+        privKey: (keyPair.privKey)
       });
       console.log(`Stored prekey ${keyId}`);
     },
@@ -202,8 +191,8 @@ export async function createSignalProtocolStore(userId, keys) {
 
     storeSignedPreKey: async (keyId, keyPair) => {
       await idbPut("signedPreKeys", keyId, {
-        pubKey: ensureArrayBuffer(keyPair.pubKey),
-        privKey: ensureArrayBuffer(keyPair.privKey)
+        pubKey: (keyPair.pubKey),
+        privKey: (keyPair.privKey)
       });
       console.log(`Stored signed prekey ${keyId}`);
     },
