@@ -13,13 +13,9 @@ import {establishSession, hasSession} from '../util/encryption/sessionManager';
 import {fetchKeyBundle} from '../api/keyBundle';
 import { getConversationMessages } from '../util/messagesStore';
 
-// Initialize with empty data structure
-const initialMessagesState = {};
-
 export default function Layout({ children }) {
   const [selectedUser, setSelectedUser] = useState()
   const [messages, setMessages] = useState([]);
-  const [messagesByUser, setMessagesByUser] = useState(initialMessagesState);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [view, setView] = useState();
   const [isTyping, setIsTyping] = useState({});
@@ -54,9 +50,7 @@ export default function Layout({ children }) {
       if (!selectedUser) return;
       
       try {
-        console.log("Loading chat history for:", selectedUser);
-        
-        // 1. First fetch the recipient's key bundle to get their UID
+        // 1. Fetch the recipient's key bundle to get their UID
         const recipientKeyBundle = await fetchKeyBundle(selectedUser);
         const recipientUid = recipientKeyBundle.keyBundle.uid;
         const recipientDeviceId = recipientKeyBundle.keyBundle.deviceId;
@@ -67,8 +61,7 @@ export default function Layout({ children }) {
           uid: recipientUid
         });
 
-        // 2. Load messages directly from local IndexedDB - they should already be decrypted
-        // and stored there by AppContext's message processing logic
+        // 2. Load messages directly from local IndexedDB
         const localMessages = await getConversationMessages(recipientUid);
         console.log(`Loaded ${localMessages?.length || 0} messages from local storage`);
         
@@ -79,26 +72,13 @@ export default function Layout({ children }) {
             text: msg.text,
             time: msg.time,
             status: msg.status || 'sent'
-          }));
-          
-          // Update both state objects
-          setMessagesByUser(prev => ({
-            ...prev,
-            [selectedUser]: formattedMessages
-          }));
-          
+          }));      
           setMessages(formattedMessages);
-        } else {
-          // Clear messages when no local messages exist
-          setMessagesByUser(prev => ({
-            ...prev,
-            [selectedUser]: []
-          }));
-          
+        } else {          
           setMessages([]);
         }
 
-        // 3. Check if we need to establish a session (still needed for sending messages)
+        // 3. Check if we need to establish a session
         const sessionExists = await hasSession(userId, recipientUid, recipientDeviceId);
         
         if (!sessionExists) {
@@ -134,16 +114,7 @@ export default function Layout({ children }) {
 
         const sender = message.sender;
         const time = message.time 
-        
-        // Add message to the appropriate user's message list
-        setMessagesByUser(prev => {
-          const userMessages = prev[sender] || [];
-          return {
-            ...prev,
-            [sender]: [...userMessages, { sender, text, time }]
-          };
-        });
-        
+  
         // If this is from the currently selected user, update current messages
         if (sender === selectedUser) {
           setMessages(prev => [...prev, { sender, text, time }]);
@@ -211,15 +182,7 @@ export default function Layout({ children }) {
       text,
       time: time,
     };
-    
-    setMessagesByUser(prev => {
-      const userMessages = prev[selectedUser] || [];
-      return {
-        ...prev,
-        [selectedUser]: [...userMessages, newMessage]
-      };
-    });
-    
+
     // Update current messages view
     setMessages(prev => [...prev, newMessage]);
     
@@ -267,8 +230,6 @@ export default function Layout({ children }) {
           React.cloneElement(children, {
             selectedUser,
             setSelectedUser,
-            messagesByUser,
-            setMessagesByUser,
             isTyping
           })
         )}
