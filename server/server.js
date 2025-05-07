@@ -36,14 +36,33 @@ const initializeApp = async () => {
 // Middleware setup
 app.use(cookieParser());
 app.use(express.json());
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://team-20-e2ee.onrender.com"
+];
 app.use(
-    cors({
-      origin: "http://localhost:5173", // Replace with your frontend URL
-      methods: "GET, POST, PUT, DELETE", // Allow multiple HTTP methods
-      allowedHeaders: "Content-Type,Authorization", // Allow Content-Type header
-      credentials: true // Enable credentials
-    })
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    methods: "GET, POST, PUT, DELETE",
+    allowedHeaders: "Content-Type,Authorization",
+    credentials: true
+  })
 );
+// app.use(
+//     cors({
+//       origin: "http://localhost:5173", // Replace with your frontend URL
+//       methods: "GET, POST, PUT, DELETE", // Allow multiple HTTP methods
+//       allowedHeaders: "Content-Type,Authorization", // Allow Content-Type header
+//       credentials: true // Enable credentials
+//     })
+// );
 
 // Routes
 app.use("/api/message", messageRoutes);
