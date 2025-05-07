@@ -15,6 +15,7 @@ import { BACKEND_URL } from '../config/config';
 const initialMessagesState = {};
 
 export default function Layout({ children }) {
+
   const [selectedUser, setSelectedUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [messagesByUser, setMessagesByUser] = useState(initialMessagesState);
@@ -26,12 +27,6 @@ export default function Layout({ children }) {
   const { appReady, theme } = useAppContext();
   const prevSelectedUser = useRef(null);
   const hasMounted = useRef(false);
-
-  // Get the auth token from localStorage
-  const getToken = () => {
-    const user = JSON.parse(localStorage.getItem('user'));
-    return user?.accessToken;
-  };
 
   const identifyChatType = (user = selectedUser) =>
     typeof user === 'string' ? user : user?.name;
@@ -136,15 +131,13 @@ export default function Layout({ children }) {
 
       try {
         const user = JSON.parse(localStorage.getItem('user'));
-        if (!user?.accessToken) {
-          return;
-        }
-        // Always fetch the chat history from the server when a user is selected
 
+        // Always fetch the chat history from the server when a user is selected
         let chatHistory = [];
 
         if (typeof selectedUser === 'object' && selectedUser.type === 'group') {
-          const result = await getGroupHistory(user.accessToken, selectedUser.id);
+          console.log("Loading group chat history");
+          const result = await getGroupHistory(selectedUser.id);
           chatHistory = result.messages || [];
         } else {
           const result = await getChatHistory(user.accessToken, selectedUser);
@@ -172,8 +165,10 @@ export default function Layout({ children }) {
       console.log('Socket not ready, waiting to set up listeners');
       return;
     }
+    console.log('Socket is ready, setting up listeners');
     // Handle incoming messages
     registerMessageListener((message) => {
+      console.log("Received message:", message);
       const { sender, text, time } = message;
 
       // Add message to the appropriate user's message list
@@ -258,9 +253,6 @@ export default function Layout({ children }) {
   // Send message function
   const sendMessage = async (text) => {
     if (!selectedUser || !text.trim()) return;
-    const token = getToken();
-    console.log("Selected user when sending message:", selectedUser);
-
     if (typeof selectedUser === 'string') {
       console.log("Private message");
       await sendPrivateMessage(selectedUser, text);

@@ -28,14 +28,13 @@ export const getChatHistory = async (token, username) => {
   }
 };
 
-export const getGroupHistory = async (token, groupId) => {
+export const getGroupHistory = async (groupId) => {
   try {
     const response = await fetchWithAuth(
       `${BACKEND_URL}/api/message/get-group-history?groupId=${groupId}`,
       {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
       }
