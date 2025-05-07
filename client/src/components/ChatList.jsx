@@ -272,7 +272,11 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
                     whileTap={{
                       backgroundColor: theme.colors.background.secondary,
                     }}
-                    onClick={() => setSelectedUser(group.name)}
+                    onClick={() => setSelectedUser({
+                      type: "group",
+                      id: group._id,
+                      name: group.name,
+                    })}
                   >
                     <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
                       {group.avatar ? (

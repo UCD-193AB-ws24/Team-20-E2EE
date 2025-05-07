@@ -28,6 +28,31 @@ export const getChatHistory = async (token, username) => {
   }
 };
 
+export const getGroupHistory = async (token, groupId) => {
+  try {
+    const response = await fetchWithAuth(
+      `${BACKEND_URL}/api/message/get-group-history?groupId=${groupId}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to fetch chat history");
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching chat history:", error);
+    return { messages: [] };
+  }
+};
+
 export const getArchivedChatHistory = async (token, username) => {
   try {
     const response = await fetch(
@@ -88,6 +113,30 @@ export const sendPrivateMessage = async (recipientUsername, text) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ recipientUsername, text }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to send message");
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error("Error sending message", error);
+    return;
+  }
+};
+
+export const sendGroupMessage = async (groupId, text) => {
+  try {
+    console.log("groupId:", groupId);
+    console.log("text:", text);
+    const response = await fetchWithAuth(`${BACKEND_URL}/api/message/send-group`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ groupId, text }),
     });
 
     if (!response.ok) {

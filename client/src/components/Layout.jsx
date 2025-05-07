@@ -6,7 +6,7 @@ import {
   registerMessageListener, registerMessageSentListener,
   removeListener, sendTypingStatus, registerTypingListener
 } from '../api/socket';
-import { getChatHistory, sendPrivateMessage } from '../api/messages';
+import { getChatHistory, getGroupHistory, sendPrivateMessage, sendGroupMessage } from '../api/messages';
 import { useAppContext } from './AppContext';
 import { BACKEND_URL } from '../config/config';
 
@@ -32,6 +32,9 @@ export default function Layout({ children }) {
     const user = JSON.parse(localStorage.getItem('user'));
     return user?.accessToken;
   };
+
+  const identifyChatType = (user = selectedUser) =>
+    typeof user === 'string' ? user : user?.name;
 
   // Get initial view on mount
   useEffect(() => {
@@ -70,7 +73,7 @@ export default function Layout({ children }) {
     const shouldDelete =
       hasMounted.current &&
       prevSelectedUser.current !== null &&
-      selectedUser !== prevSelectedUser.current;
+      identifyChatType(selectedUser) !== identifyChatType(prevSelectedUser.current);
 
     console.log("hasMounted:", hasMounted.current);
     console.log("prevSelectedUser:", prevSelectedUser.current);
@@ -87,7 +90,7 @@ export default function Layout({ children }) {
               'Authorization': `Bearer ${user.accessToken}`
             },
             body: JSON.stringify({
-              username: prevSelectedUser.current
+              username: identifyChatType(prevSelectedUser.current),
             })
           });
 
@@ -114,7 +117,7 @@ export default function Layout({ children }) {
         navigator.sendBeacon(
           `${BACKEND_URL}/api/message/vanish`,
           JSON.stringify({
-            username: selectedUser
+            username: identifyChatType(),
           })
         );
       }
@@ -125,9 +128,6 @@ export default function Layout({ children }) {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [selectedUser]);
-
-
-
 
   // Load chat history when selected user changes
   useEffect(() => {
@@ -140,15 +140,21 @@ export default function Layout({ children }) {
           return;
         }
         // Always fetch the chat history from the server when a user is selected
-        const { messages: chatHistory } = await getChatHistory(user.accessToken, selectedUser);
 
-        // Update messages for this user
-        setMessagesByUser(prev => ({
+        let chatHistory = [];
+
+        if (typeof selectedUser === 'object' && selectedUser.type === 'group') {
+          const result = await getGroupHistory(user.accessToken, selectedUser.id);
+          chatHistory = result.messages || [];
+        } else {
+          const result = await getChatHistory(user.accessToken, selectedUser);
+          chatHistory = result.messages || [];
+        }
+
+        setMessagesByUser((prev) => ({
           ...prev,
-          [selectedUser]: chatHistory || []
+          [identifyChatType()]: chatHistory || [],
         }));
-
-        // Set current messages
         setMessages(chatHistory || []);
       } catch (error) {
         console.error('Error loading chat history:', error);
@@ -180,7 +186,7 @@ export default function Layout({ children }) {
       });
 
       // If this is from the currently selected user, update current messages
-      if (sender === selectedUser) {
+      if (sender === identifyChatType()) {
         setMessages(prev => [...prev, { sender, text, time }]);
       }
     });
@@ -199,7 +205,7 @@ export default function Layout({ children }) {
       });
 
       // If this is for the currently selected user, update current messages
-      if (recipient === selectedUser) {
+      if (recipient === identifyChatType()) {
         setMessages(prev => [...prev, { sender: 'Me', text, time }]);
       }
     });
@@ -239,11 +245,11 @@ export default function Layout({ children }) {
     if (typingTimeout) clearTimeout(typingTimeout);
 
     // Send typing indicator
-    sendTypingStatus(selectedUser, true);
+    sendTypingStatus(identifyChatType(), true);
 
     // Set timeout to stop typing indicator
     const timeout = setTimeout(() => {
-      sendTypingStatus(selectedUser, false);
+      sendTypingStatus(identifyChatType(), false);
     }, 3000);
 
     setTypingTimeout(timeout);
@@ -255,12 +261,18 @@ export default function Layout({ children }) {
     const token = getToken();
     console.log("Selected user when sending message:", selectedUser);
 
-    sendPrivateMessage(selectedUser, text);
+    if (typeof selectedUser === 'string') {
+      console.log("Private message");
+      await sendPrivateMessage(selectedUser, text);
+    } else if (typeof selectedUser == 'object' && selectedUser.type === 'group') {
+      console.log("Group message");
+      await sendGroupMessage(selectedUser.id, text);
+    }
 
     // Clear typing indicator
     if (typingTimeout) {
       clearTimeout(typingTimeout);
-      sendTypingStatus(selectedUser, false);
+      sendTypingStatus(identifyChatType(), false);
     }
   };
 
@@ -275,6 +287,8 @@ export default function Layout({ children }) {
       </div>
     );
   }
+
+  const selectedKey = identifyChatType();
 
   return (
     <div
@@ -313,15 +327,15 @@ export default function Layout({ children }) {
       >
         <div className="p-4">
           <h2 className="text-xl font-bold">
-            {selectedUser || 'Select a user to start chatting'}
+            {selectedKey || 'Select a user to start chatting'}
             {selectedUser && view === 'archive' && ' (Archive)'}
-            {selectedUser && isTyping[selectedUser] &&
+            {selectedUser && isTyping[selectedKey] &&
               <span className="ml-2 text-sm text-gray-500 italic">typing...</span>
             }
           </h2>
         </div>
         <ChatWindow
-          messages={messagesByUser[selectedUser] || []}
+          messages={messagesByUser[selectedKey] || []}
           selectedUser={selectedUser}
         />
         <MessageInput
