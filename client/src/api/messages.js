@@ -90,3 +90,54 @@ export const sendPrivateMessage = async (recipientUsername, text) => {
     return;
   }
 };
+
+// Create a group chat
+export const createGroupChat = async (groupName, members) => {
+  console.log("Creating group chat with name:", groupName);
+  console.log("Members:", members);
+try{
+  const response = await fetchWithAuth(`${BACKEND_URL}/api/message/create-group`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ groupName, members }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to create group chat');
+  }
+
+  return response.json();
+}catch(error){
+  console.error('Error creating group chat', error);
+  return;
+}
+
+}
+
+// get all group chat
+export const getAllGroupChat = async () => {
+  try{
+    const response = await fetchWithAuth(`${BACKEND_URL}/api/message/get-groups`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to fetch group chat');
+    }
+
+    return data.groups;
+
+  }catch(error){
+    console.error('Error fetching group chat', error);
+    return;
+  }
+};

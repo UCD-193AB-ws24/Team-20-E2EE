@@ -48,10 +48,10 @@ export default function Layout({ children }) {
   });
 
   useEffect(() => {
-    console.log("🔁 useEffect triggered for selectedUser");
+    console.log("useEffect triggered for selectedUser");
 
     const user = JSON.parse(localStorage.getItem('user'));
-    console.log("🧠 Loaded user from localStorage:", user);
+    console.log("Loaded user from localStorage:", user);
 
     if (!user?.accessToken) {
       setTimeout(() => {
@@ -72,10 +72,10 @@ export default function Layout({ children }) {
       prevSelectedUser.current !== null &&
       selectedUser !== prevSelectedUser.current;
 
-    console.log("💡 hasMounted:", hasMounted.current);
-    console.log("💡 prevSelectedUser:", prevSelectedUser.current);
-    console.log("💡 selectedUser:", selectedUser);
-    console.log("💡 shouldDelete:", shouldDelete);
+    console.log("hasMounted:", hasMounted.current);
+    console.log("prevSelectedUser:", prevSelectedUser.current);
+    console.log("selectedUser:", selectedUser);
+    console.log("shouldDelete:", shouldDelete);
 
     const deleteMessages = async () => {
       if (shouldDelete) {
@@ -92,9 +92,9 @@ export default function Layout({ children }) {
           });
 
           const result = await res.json();
-          console.log(`📦 Archived messages with ${prevSelectedUser.current}:`, result);
+          console.log(`Archived messages with ${prevSelectedUser.current}:`, result);
         } catch (err) {
-          console.error('❌ Error archiving messages:', err);
+          console.error('Error archiving messages:', err);
         }
       }
 
