@@ -7,14 +7,16 @@ const socketToUser = new Map(); // { socketId: uid }
 
 let io = null;
 
-export const initializeSocket = (httpServer) => {
-  io = new Server(httpServer, {
+export function initializeSocket(server) {
+  const io = new Server(server, {
     cors: {
-      origin: "http://localhost:5173",
+      origin: [
+        "http://localhost:5173",
+        "https://team-20-e2ee.onrender.com"
+      ],
       methods: ["GET", "POST"],
-      credentials: true,
-      allowedHeaders: ["Content-Type", "Authorization"],
-    },
+      credentials: true
+    }
   });
 
   io.use(async (socket, next) => {
