@@ -14,7 +14,7 @@ import keyBundleRoutes from './routes/keyBundle.routes.js';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 3000;
 
 // Create HTTP server
 const httpServer = createServer(app);
@@ -26,9 +26,9 @@ const io = initializeSocket(httpServer);
 const initializeApp = async () => {
   try {
     await connectDB();
-    // console.log("Connected to MongoDB successfully");
+    console.log("Connected to MongoDB successfully");
   } catch (error) {
-    // console.error("Error connecting to MongoDB:", error);
+    console.error("Error connecting to MongoDB:", error);
     process.exit(1);
   }
 };
@@ -54,6 +54,6 @@ app.use('/api/keys', keyBundleRoutes);
 // Initialize the app and start the server
 initializeApp().then(() => {
   httpServer.listen(PORT, () => {
-    // console.log(`Server running on port ${PORT}`);
+    console.log(`Server running on port ${PORT}`);
   });
 });
