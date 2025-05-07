@@ -316,7 +316,10 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
       {selectedGroupInfo && (
         <GroupInfoPopUp
           group={selectedGroupInfo}
-          onClose={() => setSelectedGroupInfo(null)}
+          onClose={() => {
+            setSelectedGroupInfo(null);
+            loadGroupChats(); 
+          }}
         />
       )}
     </>

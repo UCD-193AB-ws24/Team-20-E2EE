@@ -1,5 +1,6 @@
 import { connectDB } from "../mongo/connection.js";
 import { getSocketInstance, getOnlineUsers } from "../socketManager.js";
+import { ObjectId } from "mongodb";
 
 export const messageController = async (req, res) => {
   const { message } = req.body;
@@ -412,7 +413,6 @@ try{
     const groups = await groupsCollection
       .find({ members: userId })
       .toArray();
-    console.log("Groups found:", groups);
     res.status(200).json({ success: true, groups });
 
 }catch(error){
@@ -421,3 +421,119 @@ try{
 }
 
 }
+
+// add member to group chat
+export const addMemberToGroup = async (req, res) => {
+  try {
+    const { groupId, memberId } = req.body;
+    const userId = req.user?.uid;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized - No user ID found" });
+    }
+
+    if (!groupId || !memberId) {
+      return res.status(400).json({ error: "Group ID and member ID are required" });
+    }
+
+    const db = await connectDB();
+    const groupsCollection = db.collection("groups");
+
+    console.log("Adding member to group:", groupId, memberId);
+
+    // Add the new member to the group
+    const result = await groupsCollection.updateOne(
+      { _id: new ObjectId(groupId) },
+      { $addToSet: { members: memberId } }
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(404).json({ error: "Group not found or member already in group" });
+    }
+
+    res.status(200).json({ success: true, message: "Member added to group" });
+  } catch (err) {
+    console.error("Error adding member to group:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// remove member from group chat
+export const removeMemberFromGroup = async (req, res) => {
+  try {
+    const { groupId, memberId } = req.body;
+    const userId = req.user?.uid;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized - No user ID found" });
+    }
+
+    if (!groupId || !memberId) {
+      return res.status(400).json({ error: "Group ID and member ID are required" });
+    }
+
+    const db = await connectDB();
+    const groupsCollection = db.collection("groups");
+
+    console.log("Removing member from group:", groupId, memberId);
+
+    // Remove the member from the group
+    const result = await groupsCollection.updateOne(
+      { _id: new ObjectId(groupId) },
+      { $pull: { members: memberId } }
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(404).json({ error: "Group not found or member not in group" });
+    }
+
+    // delete the group if it has no members left
+    const group = await groupsCollection.findOne({ _id: new ObjectId(groupId) });
+    if (group && group.members.length === 0) {
+      await groupsCollection.deleteOne({ _id: new ObjectId(groupId) });
+    }
+
+
+    res.status(200).json({ success: true, message: "Member removed from group" });
+  } catch (err) {
+    console.error("Error removing member from group:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+
+// update group name
+export const updateGroupName = async (req, res) => {
+  try {
+    const { groupId, groupName: newGroupName } = req.body;
+    const userId = req.user?.uid;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized - No user ID found" });
+    }
+
+    if (!groupId || !newGroupName) {
+      return res.status(400).json({ error: "Group ID and new group name are required" });
+    }
+
+    const db = await connectDB();
+    const groupsCollection = db.collection("groups");
+
+    console.log("Updating group name:", groupId, newGroupName);
+
+    // Update the group's name
+    const result = await groupsCollection.updateOne(
+      { _id: new ObjectId(groupId) },
+      { $set: { name: newGroupName } }
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(404).json({ error: "Group not found" });
+    }
+
+    res.status(200).json({ success: true, message: "Group name updated" });
+  } catch (err) {
+    console.error("Error updating group name:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
