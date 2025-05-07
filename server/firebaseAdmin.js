@@ -10,7 +10,7 @@ if (!admin.apps.length) {
     });
 
 } else {
-    console.log("Firebase Admin already initialized, skipping...");
+    // console.log("Firebase Admin already initialized, skipping...");
 }
 
 // Export the same Firebase Admin instance everywhere in the app

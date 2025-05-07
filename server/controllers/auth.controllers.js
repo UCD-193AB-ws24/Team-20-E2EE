@@ -16,7 +16,7 @@ export const register = async (req, res) => {
     // Verify the ID token
     const emailVerificationLink = await admin.auth().generateEmailVerificationLink(email);
 
-    console.log("Email Link:", emailVerificationLink);
+    // console.log("Email Link:", emailVerificationLink);
 
     // Ensure DB connection
     const db = await connectDB();
@@ -48,9 +48,9 @@ export const register = async (req, res) => {
         createdAt: new Date(),
       });
 
-      console.log("User inserted into MongoDB");
+      // console.log("User inserted into MongoDB");
     } else {
-      console.log("User already exists in MongoDB");
+      // console.log("User already exists in MongoDB");
     }
 
     res.json({
@@ -60,7 +60,7 @@ export const register = async (req, res) => {
     });
 
   } catch (error) {
-    console.log("Error registering user:", error);
+    // console.log("Error registering user:", error);
 
     res.status(401).json({ error: error.message });
   }
@@ -69,7 +69,7 @@ export const register = async (req, res) => {
 export const corbadoLogin = async (req, res) => {
   try {
     const email = req.body.email;
-    console.log("Email from Corbado:", email);
+    // console.log("Email from Corbado:", email);
     if (!email) return res.status(400).json({ error: "Invalid token: no email" });
 
     const db = await connectDB();

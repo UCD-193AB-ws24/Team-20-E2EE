@@ -33,7 +33,7 @@ export const storeKeyBundle = async (req, res) => {
 
     // If bundle exists and we're not forcing overwrite, return early
     if (existingBundle && !forceOverwrite) {
-      console.log(`Key bundle already exists for user ${uid} on device ${keyBundle.deviceId}`);
+      // console.log(`Key bundle already exists for user ${uid} on device ${keyBundle.deviceId}`);
       return res.status(200).json({ message: "Key bundle already exists for this device" });
     }
 

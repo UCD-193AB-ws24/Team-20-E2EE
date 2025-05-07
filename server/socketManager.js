@@ -27,7 +27,7 @@ export const initializeSocket = (httpServer) => {
       .find(c => c.startsWith('refreshToken='))
       ?.split('=')[1];  
       
-      console.log("Socket authentication token:", refreshToken);
+      // console.log("Socket authentication token:", refreshToken);
       if (!refreshToken) {
         return next(new Error("Authentication error: No token provided"));
       }
@@ -44,7 +44,7 @@ export const initializeSocket = (httpServer) => {
   });
 
   io.on("connection", async (socket) => {
-    console.log("New connection:", socket.id);
+    // console.log("New connection:", socket.id);
 
     try {
       const userId = socket.user.uid;
@@ -53,7 +53,7 @@ export const initializeSocket = (httpServer) => {
       onlineUsers.set(userId, socket.id);
       socketToUser.set(socket.id, userId);
 
-      console.log(`User ${userId} connected with socket ${socket.id}`);
+      // console.log(`User ${userId} connected with socket ${socket.id}`);
 
       const db = await connectDB();
       const usersCollection = db.collection("users");
@@ -75,7 +75,7 @@ export const initializeSocket = (httpServer) => {
 
       // Handle disconnection
       socket.on("disconnect", async () => {
-        console.log(`Socket ${socket.id} disconnected`);
+        // console.log(`Socket ${socket.id} disconnected`);
         handleDisconnection(socket, usersCollection);
       });
     } catch (error) {
