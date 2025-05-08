@@ -191,14 +191,14 @@ export const login = async (req, res) => {
     // HttpOnly cookie
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
-      secure: false, // true in production with HTTPS
+      secure: true, // true in production with HTTPS
       sameSite: "Lax",
       maxAge: 3600000 // 1 hour
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: false, // true in production with HTTPS
+      secure: true, // true in production with HTTPS
       sameSite: "Lax",
       maxAge: 604800000 // 7 days
     });
@@ -255,7 +255,7 @@ export const refreshToken = async (req, res) => {
     // Set the new access token as a cookie
     res.cookie("accessToken", newAccessToken, {
       httpOnly: true,
-      secure: false, // set to true in production (HTTPS)
+      secure: true, // set to true in production (HTTPS)
       sameSite: "Lax",
       maxAge: 60 * 60 * 1000, // 1 hour
     });
