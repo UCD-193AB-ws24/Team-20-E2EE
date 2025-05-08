@@ -99,15 +99,15 @@ export const corbadoLogin = async (req, res) => {
 
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
-      secure: false,
-      sameSite: "Lax",
+      secure: true,
+      sameSite: "None",
       maxAge: 3600000,
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: false,
-      sameSite: "Lax",
+      secure: true,
+      sameSite: "None",
       maxAge: 604800000,
     });
 
@@ -191,15 +191,15 @@ export const login = async (req, res) => {
     // HttpOnly cookie
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
-      secure: false, // true in production with HTTPS
-      sameSite: "Lax",
+      secure: true, // true in production with HTTPS
+      sameSite: "None",
       maxAge: 3600000 // 1 hour
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: false, // true in production with HTTPS
-      sameSite: "Lax",
+      secure: true, // true in production with HTTPS
+      sameSite: "None",
       maxAge: 604800000 // 7 days
     });
 
@@ -255,8 +255,8 @@ export const refreshToken = async (req, res) => {
     // Set the new access token as a cookie
     res.cookie("accessToken", newAccessToken, {
       httpOnly: true,
-      secure: false, // set to true in production (HTTPS)
-      sameSite: "Lax",
+      secure: true, // set to true in production (HTTPS)
+      sameSite: "None",
       maxAge: 60 * 60 * 1000, // 1 hour
     });
 
