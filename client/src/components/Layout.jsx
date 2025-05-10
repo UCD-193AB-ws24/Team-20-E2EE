@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import NavBar from './NavBar';
 import { ChatWindow, MessageInput, ProfileModal, useSocket } from './index';
 import { Archive, Friends, Requests } from '../pages';
@@ -12,9 +12,13 @@ import getCurrentUser from '../util/getCurrentUser';
 import {establishSession, hasSession} from '../util/encryption/sessionManager';
 import {fetchKeyBundle} from '../api/keyBundle';
 import { getConversationMessages } from '../util/messagesStore';
+import { getChatHistory, getGroupHistory, sendPrivateMessage, sendGroupMessage } from '../api/messages';
+import { useAppContext } from './AppContext';
+import { BACKEND_URL } from '../config/config';
+
 
 export default function Layout({ children }) {
-  const [selectedUser, setSelectedUser] = useState()
+  const [selectedUser, setSelectedUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [view, setView] = useState();
@@ -24,12 +28,17 @@ export default function Layout({ children }) {
   const { appReady, theme } = useAppContext();
   const user = getCurrentUser();
   const userId = user?.uid;
-
   const [selectedUserInfo, setSelectedUserInfo] = useState({
     deviceId: null,
     uid: null
   });
  
+  const prevSelectedUser = useRef(null);
+  const hasMounted = useRef(false);
+
+  const identifyChatType = (user = selectedUser) =>
+    typeof user === 'string' ? user : user?.name;
+
   // Get initial view on mount
   useEffect(() => {
     const path = location.pathname;
@@ -44,11 +53,90 @@ export default function Layout({ children }) {
     }
   });
 
+  useEffect(() => {
+    console.log("useEffect triggered for selectedUser");
+
+    const user = JSON.parse(localStorage.getItem('user'));
+    console.log("Loaded user from localStorage:", user);
+
+    if (!user?.accessToken) {
+      setTimeout(() => {
+        console.log("No accessToken");
+        const delayedUser = JSON.parse(localStorage.getItem("user"));
+        if (delayedUser?.accessToken) {
+          console.log("No accessToken for delayed user");
+          setSelectedUser((prev) => prev); // trigger re-run
+        }
+      }, 300);
+      return;
+    }
+
+    console.log("accessToken:", user.accessToken);
+
+    const shouldDelete =
+      hasMounted.current &&
+      prevSelectedUser.current !== null &&
+      identifyChatType(selectedUser) !== identifyChatType(prevSelectedUser.current);
+
+    console.log("hasMounted:", hasMounted.current);
+    console.log("prevSelectedUser:", prevSelectedUser.current);
+    console.log("selectedUser:", selectedUser);
+    console.log("shouldDelete:", shouldDelete);
+
+    const deleteMessages = async () => {
+      if (shouldDelete) {
+        try {
+          const res = await fetch(`${BACKEND_URL}/api/message/vanish`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${user.accessToken}`
+            },
+            body: JSON.stringify({
+              username: identifyChatType(prevSelectedUser.current),
+            })
+          });
+
+          const result = await res.json();
+          console.log(`Archived messages with ${prevSelectedUser.current}:`, result);
+        } catch (err) {
+          console.error('Error archiving messages:', err);
+        }
+      }
+
+      prevSelectedUser.current = selectedUser;
+      hasMounted.current = true;
+    };
+
+    deleteMessages();
+  }, [selectedUser]);
+
+
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('user'));
+
+    const handleBeforeUnload = async (event) => {
+      if (user?.accessToken && selectedUser) {
+        navigator.sendBeacon(
+          `${BACKEND_URL}/api/message/vanish`,
+          JSON.stringify({
+            username: identifyChatType(),
+          })
+        );
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [selectedUser]);
+
   // Load chat history when selected user changes
   useEffect(() => {
     const loadChatHistory = async () => {
       if (!selectedUser) return;
-      
+
       try {
         // 1. Fetch the recipient's key bundle to get their UID
         const recipientKeyBundle = await fetchKeyBundle(selectedUser);
@@ -85,12 +173,11 @@ export default function Layout({ children }) {
           console.log("No session, establishing new session");
           await establishSession(userId, recipientUid, recipientKeyBundle.keyBundle);
         }
-        
       } catch (error) {
         console.error('Error loading chat history:', error);
       }
     };
-    
+
     if (view === 'chat' || view === 'friends') {
       loadChatHistory();
     }
@@ -102,7 +189,6 @@ export default function Layout({ children }) {
       console.log('Socket not ready, waiting to set up listeners');
       return;
     }
-
     console.log("socket ready, initing lisnters in Layout");
     // Handle incoming messages
     registerMessageListener((message) => {
@@ -124,7 +210,7 @@ export default function Layout({ children }) {
         console.error("Failed to decrypt message:", error);
       });
   });
-    
+
     // Handle typing indicators
     registerTypingListener((data) => {
       const { username, isTyping: typing } = data;
@@ -132,7 +218,7 @@ export default function Layout({ children }) {
         ...prev,
         [username]: typing
       }));
-      
+
       // Clear typing indicator after 3 seconds of inactivity
       if (typing) {
         setTimeout(() => {
@@ -143,7 +229,7 @@ export default function Layout({ children }) {
         }, 3000);
       }
     });
-    
+
     // Clean up listeners on unmount
     return () => {
       removeListener('receive_message');
@@ -155,25 +241,24 @@ export default function Layout({ children }) {
   // Handle typing indicator
   const handleTyping = useCallback(() => {
     if (!selectedUser) return;
-    
+
     // Clear previous timeout
     if (typingTimeout) clearTimeout(typingTimeout);
-    
+
     // Send typing indicator
-    sendTypingStatus(selectedUser, true);
-    
+    sendTypingStatus(identifyChatType(), true);
+
     // Set timeout to stop typing indicator
     const timeout = setTimeout(() => {
-      sendTypingStatus(selectedUser, false);
+      sendTypingStatus(identifyChatType(), false);
     }, 3000);
-    
+
     setTypingTimeout(timeout);
   }, [selectedUser, typingTimeout]);
 
   // Send message function
   const sendMessage = async (text) => {
     if (!selectedUser || !text.trim()) return;
-    
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
     // For UI update
@@ -186,13 +271,18 @@ export default function Layout({ children }) {
     // Update current messages view
     setMessages(prev => [...prev, newMessage]);
     
-    // Clear typing indicator
-    if (typingTimeout) {
-      clearTimeout(typingTimeout);
-      sendTypingStatus(selectedUser, false);
+    if (typeof selectedUser === 'string') {
+      console.log("Private message");
+      sendPrivateMessage(selectedUser, text, selectedUserInfo);
+    } else if (typeof selectedUser == 'object' && selectedUser.type === 'group') {
+      console.log("Group message");
+      await sendGroupMessage(selectedUser.id, text);
     }
     
-    sendPrivateMessage(selectedUser, text, selectedUserInfo);
+    if (typingTimeout) {
+      clearTimeout(typingTimeout);
+      sendTypingStatus(identifyChatType(), false);
+    }
   };
 
   if (!appReady) {
@@ -207,13 +297,15 @@ export default function Layout({ children }) {
     );
   }
 
+  const selectedKey = identifyChatType();
+
   return (
     <div
-     className="h-screen flex"
-     style={{
-      backgroundColor: theme.colors.background.primary,
-      color: theme.colors.text.primary
-     }}
+      className="h-screen flex"
+      style={{
+        backgroundColor: theme.colors.background.primary,
+        color: theme.colors.text.primary
+      }}
     >
       {/* Navigation Bar */}
       <NavBar onProfileClick={() => setShowProfileModal(true)} setView={setView} />
@@ -236,24 +328,24 @@ export default function Layout({ children }) {
       </div>
 
       {/* Chat Window */}
-      <div 
+      <div
         className="flex-1 flex flex-col shadow-lg rounded-lg m-3 ml-0"
-        style={{backgroundColor: theme.colors.background.secondary}}
+        style={{ backgroundColor: theme.colors.background.secondary }}
       >
         <div className="p-4">
           <h2 className="text-xl font-bold">
-            {selectedUser || 'Select a user to start chatting'}
+            {selectedKey || 'Select a user to start chatting'}
             {selectedUser && view === 'archive' && ' (Archive)'}
-            {selectedUser && isTyping[selectedUser] && 
+            {selectedUser && isTyping[selectedKey] &&
               <span className="ml-2 text-sm text-gray-500 italic">typing...</span>
             }
           </h2>
         </div>
-        <ChatWindow 
-          messages={messages}
+        <ChatWindow
+          messages={messagesByUser[selectedKey] || []}
           selectedUser={selectedUser}
         />
-        <MessageInput 
+        <MessageInput
           sendMessage={sendMessage}
           onTyping={handleTyping}
           disabled={!selectedUser || view === 'archive'}

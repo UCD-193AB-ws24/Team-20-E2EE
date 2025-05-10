@@ -19,7 +19,7 @@ const Passkey = () => {
       }, 2000);
     });
   };
-  
+
   const handleLogin = async () => {
     const email = await getEmailFromLocalStorage();
     // This function will be called when the user is successfully logged in
@@ -112,7 +112,7 @@ const Passkey = () => {
           <hr className="flex-grow border-t border-gray-400" />
         </div>
         <div>
-          <button className="p-4 bg-[#1D4776] rounded-lg text-[#FFC519] font-bold hover:brightness-105 cursor-pointer hover:translate-y-[-5px] transition-transform" onClick={() => {navigate("/login")}}>
+          <button className="p-4 bg-[#1D4776] rounded-lg text-[#FFC519] font-bold hover:brightness-105 cursor-pointer hover:translate-y-[-5px] transition-transform" onClick={() => { navigate("/login") }}>
             Normal email login
           </button>
         </div>

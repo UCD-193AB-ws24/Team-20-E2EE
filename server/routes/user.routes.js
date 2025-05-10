@@ -12,7 +12,9 @@ import {
   updateAvatar,
   getAvatar,
   unfriendUser,
-  getFriendIdByUsername
+  getFriendIdByUsername,
+  searchFriendUid,
+  searchFriendUsernameByUid
 } from "../controllers/user.controllers.js";
 import { authenticateUser } from "../middlewares/authMiddleware.js"; // Import middleware
 
@@ -34,5 +36,7 @@ router.get("/friendList", authenticateUser, getFriendlist);
 router.get("/friendRequestList", authenticateUser, getFriendRequests);
 router.post("/unfriend", authenticateUser, unfriendUser);
 router.get("/friend-id", authenticateUser, getFriendIdByUsername);
+router.get("/searchFriendUid", authenticateUser, searchFriendUid);
+router.get("/get-friend-username-by-id", authenticateUser, searchFriendUsernameByUid);
 
 export default router;
