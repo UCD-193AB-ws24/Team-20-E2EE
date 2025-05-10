@@ -5,6 +5,7 @@ import { useAppContext } from '../components';
 import fetchWithAuth from '../util/FetchWithAuth';
 import { useCorbado } from '@corbado/react';
 import getCurrentUser from '../util/getCurrentUser.js';
+import { getDeviceId } from '../util/deviceId';
 
 export default function Profile({ onClose }) {
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
@@ -51,6 +52,9 @@ export default function Profile({ onClose }) {
 
 
   const handleCorbadoLogout = async () => {
+    // Save device ID before logout
+    const deviceId = localStorage.getItem('e2ee-device-id');
+    
     // Call the Corbado logout function
     const response = await fetch(`${BACKEND_URL}/api/auth/logout`, {
       method: "POST",
@@ -59,15 +63,24 @@ export default function Profile({ onClose }) {
       },
       credentials: "include",
     });
+    
     if (response.ok) {
+      // Clear localStorage but preserve device ID
       localStorage.clear();
+      if (deviceId) {
+        localStorage.setItem('e2ee-device-id', deviceId);
+      }
+      
       await logout();
-    }else{
+    } else {
       console.error("Logout failed");
     }
   };
 
   const handleTraditionalLogout = async () => {
+    // Save device ID before logout
+    const deviceId = localStorage.getItem('e2ee-device-id');
+    
     const response = await fetch(`${BACKEND_URL}/api/auth/logout`, {
       method: "POST",
       headers: {
@@ -77,7 +90,11 @@ export default function Profile({ onClose }) {
     });
 
     if (response.ok) {
+      // Clear localStorage but preserve device ID
       localStorage.clear();
+      if (deviceId) {
+        localStorage.setItem('e2ee-device-id', deviceId);
+      }
     } else {
       console.error("Logout failed");
     }

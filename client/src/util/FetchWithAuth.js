@@ -1,6 +1,6 @@
 import { BACKEND_URL } from "../config/config";
 
-export default async function FetchWithAuth(url, options = {}) {
+export default async function fetchWithAuth(url, options = {}) {
   // Always include cookies
   options.credentials = "include";
 

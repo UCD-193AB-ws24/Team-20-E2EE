@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { BACKEND_URL } from "../config/config.js";
-import fetchWithAuth from "../util/FetchWithAuth.jsx";
+import fetchWithAuth from "../util/FetchWithAuth";
 export default function Welcome() {
   const [text1, setText1] = useState("");
   const [text2, setText2] = useState("");
