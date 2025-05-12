@@ -111,6 +111,12 @@ export const corbadoLogin = async (req, res) => {
       maxAge: 604800000,
     });
 
+    const keyBundlesCollection = db.collection("keyBundles");
+    const keyBundleExists = await keyBundlesCollection.findOne({ 
+      uid: user.uid,
+      deviceId: deviceId 
+    });
+
     const userData = {
       uid: user.uid,
       email,
@@ -118,6 +124,7 @@ export const corbadoLogin = async (req, res) => {
       emailVerified: true,
       loginMethod: "corbado",
       description: user.description,
+      needsKeyBundle: !keyBundleExists,
     };
 
     if (!user.username) {
@@ -196,6 +203,9 @@ export const login = async (req, res) => {
       maxAge: 604800000 // 7 days
     });
 
+    const keyBundlesCollection = db.collection("keyBundles");
+    const keyBundleExists = await keyBundlesCollection.findOne({ uid: user.uid });
+
     const userData = {
       uid: user.uid,
       email: email,
@@ -203,6 +213,7 @@ export const login = async (req, res) => {
       username: user.username || "",
       description: user.description,
       loginMethod: "traditional",
+      needsKeyBundle: !keyBundleExists,
     };
 
     if (!user?.username) {
