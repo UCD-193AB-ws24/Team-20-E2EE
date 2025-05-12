@@ -60,7 +60,11 @@ export const register = async (req, res) => {
     });
 
   } catch (error) {
-    console.log("Error registering user:", error);
+    console.error("Registration error:", {
+      error: error.message,
+      code: error.code,
+      email: email
+    });
 
     res.status(401).json({ error: error.message });
   }
@@ -93,6 +97,10 @@ export const corbadoLogin = async (req, res) => {
     }
 
     const user = await usersCollection.findOne({ uid: auth._id.toString() });
+    if (!user) {
+      console.error("User not found after auth:", email);
+      return res.status(500).json({ error: "Internal server error" });
+    }
 
     const accessToken = jwt.sign({ uid: auth._id.toString() }, process.env.JWT_ACCESS_TOKEN_SECRET, { expiresIn: "1h" });
     const refreshToken = jwt.sign({ uid: auth._id.toString() }, process.env.JWT_REFRESH_TOKEN_SECRET, { expiresIn: "7d" });
@@ -141,8 +149,11 @@ export const corbadoLogin = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Error in corbadoLogin:", error);
-    return res.status(500).json({ error: error.message });
+    console.error("Corbado login error:", {
+      error: error.message,
+      code: error.code
+    });
+    return res.status(500).json({ error: "Authentication failed" });
   }
 };
 
