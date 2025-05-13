@@ -2,36 +2,42 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import NavBar from './NavBar';
 import { ChatWindow, MessageInput, ProfileModal, useSocket } from './index';
 import { Archive, Friends, Requests } from '../pages';
-import {
-  registerMessageListener, registerMessageSentListener,
-  removeListener, sendTypingStatus, registerTypingListener
+import socket, { 
+  registerMessageListener,removeListener, 
+  sendTypingStatus, registerTypingListener
 } from '../api/socket';
-import { getChatHistory, getArchivedChatHistory, sendPrivateMessage } from '../api/messages';
+import { sendPrivateMessage, decryptMessage } from '../api/messages';
+import { useAppContext } from './AppContext';
+import getCurrentUser from '../util/getCurrentUser';
+import {establishSession, hasSession} from '../util/encryption/sessionManager';
+import {fetchKeyBundle} from '../api/keyBundle';
+import { getConversationMessages } from '../util/messagesStore';
+import { getChatHistory, getGroupHistory, sendPrivateMessage, sendGroupMessage } from '../api/messages';
 import { useAppContext } from './AppContext';
 import { BACKEND_URL } from '../config/config';
 
 
-// Initialize with empty data structure
-const initialMessagesState = {};
-
 export default function Layout({ children }) {
   const [selectedUser, setSelectedUser] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [messagesByUser, setMessagesByUser] = useState(initialMessagesState);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [view, setView] = useState();
   const [isTyping, setIsTyping] = useState({});
   const [typingTimeout, setTypingTimeout] = useState(null);
   const { socketReady } = useSocket();
   const { appReady, theme } = useAppContext();
+  const user = getCurrentUser();
+  const userId = user?.uid;
+  const [selectedUserInfo, setSelectedUserInfo] = useState({
+    deviceId: null,
+    uid: null
+  });
+ 
   const prevSelectedUser = useRef(null);
   const hasMounted = useRef(false);
 
-  // Get the auth token from localStorage
-  const getToken = () => {
-    const user = JSON.parse(localStorage.getItem('user'));
-    return user?.accessToken;
-  };
+  const identifyChatType = (user = selectedUser) =>
+    typeof user === 'string' ? user : user?.name;
 
   // Get initial view on mount
   useEffect(() => {
@@ -48,10 +54,10 @@ export default function Layout({ children }) {
   });
 
   useEffect(() => {
-    console.log("🔁 useEffect triggered for selectedUser");
+    console.log("useEffect triggered for selectedUser");
 
     const user = JSON.parse(localStorage.getItem('user'));
-    console.log("🧠 Loaded user from localStorage:", user);
+    console.log("Loaded user from localStorage:", user);
 
     if (!user?.accessToken) {
       setTimeout(() => {
@@ -70,12 +76,12 @@ export default function Layout({ children }) {
     const shouldDelete =
       hasMounted.current &&
       prevSelectedUser.current !== null &&
-      selectedUser !== prevSelectedUser.current;
+      identifyChatType(selectedUser) !== identifyChatType(prevSelectedUser.current);
 
-    console.log("💡 hasMounted:", hasMounted.current);
-    console.log("💡 prevSelectedUser:", prevSelectedUser.current);
-    console.log("💡 selectedUser:", selectedUser);
-    console.log("💡 shouldDelete:", shouldDelete);
+    console.log("hasMounted:", hasMounted.current);
+    console.log("prevSelectedUser:", prevSelectedUser.current);
+    console.log("selectedUser:", selectedUser);
+    console.log("shouldDelete:", shouldDelete);
 
     const deleteMessages = async () => {
       if (shouldDelete) {
@@ -87,14 +93,14 @@ export default function Layout({ children }) {
               'Authorization': `Bearer ${user.accessToken}`
             },
             body: JSON.stringify({
-              username: prevSelectedUser.current
+              username: identifyChatType(prevSelectedUser.current),
             })
           });
 
           const result = await res.json();
-          console.log(`📦 Archived messages with ${prevSelectedUser.current}:`, result);
+          console.log(`Archived messages with ${prevSelectedUser.current}:`, result);
         } catch (err) {
-          console.error('❌ Error archiving messages:', err);
+          console.error('Error archiving messages:', err);
         }
       }
 
@@ -114,7 +120,7 @@ export default function Layout({ children }) {
         navigator.sendBeacon(
           `${BACKEND_URL}/api/message/vanish`,
           JSON.stringify({
-            username: selectedUser
+            username: identifyChatType(),
           })
         );
       }
@@ -126,35 +132,47 @@ export default function Layout({ children }) {
     };
   }, [selectedUser]);
 
-
-
-
   // Load chat history when selected user changes
   useEffect(() => {
     const loadChatHistory = async () => {
       if (!selectedUser) return;
 
       try {
-        const user = JSON.parse(localStorage.getItem('user'));
-        if (!user?.accessToken) return;
+        // 1. Fetch the recipient's key bundle to get their UID
+        const recipientKeyBundle = await fetchKeyBundle(selectedUser);
+        const recipientUid = recipientKeyBundle.keyBundle.uid;
+        const recipientDeviceId = recipientKeyBundle.keyBundle.deviceId;
 
-        let chatHistory = [];
+        // Store recipient info for later use
+        setSelectedUserInfo({
+          deviceId: recipientDeviceId,
+          uid: recipientUid
+        });
 
-        if (view === 'archive') {
-          const { messages: archiveMessages } = await getArchivedChatHistory(user.accessToken, selectedUser);
-          chatHistory = archiveMessages || [];
-        } else {
-          const { messages: historyMessages } = await getChatHistory(user.accessToken, selectedUser);
-          chatHistory = historyMessages || [];
+        // 2. Load messages directly from local IndexedDB
+        const localMessages = await getConversationMessages(recipientUid);
+        console.log(`Loaded ${localMessages?.length || 0} messages from local storage`);
+        
+        if (localMessages && localMessages.length > 0) {
+          // Format messages for display
+          const formattedMessages = localMessages.map(msg => ({
+            sender: msg.isOutgoing ? 'Me' : selectedUser,
+            text: msg.text,
+            time: msg.time,
+            status: msg.status || 'sent'
+          }));      
+          setMessages(formattedMessages);
+        } else {          
+          setMessages([]);
         }
 
-        // Update messages for this user
-        setMessagesByUser(prev => ({
-          ...prev,
-          [selectedUser]: chatHistory
-        }));
-
-        setMessages(chatHistory);
+        // 3. Check if we need to establish a session
+        const sessionExists = await hasSession(userId, recipientUid, recipientDeviceId);
+        
+        if (!sessionExists) {
+          console.log("No session, establishing new session");
+          await establishSession(userId, recipientUid, recipientKeyBundle.keyBundle);
+        }
       } catch (error) {
         console.error('Error loading chat messages:', error);
       }
@@ -171,43 +189,27 @@ export default function Layout({ children }) {
       console.log('Socket not ready, waiting to set up listeners');
       return;
     }
+    console.log("socket ready, initing lisnters in Layout");
     // Handle incoming messages
     registerMessageListener((message) => {
-      const { sender, text, time } = message;
+      console.log("Received message via socket:", message);
 
-      // Add message to the appropriate user's message list
-      setMessagesByUser(prev => {
-        const userMessages = prev[sender] || [];
-        return {
-          ...prev,
-          [sender]: [...userMessages, { sender, text, time }]
-        };
+      decryptMessage(message)
+      .then(text => {
+        console.log("decrypted text: ", text);
+
+        const sender = message.sender;
+        const time = message.time 
+  
+        // If this is from the currently selected user, update current messages
+        if (sender === selectedUser) {
+          setMessages(prev => [...prev, { sender, text, time }]);
+        }
+      })
+      .catch(error => {
+        console.error("Failed to decrypt message:", error);
       });
-
-      // If this is from the currently selected user, update current messages
-      if (sender === selectedUser) {
-        setMessages(prev => [...prev, { sender, text, time }]);
-      }
-    });
-
-    // Handle confirmation of sent messages
-    registerMessageSentListener((message) => {
-      const { recipient, text, time } = message;
-
-      // Add message to the appropriate user's message list
-      setMessagesByUser(prev => {
-        const userMessages = prev[recipient] || [];
-        return {
-          ...prev,
-          [recipient]: [...userMessages, { sender: 'Me', text, time }]
-        };
-      });
-
-      // If this is for the currently selected user, update current messages
-      if (recipient === selectedUser) {
-        setMessages(prev => [...prev, { sender: 'Me', text, time }]);
-      }
-    });
+  });
 
     // Handle typing indicators
     registerTypingListener((data) => {
@@ -234,7 +236,7 @@ export default function Layout({ children }) {
       removeListener('message_sent');
       removeListener('user_typing');
     };
-  }, [selectedUser]);
+  }, [selectedUser, socketReady]);
 
   // Handle typing indicator
   const handleTyping = useCallback(() => {
@@ -244,11 +246,11 @@ export default function Layout({ children }) {
     if (typingTimeout) clearTimeout(typingTimeout);
 
     // Send typing indicator
-    sendTypingStatus(selectedUser, true);
+    sendTypingStatus(identifyChatType(), true);
 
     // Set timeout to stop typing indicator
     const timeout = setTimeout(() => {
-      sendTypingStatus(selectedUser, false);
+      sendTypingStatus(identifyChatType(), false);
     }, 3000);
 
     setTypingTimeout(timeout);
@@ -257,15 +259,29 @@ export default function Layout({ children }) {
   // Send message function
   const sendMessage = async (text) => {
     if (!selectedUser || !text.trim()) return;
-    const token = getToken();
-    console.log("Selected user when sending message:", selectedUser);
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    // For UI update
+    const newMessage = {
+      sender: 'Me',
+      text,
+      time: time,
+    };
 
-    sendPrivateMessage(selectedUser, text);
-
-    // Clear typing indicator
+    // Update current messages view
+    setMessages(prev => [...prev, newMessage]);
+    
+    if (typeof selectedUser === 'string') {
+      console.log("Private message");
+      sendPrivateMessage(selectedUser, text, selectedUserInfo);
+    } else if (typeof selectedUser == 'object' && selectedUser.type === 'group') {
+      console.log("Group message");
+      await sendGroupMessage(selectedUser.id, text);
+    }
+    
     if (typingTimeout) {
       clearTimeout(typingTimeout);
-      sendTypingStatus(selectedUser, false);
+      sendTypingStatus(identifyChatType(), false);
     }
   };
 
@@ -280,6 +296,8 @@ export default function Layout({ children }) {
       </div>
     );
   }
+
+  const selectedKey = identifyChatType();
 
   return (
     <div
@@ -304,8 +322,6 @@ export default function Layout({ children }) {
           React.cloneElement(children, {
             selectedUser,
             setSelectedUser,
-            messagesByUser,
-            setMessagesByUser,
             isTyping
           })
         )}
@@ -318,15 +334,15 @@ export default function Layout({ children }) {
       >
         <div className="p-4">
           <h2 className="text-xl font-bold">
-            {selectedUser || 'Select a user to start chatting'}
+            {selectedKey || 'Select a user to start chatting'}
             {selectedUser && view === 'archive' && ' (Archive)'}
-            {selectedUser && isTyping[selectedUser] &&
+            {selectedUser && isTyping[selectedKey] &&
               <span className="ml-2 text-sm text-gray-500 italic">typing...</span>
             }
           </h2>
         </div>
         <ChatWindow
-          messages={messagesByUser[selectedUser] || []}
+          messages={messagesByUser[selectedKey] || []}
           selectedUser={selectedUser}
         />
         <MessageInput

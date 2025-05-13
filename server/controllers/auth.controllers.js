@@ -1,4 +1,5 @@
 import admin from "../firebaseAdmin.js";
+import nodemailer from 'nodemailer';
 import { connectDB } from "../mongo/connection.js";
 import bcrypt from 'bcrypt';
 import jwt from "jsonwebtoken";
@@ -17,6 +18,21 @@ export const register = async (req, res) => {
     const emailVerificationLink = await admin.auth().generateEmailVerificationLink(email);
 
     console.log("Email Link:", emailVerificationLink);
+
+    const transporter = nodemailer.createTransport({
+      service: 'Gmail',
+      auth: {
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_PASS,
+      },
+    });
+    
+    await transporter.sendMail({
+      from: '"EMA" <no-reply@yourapp.com>',
+      to: email,
+      subject: "Verify your email",
+      html: `<p>Click <a href="${emailVerificationLink}">here</a> to verify your email.</p>`,
+    });
 
     // Ensure DB connection
     const db = await connectDB();
@@ -66,6 +82,67 @@ export const register = async (req, res) => {
   }
 };
 
+
+export const resetPassword = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    await admin.auth().getUserByEmail(email);
+
+    const actionCodeSettings = {
+      url: "http://localhost:5173/reset", // 👈 your frontend route
+      handleCodeInApp: true,
+    };
+
+    const resetLink = await admin.auth().generatePasswordResetLink(email, actionCodeSettings);
+
+    console.log("Reset Link: ", resetLink);
+
+    const transporter = nodemailer.createTransport({
+      service: "Gmail",
+      auth: {
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_PASS,
+      },
+    });
+
+    await transporter.sendMail({
+      from: `"EMA" <${process.env.GMAIL_USER}>`,
+      to: email,
+      subject: "Reset Your Password",
+      html: `
+        <p>You requested a password reset.</p>
+        <p><a href="${resetLink}">Click here to reset your password</a></p>
+        <p>This link will expire soon. If you didn’t request this, please ignore it.</p>
+      `,
+    });
+
+    res.json({ message: "Password reset email sent." });
+
+  } catch (error) {
+    console.error("Password reset error:", error);
+    res.status(500).json({ error: "Failed to send password reset link." });
+  }
+};
+
+
+export const updatePassword = async (req, res) => {
+  const { email, newPassword } = req.body;
+
+  try {
+    const db = await connectDB();
+    const authCollection = db.collection("auth");
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await authCollection.updateOne({ email }, { $set: { password: hashed } });
+
+    res.json({ message: "Password updated in MongoDB" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to update password" });
+  }
+};
+
 export const corbadoLogin = async (req, res) => {
   try {
     const email = req.body.email;
@@ -111,6 +188,12 @@ export const corbadoLogin = async (req, res) => {
       maxAge: 604800000,
     });
 
+    const keyBundlesCollection = db.collection("keyBundles");
+    const keyBundleExists = await keyBundlesCollection.findOne({ 
+      uid: user.uid,
+      deviceId: deviceId 
+    });
+
     const userData = {
       uid: user.uid,
       email,
@@ -118,6 +201,7 @@ export const corbadoLogin = async (req, res) => {
       emailVerified: true,
       loginMethod: "corbado",
       description: user.description,
+      needsKeyBundle: !keyBundleExists,
     };
 
     if (!user.username) {
@@ -196,6 +280,9 @@ export const login = async (req, res) => {
       maxAge: 604800000 // 7 days
     });
 
+    const keyBundlesCollection = db.collection("keyBundles");
+    const keyBundleExists = await keyBundlesCollection.findOne({ uid: user.uid });
+
     const userData = {
       uid: user.uid,
       email: email,
@@ -203,6 +290,7 @@ export const login = async (req, res) => {
       username: user.username || "",
       description: user.description,
       loginMethod: "traditional",
+      needsKeyBundle: !keyBundleExists,
     };
 
     if (!user?.username) {

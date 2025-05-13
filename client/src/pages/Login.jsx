@@ -15,12 +15,12 @@ export default function Login() {
     e.preventDefault();
     const email = e.target[0].value;
     const password = e.target[1].value;
-  
+
     // Use the login function from AppContext
     const result = await login(email, password);
-  
+
     if (result.success) {
-        navigate("/"); // Navigate to the home page after successful login
+      navigate("/"); // Navigate to the home page after successful login
     } else if (
       result.error === "Email not verified. Please check your email."
     ) {
@@ -84,6 +84,13 @@ export default function Login() {
                 Login
               </button>
 
+              {/* Password Reset Button */}
+              <div className="text-center">
+                <Link to="/forgot" className="text-sm text-blue-500 hover:underline">
+                  Forgot your password?
+                </Link>
+              </div>
+
               {/* Signup Link */}
               <span>
                 Don't have an account?{" "}
@@ -102,7 +109,7 @@ export default function Login() {
               ) : null}
             </form>
           )}
-          
+
         </div>
         <div className="flex items-center w-full max-w-sm">
           <hr className="flex-grow border-t border-gray-400" />
@@ -110,7 +117,7 @@ export default function Login() {
           <hr className="flex-grow border-t border-gray-400" />
         </div>
         <div>
-          <button className="p-4 bg-white rounded-lg text-black border-lg border-black border-2 font-bold hover:brightness-105 cursor-pointer hover:translate-y-[-5px] transition-transform shadow-lg" onClick={() => {navigate("/passkey")}}>
+          <button className="p-4 bg-white rounded-lg text-black border-lg border-black border-2 font-bold hover:brightness-105 cursor-pointer hover:translate-y-[-5px] transition-transform shadow-lg" onClick={() => { navigate("/passkey") }}>
             Passkey Secure Login
           </button>
         </div>

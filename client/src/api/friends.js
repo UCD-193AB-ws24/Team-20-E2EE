@@ -1,5 +1,5 @@
 import { BACKEND_URL } from '../config/config.js';
-import fetchWithAuth from '../util/FetchWithAuth.jsx';
+import fetchWithAuth from '../util/FetchWithAuth';
 // Get authenticated user's friend list
 export const getFriendList = async () => {
   const response = await fetchWithAuth(`${BACKEND_URL}/api/user/friendList`);
@@ -105,6 +105,31 @@ export const searchUsers = async (query) => {
     const error = await response.json();
     throw new Error(error.error || 'Failed to search users');
   }
-  
-  return response.json();
+  const data = await response.json();
+  return data;
 };
+
+
+// Search FriendUid by username
+export const searchFriendUid = async (query) => {
+  const response = await fetchWithAuth(`${BACKEND_URL}/api/user/searchFriendUid?username=${query}`);
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to search users');
+  }
+  const data = await response.json();
+  return data;
+};
+
+// Search username by uid
+export const searchUsername = async (query) => {
+  const response = await fetchWithAuth(`${BACKEND_URL}/api/user/get-friend-username-by-id?uid=${query}`);
+  console.log("searchUsername response:", response);
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to search users');
+  }
+  const data = await response.json();
+  return data;
+}
