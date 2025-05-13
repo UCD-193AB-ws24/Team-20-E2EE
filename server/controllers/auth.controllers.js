@@ -121,8 +121,7 @@ export const corbadoLogin = async (req, res) => {
 
     const keyBundlesCollection = db.collection("keyBundles");
     const keyBundleExists = await keyBundlesCollection.findOne({ 
-      uid: user.uid,
-      deviceId: deviceId 
+      uid: user.uid
     });
 
     const userData = {
@@ -151,9 +150,13 @@ export const corbadoLogin = async (req, res) => {
   } catch (error) {
     console.error("Corbado login error:", {
       error: error.message,
-      code: error.code
+      code: error.code,
+      stack: error.stack
     });
-    return res.status(500).json({ error: "Authentication failed" });
+    return res.status(500).json({ 
+      error: "Authentication failed",
+      details: error.message 
+    });
   }
 };
 
