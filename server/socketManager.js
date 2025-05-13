@@ -10,11 +10,12 @@ let io = null;
 export const initializeSocket = (httpServer) => {
   io = new Server(httpServer, {
     cors: {
-      origin: "http://ema-chat.com",
+      origin: "http://localhost:5173",
       methods: ["GET", "POST"],
       credentials: true,
       allowedHeaders: ["Content-Type", "Authorization"],
     },
+    transports: ['websocket', 'polling'],
   });
 
   io.use(async (socket, next) => {

@@ -8,7 +8,7 @@ export const uploadKeyBundle = async (keyBundle, forceOverwrite) => {
     // Convert ArrayBuffer to base64 for JSON transport
     const bundle = { ...keyBundle, forceOverwrite };
 
-    const response = await fetch(`${BACKEND_URL}/api/keys/store`, {
+    const response = await fetchWithAuth(`${BACKEND_URL}/api/keys/store`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -65,7 +65,7 @@ export const fetchKeyBundle = async (username) => {
 export const checkKeyBundle = async () => {
   try {
     const deviceId = getDeviceId();
-    const response = await fetch(`${BACKEND_URL}/api/keys/check?deviceId=${deviceId}`, {
+    const response = await fetchWithAuth(`${BACKEND_URL}/api/keys/check?deviceId=${deviceId}`, {
       method: 'GET',
       credentials: 'include',
     });
@@ -86,7 +86,7 @@ export const checkKeyBundle = async () => {
 export const checkDeviceKeyConsistency = async () => {
   try {
     const deviceId = getDeviceId();
-    const response = await fetch(`${BACKEND_URL}/api/keys/device-check?deviceId=${deviceId}`, {
+    const response = await fetchWithAuth(`${BACKEND_URL}/api/keys/device-check?deviceId=${deviceId}`, {
       method: 'GET',
       credentials: 'include',
     });

@@ -340,8 +340,8 @@ export default function Layout({ children }) {
           </h2>
         </div>
         <ChatWindow
-          messages={messagesByUser[selectedKey] || []}
-          selectedUser={selectedUser}
+          messages={messages}
+          selectedUser={selectedUser || ""}
         />
         <MessageInput
           sendMessage={sendMessage}
