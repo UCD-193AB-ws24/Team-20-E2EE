@@ -10,7 +10,7 @@ let io = null;
 export const initializeSocket = (httpServer) => {
   io = new Server(httpServer, {
     cors: {
-      origin: "http://localhost:5173",
+      origin: "http://ema-chat.com",
       methods: ["GET", "POST"],
       credentials: true,
       allowedHeaders: ["Content-Type", "Authorization"],
