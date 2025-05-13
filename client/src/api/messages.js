@@ -21,6 +21,7 @@ export const getChatHistory = async (username = null) => {
       headers: {
         'Content-Type': 'application/json'
       }
+    }
     );
 
     if (!response.ok) {
