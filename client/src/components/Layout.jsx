@@ -6,15 +6,12 @@ import {
   registerMessageListener, removeListener, 
   sendTypingStatus, registerTypingListener 
 } from '../api/socket';
-import { 
-  sendPrivateMessage, decryptMessage, 
-  getChatHistory, getGroupHistory, sendGroupMessage 
-} from '../api/messages';
-import { useAppContext } from './AppContext';
 import getCurrentUser from '../util/getCurrentUser';
 import { establishSession, hasSession } from '../util/encryption/sessionManager';
 import { fetchKeyBundle } from '../api/keyBundle';
 import { getConversationMessages } from '../util/messagesStore';
+import { getChatHistory, getGroupHistory, sendPrivateMessage, sendGroupMessage, decryptMessage } from '../api/messages';
+import { useAppContext } from './AppContext';
 import { BACKEND_URL } from '../config/config';
 
 export default function Layout({ children }) {
@@ -300,7 +297,7 @@ export default function Layout({ children }) {
         </div>
         <ChatWindow
           messages={messages}
-          selectedUser={selectedUser}
+          selectedUser={selectedUser || ""}
         />
         <MessageInput
           sendMessage={sendMessage}

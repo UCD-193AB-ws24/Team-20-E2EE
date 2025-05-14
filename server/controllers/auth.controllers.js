@@ -76,7 +76,11 @@ export const register = async (req, res) => {
     });
 
   } catch (error) {
-    console.log("Error registering user:", error);
+    console.error("Registration error:", {
+      error: error.message,
+      code: error.code,
+      email: email
+    });
 
     res.status(401).json({ error: error.message });
   }
@@ -170,28 +174,31 @@ export const corbadoLogin = async (req, res) => {
     }
 
     const user = await usersCollection.findOne({ uid: auth._id.toString() });
+    if (!user) {
+      console.error("User not found after auth:", email);
+      return res.status(500).json({ error: "Internal server error" });
+    }
 
     const accessToken = jwt.sign({ uid: auth._id.toString() }, process.env.JWT_ACCESS_TOKEN_SECRET, { expiresIn: "1h" });
     const refreshToken = jwt.sign({ uid: auth._id.toString() }, process.env.JWT_REFRESH_TOKEN_SECRET, { expiresIn: "7d" });
 
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
-      secure: false,
-      sameSite: "Lax",
+      secure: true,
+      sameSite: "None",
       maxAge: 3600000,
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: false,
-      sameSite: "Lax",
+      secure: true,
+      sameSite: "None",
       maxAge: 604800000,
     });
 
     const keyBundlesCollection = db.collection("keyBundles");
     const keyBundleExists = await keyBundlesCollection.findOne({ 
-      uid: user.uid,
-      deviceId: deviceId 
+      uid: user.uid
     });
 
     const userData = {
@@ -218,8 +225,15 @@ export const corbadoLogin = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Error in corbadoLogin:", error);
-    return res.status(500).json({ error: error.message });
+    console.error("Corbado login error:", {
+      error: error.message,
+      code: error.code,
+      stack: error.stack
+    });
+    return res.status(500).json({ 
+      error: "Authentication failed",
+      details: error.message 
+    });
   }
 };
 
@@ -268,15 +282,15 @@ export const login = async (req, res) => {
     // HttpOnly cookie
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
-      secure: false, // true in production with HTTPS
-      sameSite: "Lax",
+      secure: true, // true in production with HTTPS
+      sameSite: "None",
       maxAge: 3600000 // 1 hour
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: false, // true in production with HTTPS
-      sameSite: "Lax",
+      secure: true, // true in production with HTTPS
+      sameSite: "None",
       maxAge: 604800000 // 7 days
     });
 
@@ -332,8 +346,8 @@ export const refreshToken = async (req, res) => {
     // Set the new access token as a cookie
     res.cookie("accessToken", newAccessToken, {
       httpOnly: true,
-      secure: false, // set to true in production (HTTPS)
-      sameSite: "Lax",
+      secure: true, // set to true in production (HTTPS)
+      sameSite: "None",
       maxAge: 60 * 60 * 1000, // 1 hour
     });
 

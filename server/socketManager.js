@@ -15,6 +15,7 @@ export const initializeSocket = (httpServer) => {
       credentials: true,
       allowedHeaders: ["Content-Type", "Authorization"],
     },
+    transports: ['websocket', 'polling'],
   });
 
   io.use(async (socket, next) => {
