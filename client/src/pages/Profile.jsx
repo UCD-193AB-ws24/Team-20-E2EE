@@ -54,7 +54,7 @@ export default function Profile({ onClose }) {
   const handleCorbadoLogout = async () => {
     // Save device ID before logout
     const deviceId = localStorage.getItem('e2ee-device-id');
-    
+
     // Call the Corbado logout function
     const response = await fetch(`${BACKEND_URL}/api/auth/logout`, {
       method: "POST",
@@ -63,14 +63,14 @@ export default function Profile({ onClose }) {
       },
       credentials: "include",
     });
-    
+
     if (response.ok) {
       // Clear localStorage but preserve device ID
       localStorage.clear();
       if (deviceId) {
         localStorage.setItem('e2ee-device-id', deviceId);
       }
-      
+
       await logout();
     } else {
       console.error("Logout failed");
@@ -80,7 +80,7 @@ export default function Profile({ onClose }) {
   const handleTraditionalLogout = async () => {
     // Save device ID before logout
     const deviceId = localStorage.getItem('e2ee-device-id');
-    
+
     const response = await fetch(`${BACKEND_URL}/api/auth/logout`, {
       method: "POST",
       headers: {
@@ -129,21 +129,22 @@ export default function Profile({ onClose }) {
     console.log("Form data: ", formData);
 
     formData.append("avatar", file);  // Append file to form data
-  
-  
+
+
     try {
       const response = await fetchWithAuth(`${BACKEND_URL}/api/user/update-avatar`, {
         method: "PUT",
         body: formData,
       });
-  
+
 
       if (response.ok) {
         const result = await response.json();
         console.log("AvatarUrl: ", result);
         const { avatarUrl } = result;
-  
-        setAvatar(`${BACKEND_URL}/api/user/get-avatar/${userInfo.username}`);
+
+        const cacheBuster = Date.now(); // or use Math.random()
+        setAvatar(`${BACKEND_URL}/api/user/get-avatar/${userInfo.username}?t=${cacheBuster}`);
         console.log("Avatar updated successfully:", avatarUrl);
       } else {
         console.error("Error uploading avatar:", await response.json());
@@ -152,16 +153,16 @@ export default function Profile({ onClose }) {
       console.error("Error uploading avatar:", error);
     }
   };
-  
+
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: "rgba(0, 0, 0, 0.8)" }}>
       <div
-       className="rounded-lg p-6 w-96 shadow-lg relative"
-       style={{backgroundColor: theme.colors.background.secondary}}
+        className="rounded-lg p-6 w-96 shadow-lg relative"
+        style={{ backgroundColor: theme.colors.background.secondary }}
       >
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 flex items-center justify-center w-8 h-8 rounded-full"
+          className="absolute top-3 right-3 flex items-center justify-center w-8 h-8 rounded-full cursor-pointer hover:translate-y-[-2px] transition-transform shadow-md"
           style={{
             backgroundColor: theme.colors.background.accent,
           }}
@@ -171,9 +172,9 @@ export default function Profile({ onClose }) {
         <div className="flex flex-col items-center justify-center">
           <label htmlFor="file-input" className="cursor-pointer">
             <div className="w-32 h-32 rounded-full bg-gray-300 mb-4 flex items-center justify-center overflow-hidden">
-              <img 
-                src={avatar || "https://via.placeholder.com/150"} 
-                alt="Avatar" 
+              <img
+                src={avatar || "https://via.placeholder.com/150"}
+                alt="Avatar"
                 className="w-full h-full object-cover"
               />
             </div>
@@ -196,54 +197,56 @@ export default function Profile({ onClose }) {
             {isEditing ? (
               <button
                 onClick={handleSaveDescription}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg text-lg shadow-md transition duration-300"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg text-lg shadow-md cursor-pointer hover:translate-y-[-2px] transition-transform"
               >
                 Save Description
               </button>
             ) : (
               <button
                 onClick={() => setIsEditing(true)}
-                className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg text-lg shadow-md transition duration-300"
+                className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg text-lg shadow-md cursor-pointer hover:translate-y-[-2px] transition-transform"
               >
                 Edit Description
               </button>
             )}
+
           </div>
           <div className="mt-4">
             <button
               onClick={() => setShowLogoutConfirmation(true)}
-              className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-lg shadow-md transition duration-300"
+              className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-lg shadow-md cursor-pointer hover:translate-y-[-2px] transition-transform"
             >
               Logout
             </button>
+
           </div>
         </div>
         {showLogoutConfirmation && (
-          <div className="absolute inset-0 bg-opacity-90 flex items-center justify-center z-50" style={{backgroundColor: theme.colors.background.secondary}}>
-            <div className="rounded-lg p-6 w-96 shadow-lg" style={{backgroundColor: theme.colors.background.primary}}>
+          <div className="absolute inset-0 bg-opacity-90 flex items-center justify-center z-50" style={{ backgroundColor: theme.colors.background.secondary }}>
+            <div className="rounded-lg p-6 w-96 shadow-lg" style={{ backgroundColor: theme.colors.background.primary }}>
               <h2 className="text-2xl font-bold mb-4">Confirm Logout</h2>
               <p className="mb-6">Are you sure you want to logout?</p>
               <div className="flex justify-end space-x-4">
                 <button
                   onClick={() => setShowLogoutConfirmation(false)}
-                  className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg transition duration-300"
+                  className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg cursor-pointer hover:translate-y-[-2px] transition-transform shadow-md"
                 >
                   Cancel
                 </button>
+
                 <button
                   onClick={() => {
-                    if(loginMethod === "corbado") {
+                    if (loginMethod === "corbado") {
                       handleCorbadoLogout().then(() => window.location.href = "/passkey");
-
-                    }else if (loginMethod === "traditional") {
+                    } else if (loginMethod === "traditional") {
                       handleTraditionalLogout().then(() => window.location.href = "/passkey");
                     }
-                    
                   }}
-                  className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300"
+                  className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg cursor-pointer hover:translate-y-[-2px] transition-transform shadow-md"
                 >
                   Logout
                 </button>
+
               </div>
             </div>
           </div>

@@ -44,8 +44,7 @@ export default function ForgotPassword() {
           />
           <button
             type="submit"
-            className="w-full bg-[#1D4776] text-[#FFC519] font-bold p-2 rounded hover:brightness-110"
-          >
+            className="w-full bg-[#1D4776] text-[#FFC519] font-bold p-2 rounded hover:brightness-110 cursor-pointer hover:translate-y-[-2px] transition-transform shadow-md"          >
             Send Reset Link
           </button>
         </form>

@@ -50,50 +50,52 @@ export default function Layout({ children }) {
     }
   }, []);
 
-  useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user'));
-    if (!user?.accessToken) {
-      setTimeout(() => {
-        const delayedUser = JSON.parse(localStorage.getItem("user"));
-        if (delayedUser?.accessToken) {
-          setSelectedUser((prev) => prev); // trigger re-run
-        }
-      }, 300);
-      return;
-    }
+  // Vanish feature: Deprecated for testing purposes
 
-    const shouldDelete =
-      hasMounted.current &&
-      prevSelectedUser.current !== null &&
-      identifyChatType(selectedUser) !== identifyChatType(prevSelectedUser.current);
+  // useEffect(() => {
+  //   const user = JSON.parse(localStorage.getItem('user'));
+  //   if (!user?.accessToken) {
+  //     setTimeout(() => {
+  //       const delayedUser = JSON.parse(localStorage.getItem("user"));
+  //       if (delayedUser?.accessToken) {
+  //         setSelectedUser((prev) => prev); // trigger re-run
+  //       }
+  //     }, 300);
+  //     return;
+  //   }
 
-    const deleteMessages = async () => {
-      if (shouldDelete) {
-        try {
-          const res = await fetch(`${BACKEND_URL}/api/message/vanish`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${user.accessToken}`
-            },
-            body: JSON.stringify({
-              username: identifyChatType(prevSelectedUser.current),
-            })
-          });
+  //   const shouldDelete =
+  //     hasMounted.current &&
+  //     prevSelectedUser.current !== null &&
+  //     identifyChatType(selectedUser) !== identifyChatType(prevSelectedUser.current);
 
-          const result = await res.json();
-          console.log(`Archived messages with ${prevSelectedUser.current}:`, result);
-        } catch (err) {
-          console.error('Error archiving messages:', err);
-        }
-      }
+  //   const deleteMessages = async () => {
+  //     if (shouldDelete) {
+  //       try {
+  //         const res = await fetch(`${BACKEND_URL}/api/message/vanish`, {
+  //           method: 'POST',
+  //           headers: {
+  //             'Content-Type': 'application/json',
+  //             'Authorization': `Bearer ${user.accessToken}`
+  //           },
+  //           body: JSON.stringify({
+  //             username: identifyChatType(prevSelectedUser.current),
+  //           })
+  //         });
 
-      prevSelectedUser.current = selectedUser;
-      hasMounted.current = true;
-    };
+  //         const result = await res.json();
+  //         console.log(`Archived messages with ${prevSelectedUser.current}:`, result);
+  //       } catch (err) {
+  //         console.error('Error archiving messages:', err);
+  //       }
+  //     }
 
-    deleteMessages();
-  }, [selectedUser]);
+  //     prevSelectedUser.current = selectedUser;
+  //     hasMounted.current = true;
+  //   };
+
+  //   deleteMessages();
+  // }, [selectedUser]);
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user'));
