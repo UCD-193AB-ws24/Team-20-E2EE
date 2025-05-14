@@ -48,6 +48,56 @@ export default function Profile({ onClose }) {
     fetchUserInfo();
   }, []);
 
+
+  const handleCorbadoLogout = async () => {
+    // Save device ID before logout
+    const deviceId = localStorage.getItem('e2ee-device-id');
+
+    // Call the Corbado logout function
+    const response = await fetch(`${BACKEND_URL}/api/auth/logout`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+    });
+
+    if (response.ok) {
+      // Clear localStorage but preserve device ID
+      localStorage.clear();
+      if (deviceId) {
+        localStorage.setItem('e2ee-device-id', deviceId);
+      }
+
+      await logout();
+    } else {
+      console.error("Logout failed");
+    }
+  };
+
+  const handleTraditionalLogout = async () => {
+    // Save device ID before logout
+    const deviceId = localStorage.getItem('e2ee-device-id');
+
+    const response = await fetch(`${BACKEND_URL}/api/auth/logout`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+    });
+
+    if (response.ok) {
+      // Clear localStorage but preserve device ID
+      localStorage.clear();
+      if (deviceId) {
+        localStorage.setItem('e2ee-device-id', deviceId);
+      }
+    } else {
+      console.error("Logout failed");
+    }
+  };
+
   const handleSaveDescription = async () => {
     const response = await fetchWithAuth(`${BACKEND_URL}/api/user/update-description`, {
       method: "PUT",
@@ -102,6 +152,7 @@ export default function Profile({ onClose }) {
       window.location.href = "/login";
     }
   };
+
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 bg-opacity-80">
@@ -199,31 +250,35 @@ export default function Profile({ onClose }) {
             {isEditing ? (
               <button
                 onClick={handleSaveDescription}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg text-lg shadow-md transition duration-300"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg text-lg shadow-md cursor-pointer hover:translate-y-[-2px] transition-transform"
               >
                 Save Description
               </button>
             ) : (
               <button
                 onClick={() => setIsEditing(true)}
-                className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg text-lg shadow-md transition duration-300"
+                className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg text-lg shadow-md cursor-pointer hover:translate-y-[-2px] transition-transform"
               >
                 Edit Description
               </button>
             )}
+
           </div>
 
           <div className="mt-4">
             <button
               onClick={() => setShowLogoutConfirmation(true)}
-              className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-lg shadow-md transition duration-300"
+              className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-lg shadow-md cursor-pointer hover:translate-y-[-2px] transition-transform"
             >
               Logout
             </button>
+
           </div>
         </div>
 
         {showLogoutConfirmation && (
+          <div className="absolute inset-0 bg-opacity-90 flex items-center justify-center z-50" style={{ backgroundColor: theme.colors.background.secondary }}>
+            <div className="rounded-lg p-6 w-96 shadow-lg" style={{ backgroundColor: theme.colors.background.primary }}>
           <div className="absolute inset-0 bg-opacity-90 flex items-center justify-center z-50" style={{ backgroundColor: theme.colors.background.secondary }}>
             <div className="rounded-lg p-6 w-96 shadow-lg" style={{ backgroundColor: theme.colors.background.primary }}>
               <h2 className="text-2xl font-bold mb-4">Confirm Logout</h2>
@@ -231,16 +286,18 @@ export default function Profile({ onClose }) {
               <div className="flex justify-end space-x-4">
                 <button
                   onClick={() => setShowLogoutConfirmation(false)}
-                  className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg transition duration-300"
+                  className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg cursor-pointer hover:translate-y-[-2px] transition-transform shadow-md"
                 >
                   Cancel
                 </button>
+
                 <button
                   onClick={handleLogout}
                   className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300"
                 >
                   Logout
                 </button>
+
               </div>
             </div>
           </div>

@@ -2,18 +2,17 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import NavBar from './NavBar';
 import { ChatWindow, MessageInput, ProfileModal, useSocket } from './index';
 import { Archive, Friends, Requests } from '../pages';
-import socket, { 
-  registerMessageListener,removeListener, 
-  sendTypingStatus, registerTypingListener
+import { 
+  registerMessageListener, removeListener, 
+  sendTypingStatus, registerTypingListener 
 } from '../api/socket';
 import getCurrentUser from '../util/getCurrentUser';
-import {establishSession, hasSession} from '../util/encryption/sessionManager';
-import {fetchKeyBundle} from '../api/keyBundle';
+import { establishSession, hasSession } from '../util/encryption/sessionManager';
+import { fetchKeyBundle } from '../api/keyBundle';
 import { getConversationMessages } from '../util/messagesStore';
 import { getChatHistory, getGroupHistory, sendPrivateMessage, sendGroupMessage, decryptMessage } from '../api/messages';
 import { useAppContext } from './AppContext';
 import { BACKEND_URL } from '../config/config';
-
 
 export default function Layout({ children }) {
   const [selectedUser, setSelectedUser] = useState(null);
@@ -30,7 +29,7 @@ export default function Layout({ children }) {
     deviceId: null,
     uid: null
   });
- 
+
   const prevSelectedUser = useRef(null);
   const hasMounted = useRef(false);
 
@@ -49,66 +48,54 @@ export default function Layout({ children }) {
     } else {
       setView('chat');
     }
-  });
+  }, []);
 
-  useEffect(() => {
-    console.log("useEffect triggered for selectedUser");
+  // Vanish feature: Deprecated for testing purposes
 
-    const user = JSON.parse(localStorage.getItem('user'));
-    console.log("Loaded user from localStorage:", user);
+  // useEffect(() => {
+  //   const user = JSON.parse(localStorage.getItem('user'));
+  //   if (!user?.accessToken) {
+  //     setTimeout(() => {
+  //       const delayedUser = JSON.parse(localStorage.getItem("user"));
+  //       if (delayedUser?.accessToken) {
+  //         setSelectedUser((prev) => prev); // trigger re-run
+  //       }
+  //     }, 300);
+  //     return;
+  //   }
 
-    if (!user?.accessToken) {
-      setTimeout(() => {
-        console.log("No accessToken");
-        const delayedUser = JSON.parse(localStorage.getItem("user"));
-        if (delayedUser?.accessToken) {
-          console.log("No accessToken for delayed user");
-          setSelectedUser((prev) => prev); // trigger re-run
-        }
-      }, 300);
-      return;
-    }
+  //   const shouldDelete =
+  //     hasMounted.current &&
+  //     prevSelectedUser.current !== null &&
+  //     identifyChatType(selectedUser) !== identifyChatType(prevSelectedUser.current);
 
-    console.log("accessToken:", user.accessToken);
+  //   const deleteMessages = async () => {
+  //     if (shouldDelete) {
+  //       try {
+  //         const res = await fetch(`${BACKEND_URL}/api/message/vanish`, {
+  //           method: 'POST',
+  //           headers: {
+  //             'Content-Type': 'application/json',
+  //             'Authorization': `Bearer ${user.accessToken}`
+  //           },
+  //           body: JSON.stringify({
+  //             username: identifyChatType(prevSelectedUser.current),
+  //           })
+  //         });
 
-    const shouldDelete =
-      hasMounted.current &&
-      prevSelectedUser.current !== null &&
-      identifyChatType(selectedUser) !== identifyChatType(prevSelectedUser.current);
+  //         const result = await res.json();
+  //         console.log(`Archived messages with ${prevSelectedUser.current}:`, result);
+  //       } catch (err) {
+  //         console.error('Error archiving messages:', err);
+  //       }
+  //     }
 
-    console.log("hasMounted:", hasMounted.current);
-    console.log("prevSelectedUser:", prevSelectedUser.current);
-    console.log("selectedUser:", selectedUser);
-    console.log("shouldDelete:", shouldDelete);
+  //     prevSelectedUser.current = selectedUser;
+  //     hasMounted.current = true;
+  //   };
 
-    const deleteMessages = async () => {
-      if (shouldDelete) {
-        try {
-          const res = await fetch(`${BACKEND_URL}/api/message/vanish`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${user.accessToken}`
-            },
-            body: JSON.stringify({
-              username: identifyChatType(prevSelectedUser.current),
-            })
-          });
-
-          const result = await res.json();
-          console.log(`Archived messages with ${prevSelectedUser.current}:`, result);
-        } catch (err) {
-          console.error('Error archiving messages:', err);
-        }
-      }
-
-      prevSelectedUser.current = selectedUser;
-      hasMounted.current = true;
-    };
-
-    deleteMessages();
-  }, [selectedUser]);
-
+  //   deleteMessages();
+  // }, [selectedUser]);
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user'));
@@ -130,86 +117,71 @@ export default function Layout({ children }) {
     };
   }, [selectedUser]);
 
-  // Load chat history when selected user changes
   useEffect(() => {
     const loadChatHistory = async () => {
       if (!selectedUser) return;
 
       try {
-        // 1. Fetch the recipient's key bundle to get their UID
         const recipientKeyBundle = await fetchKeyBundle(selectedUser);
         const recipientUid = recipientKeyBundle.keyBundle.uid;
         const recipientDeviceId = recipientKeyBundle.keyBundle.deviceId;
 
-        // Store recipient info for later use
         setSelectedUserInfo({
           deviceId: recipientDeviceId,
           uid: recipientUid
         });
 
-        // 2. Load messages directly from local IndexedDB
         const localMessages = await getConversationMessages(recipientUid);
         console.log(`Loaded ${localMessages?.length || 0} messages from local storage`);
-        
+
         if (localMessages && localMessages.length > 0) {
-          // Format messages for display
           const formattedMessages = localMessages.map(msg => ({
             sender: msg.isOutgoing ? 'Me' : selectedUser,
             text: msg.text,
             time: msg.time,
             status: msg.status || 'sent'
-          }));      
+          }));
           setMessages(formattedMessages);
-        } else {          
+        } else {
           setMessages([]);
         }
 
-        // 3. Check if we need to establish a session
         const sessionExists = await hasSession(userId, recipientUid, recipientDeviceId);
-        
         if (!sessionExists) {
           console.log("No session, establishing new session");
           await establishSession(userId, recipientUid, recipientKeyBundle.keyBundle);
         }
       } catch (error) {
-        console.error('Error loading chat history:', error);
+        console.error('Error loading chat messages:', error);
       }
     };
 
-    if (view === 'chat' || view === 'friends') {
+    if (selectedUser && (view === 'chat' || view === 'friends' || view === 'archive')) {
       loadChatHistory();
     }
   }, [selectedUser, view]);
 
-  // Set up message listeners
   useEffect(() => {
     if (!socketReady) {
       console.log('Socket not ready, waiting to set up listeners');
       return;
     }
-    console.log("socket ready, initing lisnters in Layout");
-    // Handle incoming messages
+
     registerMessageListener((message) => {
-      console.log("Received message via socket:", message);
-
       decryptMessage(message)
-      .then(text => {
-        console.log("decrypted text: ", text);
+        .then(text => {
+          const sender = message.sender;
+          const time = message.time;
 
-        const sender = message.sender;
-        const time = message.time 
-  
-        // If this is from the currently selected user, update current messages
-        if (sender === selectedUser) {
-          setMessages(prev => [...prev, { sender, text, time }]);
-        }
-      })
-      .catch(error => {
-        console.error("Failed to decrypt message:", error);
-      });
-  });
+          if (sender === selectedUser) {
+            setMessages(prev => [...prev, { sender, text, time }]);
+          }
+        })
+        .catch(error => {
+          console.error("Failed to decrypt message:", error);
+        });
+    });
 
-    // Handle typing indicators
     registerTypingListener((data) => {
       const { username, isTyping: typing } = data;
       setIsTyping(prev => ({
@@ -217,7 +189,6 @@ export default function Layout({ children }) {
         [username]: typing
       }));
 
-      // Clear typing indicator after 3 seconds of inactivity
       if (typing) {
         setTimeout(() => {
           setIsTyping(prev => ({
@@ -228,7 +199,6 @@ export default function Layout({ children }) {
       }
     });
 
-    // Clean up listeners on unmount
     return () => {
       removeListener('receive_message');
       removeListener('message_sent');
@@ -236,17 +206,12 @@ export default function Layout({ children }) {
     };
   }, [selectedUser, socketReady]);
 
-  // Handle typing indicator
   const handleTyping = useCallback(() => {
     if (!selectedUser) return;
-
-    // Clear previous timeout
     if (typingTimeout) clearTimeout(typingTimeout);
 
-    // Send typing indicator
     sendTypingStatus(identifyChatType(), true);
 
-    // Set timeout to stop typing indicator
     const timeout = setTimeout(() => {
       sendTypingStatus(identifyChatType(), false);
     }, 3000);
@@ -254,29 +219,25 @@ export default function Layout({ children }) {
     setTypingTimeout(timeout);
   }, [selectedUser, typingTimeout]);
 
-  // Send message function
   const sendMessage = async (text) => {
     if (!selectedUser || !text.trim()) return;
+
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    
-    // For UI update
+
     const newMessage = {
       sender: 'Me',
       text,
-      time: time,
+      time,
     };
 
-    // Update current messages view
     setMessages(prev => [...prev, newMessage]);
-    
+
     if (typeof selectedUser === 'string') {
-      console.log("Private message");
       sendPrivateMessage(selectedUser, text, selectedUserInfo);
-    } else if (typeof selectedUser == 'object' && selectedUser.type === 'group') {
-      console.log("Group message");
+    } else if (typeof selectedUser === 'object' && selectedUser.type === 'group') {
       await sendGroupMessage(selectedUser.id, text);
     }
-    
+
     if (typingTimeout) {
       clearTimeout(typingTimeout);
       sendTypingStatus(identifyChatType(), false);
@@ -305,10 +266,8 @@ export default function Layout({ children }) {
         color: theme.colors.text.primary
       }}
     >
-      {/* Navigation Bar */}
       <NavBar onProfileClick={() => setShowProfileModal(true)} setView={setView} />
 
-      {/* Side Bar */}
       <div className="min-w-[250px] w-[25%] m-3 flex flex-col">
         {view === 'archive' ? (
           <Archive selectedUser={selectedUser} setSelectedUser={setSelectedUser} />
@@ -325,7 +284,6 @@ export default function Layout({ children }) {
         )}
       </div>
 
-      {/* Chat Window */}
       <div
         className="flex-1 flex flex-col shadow-lg rounded-lg m-3 ml-0"
         style={{ backgroundColor: theme.colors.background.secondary }}

@@ -1,4 +1,5 @@
 import admin from "../firebaseAdmin.js";
+import nodemailer from 'nodemailer';
 import { connectDB } from "../mongo/connection.js";
 import bcrypt from 'bcrypt';
 import jwt from "jsonwebtoken";
@@ -18,16 +19,31 @@ export const register = async (req, res) => {
 
     console.log("Email Link:", emailVerificationLink);
 
+    const transporter = nodemailer.createTransport({
+      service: 'Gmail',
+      auth: {
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_PASS,
+      },
+    });
+
+    await transporter.sendMail({
+      from: '"EMA" <no-reply@yourapp.com>',
+      to: email,
+      subject: "Verify your email",
+      html: `<p>Click <a href="${emailVerificationLink}">here</a> to verify your email.</p>`,
+    });
+
     // Ensure DB connection
     const db = await connectDB();
     const usersCollection = db.collection("users");
     const authCollection = db.collection("auth");
 
     // Insert user UID into MongoDB if not exists
-    const existingUser = await authCollection.findOne({email: email});
+    const existingUser = await authCollection.findOne({ email: email });
 
     const hashedPassword = await bcrypt.hash(password, Number(process.env.HASH_ROUNDS || 10));
-    
+
     if (!existingUser) {
       const authResult = await authCollection.insertOne({
         email: email,
@@ -69,6 +85,87 @@ export const register = async (req, res) => {
     res.status(401).json({ error: error.message });
   }
 };
+
+
+export const resetPassword = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    await admin.auth().getUserByEmail(email);
+
+    const actionCodeSettings = {
+      url: "http://localhost:5173/reset",
+      handleCodeInApp: true,
+    };
+
+    const db = await connectDB();
+
+    const userInDb = await db.collection('auth').findOne({ email: email });
+
+    if (!userInDb || userInDb.loginMethod !== "traditional") {
+      return res.status(400).json({ error: "This account uses passkey login. Password reset not available." });
+    }
+
+    const resetLink = await admin.auth().generatePasswordResetLink(email, actionCodeSettings);
+
+    const url = new URL(resetLink);
+    const oobCode = url.searchParams.get("oobCode");
+    const customLink = `http://localhost:5173/reset?oobCode=${oobCode}`;
+
+    console.log("Reset Link: ", resetLink);
+    console.log("Custom Link: ", customLink);
+
+    const transporter = nodemailer.createTransport({
+      service: "Gmail",
+      auth: {
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_PASS,
+      },
+    });
+
+    await transporter.sendMail({
+      from: `"EMA" <${process.env.GMAIL_USER}>`,
+      to: email,
+      subject: "Reset Your Password",
+      html: `
+        <p>You requested a password reset.</p>
+        <p><a href="${customLink}">Click here to reset your password</a></p>
+        <p>This link will expire soon. If you didn’t request this, please ignore it.</p>
+      `,
+    });
+
+    res.json({ message: "Password reset email sent." });
+
+  } catch (error) {
+    console.error("Password reset error:", error);
+    res.status(500).json({ error: "Failed to send password reset link." });
+  }
+};
+
+export const updatePassword = async (req, res) => {
+  const { email, newPassword } = req.body;
+
+  try {
+    const db = await connectDB();
+    const user = await db.collection("auth").findOne({ email });
+
+    if (!user || user.loginMethod !== "traditional") {
+      return res.status(400).json({ error: "Invalid account type for password reset." });
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await db.collection("auth").updateOne(
+      { email },
+      { $set: { password: hashed } }
+    );
+
+    res.json({ message: "MongoDB password updated." });
+  } catch (err) {
+    console.error("MongoDB password update failed:", err);
+    res.status(500).json({ error: "Password update failed." });
+  }
+};
+
 
 export const corbadoLogin = async (req, res) => {
   try {
@@ -120,7 +217,7 @@ export const corbadoLogin = async (req, res) => {
     });
 
     const keyBundlesCollection = db.collection("keyBundles");
-    const keyBundleExists = await keyBundlesCollection.findOne({ 
+    const keyBundleExists = await keyBundlesCollection.findOne({
       uid: user.uid
     });
 
@@ -153,9 +250,9 @@ export const corbadoLogin = async (req, res) => {
       code: error.code,
       stack: error.stack
     });
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: "Authentication failed",
-      details: error.message 
+      details: error.message
     });
   }
 };
@@ -169,8 +266,8 @@ export const login = async (req, res) => {
     // Ensure DB connection
     const db = await connectDB();
     const authCollection = db.collection("auth");
-    const auth = await authCollection.findOne({ email: email});
-    if (!auth ) {
+    const auth = await authCollection.findOne({ email: email });
+    if (!auth) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
     const isPasswordValid = await bcrypt.compare(password, auth.password);
@@ -180,7 +277,7 @@ export const login = async (req, res) => {
 
 
 
-    if (!auth ) {
+    if (!auth) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
@@ -190,17 +287,17 @@ export const login = async (req, res) => {
     }
 
     if (userRecord.emailVerified === false) {
-        return res.status(403).json({ error: "Email not verified. Please check your email." });
-    }else if(userRecord.emailVerified === true){
-        await authCollection.updateOne({email: email}, {$set: {emailVerified: true}});
-        emailVerified = true;
+      return res.status(403).json({ error: "Email not verified. Please check your email." });
+    } else if (userRecord.emailVerified === true) {
+      await authCollection.updateOne({ email: email }, { $set: { emailVerified: true } });
+      emailVerified = true;
     }
 
     const usersCollection = db.collection("users");
     const user = await usersCollection.findOne({ uid: auth._id.toString() });
 
-    const accessToken = jwt.sign({ uid: user.uid}, process.env.JWT_ACCESS_TOKEN_SECRET, { expiresIn: "1h" });
-    const refreshToken = jwt.sign({ uid: user.uid}, process.env.JWT_REFRESH_TOKEN_SECRET, { expiresIn: "7d" });
+    const accessToken = jwt.sign({ uid: user.uid }, process.env.JWT_ACCESS_TOKEN_SECRET, { expiresIn: "1h" });
+    const refreshToken = jwt.sign({ uid: user.uid }, process.env.JWT_REFRESH_TOKEN_SECRET, { expiresIn: "7d" });
 
     // HttpOnly cookie
     res.cookie("accessToken", accessToken, {
@@ -265,7 +362,7 @@ export const refreshToken = async (req, res) => {
 
     // Generate a new token
     const newAccessToken = jwt.sign({ uid: uid }, process.env.JWT_ACCESS_TOKEN_SECRET, { expiresIn: "1h" });
-    
+
     // Set the new access token as a cookie
     res.cookie("accessToken", newAccessToken, {
       httpOnly: true,
@@ -274,7 +371,7 @@ export const refreshToken = async (req, res) => {
       maxAge: 60 * 60 * 1000, // 1 hour
     });
 
-    res.json({message: "Access Token Refreshed" });
+    res.json({ message: "Access Token Refreshed" });
   } catch (error) {
     console.error("Error refreshing token:", error);
     res.status(401).json({ error: "Invalid token" });

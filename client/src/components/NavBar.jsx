@@ -1,4 +1,4 @@
-import React, {useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { MdMessage, MdPeople, MdPersonAdd, MdArchive, MdPerson } from 'react-icons/md';
 import { FiSun, FiMoon } from "react-icons/fi";
@@ -35,7 +35,7 @@ export default function NavBar({ onProfileClick, setView }) {
       console.log('Friend request handled received');
       setFriendRequestsCount((prevCount) => prevCount - 1);
     });
-    
+
     return () => {
       if (unsubscribeFriendRequestCount) unsubscribeFriendRequestCount();
       if (unsubscribeFriendRequest) unsubscribeFriendRequest();
@@ -48,7 +48,7 @@ export default function NavBar({ onProfileClick, setView }) {
       try {
         const data = await getFriendRequests();
         console.log('Friend requests data:', data);
-        setFriendRequestsCount(data.friendRequests.length || 0 );
+        setFriendRequestsCount(data.friendRequests.length || 0);
       } catch (err) {
         console.error('Failed to load friend requests');
       }
@@ -65,15 +65,15 @@ export default function NavBar({ onProfileClick, setView }) {
   // NavBar components
   const NavItem = ({ to, icon, label, isActive, onClick, isCollapsed, theme }) => {
     const location = useLocation();
-    
+
     const activeItemStyle = {
       backgroundColor: theme.colors.background.accent,
     };
-  
+
     return (
       <Link
         to={to}
-        className="w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px]"
+        className="w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] cursor-pointer"
         style={isActive ? activeItemStyle : {}}
         onClick={onClick}
         onMouseEnter={(e) => {
@@ -107,15 +107,15 @@ export default function NavBar({ onProfileClick, setView }) {
   }
 
   return (
-    <motion.div 
-    initial={{ width: 150 }}
-    animate={{ width: isCollapsed ? 60 : 150 }}
-    transition={{ duration: 0.2, ease: "easeOut"}}
+    <motion.div
+      initial={{ width: 150 }}
+      animate={{ width: isCollapsed ? 60 : 150 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
     >
       <div
-       className={`flex flex-col justify-between h-screen ${isCollapsed ? 'w-[60px]' : 'w-[150px]'}`}
-       style={navBarStyle}
-       >
+        className={`flex flex-col justify-between h-screen ${isCollapsed ? 'w-[60px]' : 'w-[150px]'}`}
+        style={navBarStyle}
+      >
         <div className="flex flex-col items-start mt-3 ml-[10px]">
           {/* Direct Messages Link */}
           <NavItem
@@ -142,7 +142,7 @@ export default function NavBar({ onProfileClick, setView }) {
           {/* Requests Link */}
           <Link
             to="/requests"
-            className={`w-full flex text-left px-[15px] rounded-lg mb-2 transition items-center text-lg h-[50px]`}
+            className="w-full flex text-left px-[15px] rounded-lg mb-2 transition items-center text-lg h-[50px] cursor-pointer"
             style={location.pathname === '/requests' ? activeItemStyle : {}}
             onClick={() => setView('requests')}
             onMouseEnter={(e) => {
@@ -156,14 +156,14 @@ export default function NavBar({ onProfileClick, setView }) {
           >
             <div className='relative w-[20px] h-[20px]'>
               {friendRequestsCount > 0 ? (
-                <span 
+                <span
                   className="relative text-xs w-[20px] h-[20px] flex items-center justify-center rounded-full mr-2"
                   style={notificationStyle}
                 >
                   {friendRequestsCount}
                 </span>
               ) : (
-                <MdPersonAdd/>
+                <MdPersonAdd />
               )}
             </div>
             {!isCollapsed && <span className="text-lg align-middle pl-[15px]">Requests</span>}
@@ -185,7 +185,7 @@ export default function NavBar({ onProfileClick, setView }) {
           {/* Profile Link */}
           <button
             onClick={onProfileClick}
-            className="w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px]"
+            className="w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] cursor-pointer"
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = theme.colors.background.accent;
             }}
@@ -193,14 +193,14 @@ export default function NavBar({ onProfileClick, setView }) {
               e.currentTarget.style.backgroundColor = '';
             }}
           >
-            <MdPerson/>
+            <MdPerson />
             {!isCollapsed && <span className="text-lg align-middle pl-[15px]">Profile</span>}
           </button>
 
           {/* Theme Toggle Button */}
           <button
             onClick={handleThemeToggle}
-            className="w-fit text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] hover:scale-130"
+            className="w-fit text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] hover:scale-130 cursor-pointer"
             title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
           >
             <div className="relative w-[24px] h-[24px] flex items-center justify-center">
@@ -233,7 +233,7 @@ export default function NavBar({ onProfileClick, setView }) {
           {/* Collasp Button */}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="w-fit text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] hover:scale-130"
+            className="w-fit text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] hover:scale-130 cursor-pointer"
             title={isCollapsed ? "Expand" : "Collapse"}
           >
             <div className="relative w-[24px] h-[24px] flex items-center justify-center">

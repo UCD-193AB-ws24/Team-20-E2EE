@@ -134,18 +134,14 @@ export const getChatArchive = async (req, res) => {
     }
 
     const recipientId = recipientUser.uid;
-
     // Get messages between the two users
-    const messagesCollection = db.collection("archive");
-    const messages = await messagesCollection
-      .find({
+    const messagesCollection = db.collection("deleted_messages");
+    const messages = await messagesCollection.find({
         $or: [
-          { sender: currentUserId, recipient: recipientId },
-          { sender: recipientId, recipient: currentUserId },
-        ],
-      })
-      .sort({ timestamp: 1 })
-      .toArray();
+            { sender: currentUserId, recipient: recipientId },
+            { sender: recipientId, recipient: currentUserId }
+        ]
+    }).sort({ timestamp: 1 }).toArray();
 
     // Format messages for client
     const formattedMessages = await Promise.all(

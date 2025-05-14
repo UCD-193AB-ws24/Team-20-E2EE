@@ -1,4 +1,4 @@
-import { BACKEND_URL } from '../config/config.js';
+import { BACKEND_URL } from '../config/config';
 import fetchWithAuth from '../util/FetchWithAuth';
 import getCurrentUser from '../util/getCurrentUser.js';
 import { getSessionCipher, hasSession, arrayBufferToBase64, base64ToArrayBuffer } from '../util/encryption';
@@ -62,16 +62,13 @@ export const getGroupHistory = async (groupId) => {
 
 export const getArchivedChatHistory = async (token, username) => {
   try {
-    const response = await fetch(
-      `${BACKEND_URL}/api/message/history?username=${username}`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+    const response = await fetch(`${BACKEND_URL}/api/message/archive?username=${username}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
       }
-    );
+    });
 
     if (!response.ok) {
       const error = await response.json();
@@ -84,6 +81,7 @@ export const getArchivedChatHistory = async (token, username) => {
     return { messages: [] };
   }
 };
+
 
 // Get message previews for all friends
 export const getAllMessagePreviews = async () => {
@@ -426,7 +424,7 @@ export const decryptMessage = async (msg) => {
       console.log(`Decoded Base64 string to ArrayBuffer of byteLength ${processedBody.byteLength}`);
     } else if (msg.encryptedMessage.body instanceof ArrayBuffer) {
         console.log("Body is already an ArrayBuffer");
-        processedBody = encryptedMessage.body;
+        processedBody = msg.encryptedMessage.body;
     } else if (msg.encryptedMessage.body instanceof Uint8Array) {
         console.log("Body is a Uint8Array, converting to ArrayBuffer");
         processedBody = msg.encryptedMessage.body.buffer;

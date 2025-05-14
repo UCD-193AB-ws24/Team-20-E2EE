@@ -502,6 +502,7 @@ export const updateAvatar = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
 export const getAvatar = async (req, res) => {
   try {
     const { username } = req.params;
