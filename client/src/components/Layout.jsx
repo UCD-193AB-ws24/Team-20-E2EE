@@ -2,15 +2,15 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import NavBar from './NavBar';
 import { ChatWindow, MessageInput, ProfileModal, useSocket } from './index';
 import { Archive, Friends, Requests } from '../pages';
-import { 
-  registerMessageListener, removeListener, 
-  sendTypingStatus, registerTypingListener 
+import {
+  registerMessageListener, removeListener,
+  sendTypingStatus, registerTypingListener
 } from '../api/socket';
 import getCurrentUser from '../util/getCurrentUser';
 import { establishSession, hasSession } from '../util/encryption/sessionManager';
 import { fetchKeyBundle } from '../api/keyBundle';
 import { getConversationMessages } from '../util/messagesStore';
-import { getChatHistory, getGroupHistory, sendPrivateMessage, sendGroupMessage, decryptMessage } from '../api/messages';
+import { getChatHistory, getGroupHistory, getArchivedChatHistory, sendPrivateMessage, sendGroupMessage, decryptMessage } from '../api/messages';
 import { useAppContext } from './AppContext';
 import { BACKEND_URL } from '../config/config';
 
@@ -97,31 +97,50 @@ export default function Layout({ children }) {
   //   deleteMessages();
   // }, [selectedUser]);
 
-  useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user'));
+  // useEffect(() => {
+  //   const user = JSON.parse(localStorage.getItem('user'));
 
-    const handleBeforeUnload = async (event) => {
-      if (user?.accessToken && selectedUser) {
-        navigator.sendBeacon(
-          `${BACKEND_URL}/api/message/vanish`,
-          JSON.stringify({
-            username: identifyChatType(),
-          })
-        );
-      }
-    };
+  //   const handleBeforeUnload = async (event) => {
+  //     if (user?.accessToken && selectedUser) {
+  //       navigator.sendBeacon(
+  //         `${BACKEND_URL}/api/message/vanish`,
+  //         JSON.stringify({
+  //           username: identifyChatType(),
+  //         })
+  //       );
+  //     }
+  //   };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [selectedUser]);
+  //   window.addEventListener('beforeunload', handleBeforeUnload);
+  //   return () => {
+  //     window.removeEventListener('beforeunload', handleBeforeUnload);
+  //   };
+  // }, [selectedUser]);
 
   useEffect(() => {
     const loadChatHistory = async () => {
       if (!selectedUser) return;
 
       try {
+
+        if (view === 'archive') {
+          const recipientKeyBundle = await fetchKeyBundle(selectedUser);
+          const recipientUid = recipientKeyBundle.keyBundle.uid;
+
+          const { messages: archivedMessages } = await getArchivedChatHistory(userId, recipientUid);
+          console.log(`Loaded ${archivedMessages?.length || 0} archived messages`);
+
+          const formattedMessages = archivedMessages.map(msg => ({
+            sender: msg.sender,
+            text: msg.text,
+            time: msg.time,
+            status: 'archived'
+          }));
+          setMessages(formattedMessages);
+          return;
+        }
+
+
         const recipientKeyBundle = await fetchKeyBundle(selectedUser);
         const recipientUid = recipientKeyBundle.keyBundle.uid;
         const recipientDeviceId = recipientKeyBundle.keyBundle.deviceId;

@@ -6,7 +6,7 @@ const router = express.Router();
 
 router.post('/send', authenticateUser, sendPrivateMessage);
 router.get('/history', authenticateUser, getChatHistory);
-router.get('/archive', authenticateUser, getChatArchive);
+router.get('/archive', getChatArchive);
 router.get('/previews', authenticateUser, getMessagePreviews);
 router.post('/vanish', authenticateUser, deleteMessages);
 
