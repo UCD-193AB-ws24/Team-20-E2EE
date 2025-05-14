@@ -29,16 +29,12 @@ export const uploadKeyBundle = async (keyBundle, forceOverwrite) => {
 
 // Retrieve another user's key bundle
 export const fetchKeyBundle = async (username) => {
-  try {
-    console.log("111");
-    
+  try {    
     const response = await fetchWithAuth(`${BACKEND_URL}/api/keys/${username}`, {
       method: 'GET',
     });
 
     const data = await response.json();
-
-    console.log('Fetched key bundle:', data);
 
     if (!response.ok) {
       throw new Error(data.error || 'Failed to fetch key bundle');
