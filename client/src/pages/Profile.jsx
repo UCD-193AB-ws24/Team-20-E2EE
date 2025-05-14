@@ -279,8 +279,6 @@ export default function Profile({ onClose }) {
         {showLogoutConfirmation && (
           <div className="absolute inset-0 bg-opacity-90 flex items-center justify-center z-50" style={{ backgroundColor: theme.colors.background.secondary }}>
             <div className="rounded-lg p-6 w-96 shadow-lg" style={{ backgroundColor: theme.colors.background.primary }}>
-          <div className="absolute inset-0 bg-opacity-90 flex items-center justify-center z-50" style={{ backgroundColor: theme.colors.background.secondary }}>
-            <div className="rounded-lg p-6 w-96 shadow-lg" style={{ backgroundColor: theme.colors.background.primary }}>
               <h2 className="text-2xl font-bold mb-4">Confirm Logout</h2>
               <p className="mb-6">Are you sure you want to logout?</p>
               <div className="flex justify-end space-x-4">
@@ -290,14 +288,12 @@ export default function Profile({ onClose }) {
                 >
                   Cancel
                 </button>
-
                 <button
                   onClick={handleLogout}
                   className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300"
                 >
                   Logout
                 </button>
-
               </div>
             </div>
           </div>
