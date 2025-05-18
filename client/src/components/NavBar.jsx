@@ -8,6 +8,7 @@ import { getFriendRequests } from '../api/friends';
 import { useSocket, useAppContext } from './index';
 import { motion, AnimatePresence } from "motion/react";
 import { darkTheme, lightTheme } from '../config/themes';
+import ClearStorageButton from './ClearStorageButton';
 
 export default function NavBar({ onProfileClick, setView }) {
   const location = useLocation();
@@ -16,7 +17,6 @@ export default function NavBar({ onProfileClick, setView }) {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const { theme, setTheme } = useAppContext();
   const isDarkMode = theme.type === 'dark';
-
 
   // Set up friend request and friend request handled listener
   useEffect(() => {
@@ -262,6 +262,11 @@ export default function NavBar({ onProfileClick, setView }) {
               </AnimatePresence>
             </div>
           </button>
+
+          {/* Clear Storage Button */}
+          <div className="navbar-item">
+            <ClearStorageButton />
+          </div>
         </div>
       </div>
     </motion.div>
