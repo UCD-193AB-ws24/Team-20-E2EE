@@ -16,98 +16,98 @@ export const getChatHistory = async (req, res) => {
     if (!currentUserId) {
       return res.status(401).json({ error: "Unauthorized - No user ID found" });
     }
-    
-        const db = await connectDB();
-        const usersCollection = db.collection("users");
-        const messagesCollection = db.collection("messages");
-        
-        // If no username is provided, fetch ALL unread messages for the current user
-        if (!username) {
-            // Query for all unread messages where current user is the recipient
-            const query = {
-                recipientUid: currentUserId,
-                read: false
-            };
-            
-            const messages = await messagesCollection.find(query)
-                .sort({ timestamp: 1 }).toArray();
-            
-            // Format messages for client
-            const formattedMessages = await Promise.all(messages.map(async (msg) => {
-                // Get sender username if needed
-                let senderUsername = msg.senderUsername;
-                if (!senderUsername) {
-                    const sender = await usersCollection.findOne({ uid: msg.sender });
-                    senderUsername = sender?.username || "Unknown";
-                }
-                
-                return {
-                    _id: msg._id,
-                    sender: senderUsername,
-                    senderUid: msg.sender,
-                    senderDeviceId: msg.senderDeviceId,
-                    recipientUid: currentUserId,
-                    recipientUsername: msg.recipientUsername,
-                    encryptedMessage: msg.encryptedMessage,
-                    isEncrypted: msg.isEncrypted,
-                    time: msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                    timestamp: msg.timestamp
-                };
-            }));
-            
-            // Return all unread messages without marking them as read
-            return res.json({ messages: formattedMessages });
-        }
-        
-        // Normal conversation history logic for when username is provided
-        const recipientUser = await usersCollection.findOne({ username });
-        
-        if (!recipientUser) {
-            return res.status(404).json({ error: "User not found" });
-        }
-        
-        const recipientId = recipientUser.uid;
-        
-        // Build the query for conversation history
-        const query = {
-            $or: [
-                { sender: currentUserId, recipientUid: recipientId },
-                { sender: recipientId, recipientUid: currentUserId }
-            ]
-        };
-        
-        const messages = await messagesCollection.find(query)
-            .sort({ timestamp: 1 }).toArray();
-        
-        // Format messages for client
-        const formattedMessages = await Promise.all(messages.map(async (msg) => {
-            // Get sender username if needed
-            let senderUsername = msg.senderUsername;
-            if (!senderUsername) {
-                const sender = await usersCollection.findOne({ uid: msg.sender });
-                senderUsername = sender?.username || "Unknown";
-            }
-            
-            return {
-                _id: msg._id,
-                sender: msg.sender === currentUserId ? "Me" : senderUsername,
-                encryptedMessage: msg.encryptedMessage,
-                isEncrypted: msg.isEncrypted,
-                time: msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            };
-        }));
 
-        // Mark messages as read when fetching a specific conversation
-        await messagesCollection.updateMany(
-            { sender: recipientId, recipientUid: currentUserId, read: false },
-            { $set: { read: true } }
-        );
-        
-        res.json({ messages: formattedMessages });
-    } catch (error) {
-        console.error("Error fetching chat history:", error);
-        res.status(500).json({ error: "Internal server error" })
+    const db = await connectDB();
+    const usersCollection = db.collection("users");
+    const messagesCollection = db.collection("messages");
+
+    // If no username is provided, fetch ALL unread messages for the current user
+    if (!username) {
+      // Query for all unread messages where current user is the recipient
+      const query = {
+        recipientUid: currentUserId,
+        read: false
+      };
+
+      const messages = await messagesCollection.find(query)
+        .sort({ timestamp: 1 }).toArray();
+
+      // Format messages for client
+      const formattedMessages = await Promise.all(messages.map(async (msg) => {
+        // Get sender username if needed
+        let senderUsername = msg.senderUsername;
+        if (!senderUsername) {
+          const sender = await usersCollection.findOne({ uid: msg.sender });
+          senderUsername = sender?.username || "Unknown";
+        }
+
+        return {
+          _id: msg._id,
+          sender: senderUsername,
+          senderUid: msg.sender,
+          senderDeviceId: msg.senderDeviceId,
+          recipientUid: currentUserId,
+          recipientUsername: msg.recipientUsername,
+          encryptedMessage: msg.encryptedMessage,
+          isEncrypted: msg.isEncrypted,
+          time: msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          timestamp: msg.timestamp
+        };
+      }));
+
+      // Return all unread messages without marking them as read
+      return res.json({ messages: formattedMessages });
     }
+
+    // Normal conversation history logic for when username is provided
+    const recipientUser = await usersCollection.findOne({ username });
+
+    if (!recipientUser) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const recipientId = recipientUser.uid;
+
+    // Build the query for conversation history
+    const query = {
+      $or: [
+        { sender: currentUserId, recipientUid: recipientId },
+        { sender: recipientId, recipientUid: currentUserId }
+      ]
+    };
+
+    const messages = await messagesCollection.find(query)
+      .sort({ timestamp: 1 }).toArray();
+
+    // Format messages for client
+    const formattedMessages = await Promise.all(messages.map(async (msg) => {
+      // Get sender username if needed
+      let senderUsername = msg.senderUsername;
+      if (!senderUsername) {
+        const sender = await usersCollection.findOne({ uid: msg.sender });
+        senderUsername = sender?.username || "Unknown";
+      }
+
+      return {
+        _id: msg._id,
+        sender: msg.sender === currentUserId ? "Me" : senderUsername,
+        encryptedMessage: msg.encryptedMessage,
+        isEncrypted: msg.isEncrypted,
+        time: msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+    }));
+
+    // Mark messages as read when fetching a specific conversation
+    await messagesCollection.updateMany(
+      { sender: recipientId, recipientUid: currentUserId, read: false },
+      { $set: { read: true } }
+    );
+
+    res.json({ messages: formattedMessages });
+  } catch (error) {
+    console.error("Error fetching chat history:", error);
+    res.status(500).json({ error: "Internal server error" })
+  }
 };
 
 export const getChatArchive = async (req, res) => {
@@ -137,10 +137,10 @@ export const getChatArchive = async (req, res) => {
     // Get messages between the two users
     const messagesCollection = db.collection("deleted_messages");
     const messages = await messagesCollection.find({
-        $or: [
-            { sender: currentUserId, recipient: recipientId },
-            { sender: recipientId, recipient: currentUserId }
-        ]
+      $or: [
+        { sender: currentUserId, recipient: recipientId },
+        { sender: recipientId, recipient: currentUserId }
+      ]
     }).sort({ timestamp: 1 }).toArray();
 
     // Format messages for client
@@ -248,38 +248,34 @@ export const getMessagePreviews = async (req, res) => {
 };
 
 export const sendPrivateMessage = async (req, res) => {
-    try {
-        // Check for current user
-        const uid = req.user?.uid;
+  try {
+    // Check for current user
+    const uid = req.user?.uid;
 
-        if (!uid) {
-            return res.status(401).json({ error: "Unauthorized - No user ID found" })
-        }
+    if (!uid) {
+      return res.status(401).json({ error: "Unauthorized - No user ID found" })
+    }
 
-        const db = await connectDB();
-        const usersCollection = db.collection("users");
+    const db = await connectDB();
+    const usersCollection = db.collection("users");
 
-        const senderUser = await usersCollection.findOne({ uid: uid });
-        if (!senderUser) {
-            return res.status(404).json({ error: "User not found" });
-        }
+    const senderUser = await usersCollection.findOne({ uid: uid });
+    if (!senderUser) {
+      return res.status(404).json({ error: "User not found" });
+    }
 
-        const { recipientUsername, encryptedMessage, senderDeviceId } = req.body;
+    const { recipientUsername, encryptedMessage, senderDeviceId } = req.body;
 
-        // Validate the request body
-        if (!recipientUsername) {
-            return res.status(406).json({ error: "Recipient username is required" });
-        }
+    // Validate the request body
+    if (!recipientUsername) {
+      return res.status(406).json({ error: "Recipient username is required" });
+    }
 
-        if (!encryptedMessage || !encryptedMessage.type || !encryptedMessage.body) {
-            return res.status(406).json({ error: "Invalid message format - encrypted message required" });
-        }
+    if (!encryptedMessage || !encryptedMessage.type || !encryptedMessage.body) {
+      return res.status(406).json({ error: "Invalid message format - encrypted message required" });
+    }
 
-        const recipientUser = await usersCollection.findOne({ username: recipientUsername });
-        
-        if (!recipientUser) {
-            return res.status(404).json({ error: "Recipient not found" });
-        }
+    const recipientUser = await usersCollection.findOne({ username: recipientUsername });
 
         const recipientId = recipientUser.uid;
         const onlineUsers = getOnlineUsers();
@@ -332,18 +328,63 @@ export const sendPrivateMessage = async (req, res) => {
             });
         }
 
-        return res.status(200).json({ 
-            success: true, 
-            message: "Encrypted message sent successfully",
-            messageId: result.insertedId,
-            read: isRecipientOnline,
-            delivered: isRecipientOnline
-        });
-    } catch (error) {
-        console.error("Error sending message:", error);
-        res.status(500).json({ error: "Internal server error" })
-    }
+    return res.status(200).json({
+      success: true,
+      message: "Encrypted message sent successfully",
+      messageId: result.insertedId,
+      read: isRecipientOnline,
+      delivered: isRecipientOnline
+    });
+  } catch (error) {
+    console.error("Error sending message:", error);
+    res.status(500).json({ error: "Internal server error" })
+  }
 }
+
+export const sendGroupMessage = async (groupId, text, members) => {
+  try {
+    
+    // for member in members {
+    //   getusername(userid)
+    //   fetchkeybundle(username);
+    //   !checksession() {
+    //     createSession();
+    //   }
+    //   SendPrivateMessage
+    // } 
+    for (const member of members) {
+      const userId = getCurrentUser().uid;
+      if (member === userId) {
+        console.log("Skipping self in group message");
+        continue;
+      }
+
+      console.log("Fetching info for :", member);
+      const { username } = await searchUsername(member);
+
+      console.log("Fetched username:", username);
+
+      const recipientKeyBundle = await fetchKeyBundle(username);
+      const recipientUid = recipientKeyBundle.keyBundle.uid;
+      const recipientDeviceId = recipientKeyBundle.keyBundle.deviceId;
+
+      const sessionExists = await hasSession(userId, recipientUid, recipientDeviceId);
+      if (!sessionExists) {
+        console.log("No session, establishing new session");
+        await establishSession(userId, recipientUid, recipientKeyBundle.keyBundle);
+      }
+
+      const metadata = {
+        isGroupMessage: true,
+        groupId: groupId,
+      }
+      sendPrivateMessage(username, text, {uid: recipientUid, deviceId: recipientDeviceId}, metadata);
+    }
+  } catch (error) {
+    console.error("Error sending group message", error);
+    return;
+  }
+};
 
 export const deleteMessages = async (req, res) => {
   try {
@@ -390,6 +431,120 @@ export const deleteMessages = async (req, res) => {
     res.status(200).json({ success: true, count: chatMessages.length });
   } catch (err) {
     console.error("Error in deleteMessages:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const storeMessage = async (req, res) => {
+  try {
+    const { chatId, senderUid, recipientUid, text, timestamp } = req.body;
+    if (!chatId || !senderUid || !recipientUid || !text || !timestamp) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+    const db = await connectDB();
+    const prefsCollection = db.collection("archivePreferences");
+    const messagesCollection = db.collection("archive");
+    const prefs = await prefsCollection.findOne({ chatId });
+
+    const AOptedIn = prefs[`${prefs.userA}OptedIn`]
+    const BOptedIn = prefs[`${prefs.userB}OptedIn`]
+
+    const bothOptedIn = AOptedIn && BOptedIn;
+
+    if (bothOptedIn) {
+      const result = await messagesCollection.insertOne({
+        chatId,
+        senderUid,
+        recipientUid,
+        text,
+        timestamp: new Date(timestamp),
+      });
+      return res.status(200).json({ success: true, messageId: result.insertedId });
+    } else {
+      return res.status(403).json({ error: "Both users must opt in to archive" });
+    }
+
+
+  } catch (err) {
+    console.error("Error storing archived message:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+
+};
+
+export const getArchiveStatus = async (req, res) => {
+  try {
+    const { chatId } = req.query;
+    if (!chatId) return res.status(400).json({ error: "Missing chatId" });
+
+    const db = await connectDB();
+    const prefs = await db.collection("archivePreferences").findOne({ chatId });
+
+    if (!prefs) return res.status(200).json({ archiveEnabled: false });
+
+    const AOptedIn = prefs[`${prefs.userA}OptedIn`]
+    const BOptedIn = prefs[`${prefs.userB}OptedIn`]
+
+    const bothOptedIn = AOptedIn && BOptedIn;
+    console.log("User A opted in status: ", prefs.userA);
+    console.log("User B opted in status: ", prefs.userB);
+    console.log("Both opted in status: ", prefs.bothOptedIn);
+
+    return res.status(200).json({ archiveEnabled: bothOptedIn });
+  } catch (err) {
+    console.error("Error fetching archive status:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const toggleArchiveStatus = async (req, res) => {
+  try {
+    const { chatId, uid, optIn } = req.body;
+    const db = await connectDB();
+    const prefsCollection = db.collection("archivePreferences");
+    let prefs = await prefsCollection.findOne({ chatId });
+
+    if (typeof chatId !== "string" || !chatId.includes("-")) {
+      return res.status(400).json({ error: "Invalid chatId format" });
+    }
+
+    if (!prefs) {
+      console.log("No preferences found.");
+      const [userA, userB] = chatId.split("-");
+      prefs = {
+        chatId,
+        userA,
+        userB,
+        [`${userA}OptedIn`]: optIn,
+        [`${userB}OptedIn`]: false,
+        archiveEnabled: false
+      };
+      await prefsCollection.insertOne(prefs);
+    }
+    else {
+      await prefsCollection.updateOne(
+        { chatId },
+        { $set: { [`${uid}OptedIn`]: optIn } }
+      );
+    }
+    const updated = await prefsCollection.findOne({ chatId });
+    const AOptedIn = updated[`${updated.userA}OptedIn`]
+    const BOptedIn = updated[`${updated.userB}OptedIn`]
+
+    const bothOptedIn = AOptedIn && BOptedIn;
+    await prefsCollection.updateOne(
+      { chatId },
+      { $set: { archiveEnabled: bothOptedIn } }
+    );
+
+    if (!bothOptedIn && updated.archiveEnabled) {
+      await db.collection("archiveMessages").deleteMany({ chatId });
+    }
+    return res.status(200).json({ archiveEnabled: bothOptedIn });
+  }
+
+  catch (err) {
+    console.error("Archive toggle error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -483,7 +638,7 @@ export const createGroup = async (req, res) => {
 
 //get all groups chat
 export const getAllGroupChat = async (req, res) => {
-try{
+  try {
     const userId = req.user?.uid;
 
     if (!userId) {
@@ -499,10 +654,10 @@ try{
       .toArray();
     res.status(200).json({ success: true, groups });
 
-}catch(error){
+  } catch (error) {
     console.error('Error getting group chat', error);
     res.status(500).json({ error: "Internal server error" });
-}
+  }
 
 }
 

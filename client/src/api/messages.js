@@ -11,12 +11,12 @@ import { fetchKeyBundle } from './keyBundle.js';
 export const getChatHistory = async (username = null) => {
   try {
     let url = `${BACKEND_URL}/api/message/history`;
-    
+
     // Only add username parameter if provided
     if (username) {
       url += `?username=${encodeURIComponent(username)}`;
     }
-    
+
     const response = await fetchWithAuth(url, {
       method: 'GET',
       headers: {
@@ -112,7 +112,7 @@ export const getAllMessagePreviews = async () => {
 export const sendPrivateMessage = async (recipientUsername, text, recipientInfo, metadata) => {
   try {
     const recipientUID = recipientInfo.uid;
-    const recipientDeviceId = recipientInfo.deviceId; 
+    const recipientDeviceId = recipientInfo.deviceId;
     const senderDeviceId = getDeviceId();
 
     const userId = getCurrentUser().uid;
@@ -127,35 +127,49 @@ export const sendPrivateMessage = async (recipientUsername, text, recipientInfo,
     if (!sessionCipher) {
       throw new Error('Failed to create session cipher');
     }
-    
+
+    if (await archiveEnabledCheck(recipientUID)) {
+      fetchWithAuth(`${BACKEND_URL}/api/message/store`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chatId: buildChatId(userId, senderId),
+          senderUid: userId,
+          recipientUid: recipientUID,
+          text: text,
+          timestamp: new Date().toISOString(),
+        })
+      });
+    }
+
     const plaintextBuffer = new TextEncoder().encode(text).buffer;
     console.log("Plaintext buffer:", plaintextBuffer);
-    
+
     const encryptedMessage = await sessionCipher.encrypt(plaintextBuffer);
     console.log("Encrypted message:", encryptedMessage);
-    
+
     // Handle different formats of `encryptedMessage.body`
     let processedBody;
     if (typeof encryptedMessage.body === "string") {
       console.log("Converting raw string body to ArrayBuffer");
-      
+
       // IMPORTANT: Check if the first character is actually '3' (ASCII 51)
-      if (encryptedMessage.body.charCodeAt(0) === 51 && 
-          encryptedMessage.body.length > 1 && 
-          encryptedMessage.body.charCodeAt(1) === 40) {  // '(' has ASCII value 40
+      if (encryptedMessage.body.charCodeAt(0) === 51 &&
+        encryptedMessage.body.length > 1 &&
+        encryptedMessage.body.charCodeAt(1) === 40) {  // '(' has ASCII value 40
         console.log("Detected string represents characters, not binary. Fixing version byte.");
-        
+
         // Create a modified string with actual byte 3 instead of character '3'
         const bytes = new Uint8Array(encryptedMessage.body.length);
-        
+
         // First byte should be 3, not 51 ('3')
         bytes[0] = 51;
-        
+
         // Copy the rest starting from position 1
         for (let i = 1; i < encryptedMessage.body.length; i++) {
           bytes[i] = encryptedMessage.body.charCodeAt(i);
         }
-        
+
         processedBody = bytes.buffer;
       } else {
         // Regular conversion (in case this isn't the specific issue)
@@ -166,14 +180,14 @@ export const sendPrivateMessage = async (recipientUsername, text, recipientInfo,
         processedBody = bytes.buffer;
       }
     } else if (encryptedMessage.body instanceof Uint8Array) {
-        console.log("Body is a Uint8Array, converting to ArrayBuffer");
-        processedBody = encryptedMessage.body.buffer;
+      console.log("Body is a Uint8Array, converting to ArrayBuffer");
+      processedBody = encryptedMessage.body.buffer;
     } else if (encryptedMessage.body instanceof ArrayBuffer) {
-        console.log("Body is already an ArrayBuffer");
-        processedBody = encryptedMessage.body;
+      console.log("Body is already an ArrayBuffer");
+      processedBody = encryptedMessage.body;
     } else {
-        console.error("Unsupported body type:", typeof encryptedMessage.body);
-        throw new Error(`Unexpected message body type: ${typeof encryptedMessage.body}`);
+      console.error("Unsupported body type:", typeof encryptedMessage.body);
+      throw new Error(`Unexpected message body type: ${typeof encryptedMessage.body}`);
     }
     const versionByte = new Uint8Array(processedBody)[0];
     console.log("Version byte:", versionByte);
@@ -181,18 +195,18 @@ export const sendPrivateMessage = async (recipientUsername, text, recipientInfo,
     // Convert the processed body to Base64
     const base64Body = arrayBufferToBase64(processedBody);
     console.log("Base64 encoded body:", base64Body);
-    
+
     if (!base64Body) {
-        console.error("Base64 encoding failed - body is empty");
-        throw new Error("Base64 encoding failed");
+      console.error("Base64 encoding failed - body is empty");
+      throw new Error("Base64 encoding failed");
     }
-    
+
     const response = await fetchWithAuth(`${BACKEND_URL}/api/message/send`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         recipientUsername,
         senderDeviceId,
         encryptedMessage: {
@@ -223,7 +237,7 @@ export const sendPrivateMessage = async (recipientUsername, text, recipientInfo,
       } catch (error) {
         console.log("Error saving sent message to IndexedDB: ", error);
       }
-    } 
+    }
     return result;
   } catch (error) {
     console.error("Error sending message", error);
@@ -426,42 +440,42 @@ export const decryptMessage = async (msg) => {
     const userId = getCurrentUser().uid;
     const senderId = msg.senderUid;
     const senderDeviceId = msg.senderDeviceId;
-    
+
     console.log('Attempting to decrypt message from:', senderId, 'with deviceId:', senderDeviceId);
-    
+
     let sessionCipher = await getSessionCipher(userId, senderId, senderDeviceId);
-    
+
     if (!sessionCipher) {
       throw new Error('Failed to create session cipher for decryption');
     }
-    
+
     console.log('Session cipher created successfully, decrypting message...');
     console.log(sessionCipher);
-    
+
     console.log("encrypted body: ", msg.encryptedMessage.body);
 
     let processedBody;
-    
+
     if (typeof msg.encryptedMessage.body === 'string') {
       console.log("Decoding Base64 string to binary buffer");
       processedBody = base64ToArrayBuffer(msg.encryptedMessage.body);
       console.log(`Decoded Base64 string to ArrayBuffer of byteLength ${processedBody.byteLength}`);
     } else if (msg.encryptedMessage.body instanceof ArrayBuffer) {
-        console.log("Body is already an ArrayBuffer");
-        processedBody = msg.encryptedMessage.body;
+      console.log("Body is already an ArrayBuffer");
+      processedBody = msg.encryptedMessage.body;
     } else if (msg.encryptedMessage.body instanceof Uint8Array) {
-        console.log("Body is a Uint8Array, converting to ArrayBuffer");
-        processedBody = msg.encryptedMessage.body.buffer;
+      console.log("Body is a Uint8Array, converting to ArrayBuffer");
+      processedBody = msg.encryptedMessage.body.buffer;
     } else {
-        console.error("Unsupported body type:", typeof msg.encryptedMessage.body);
-        throw new Error(`Unexpected message body type: ${typeof msg.encryptedMessage.body}`);
+      console.error("Unsupported body type:", typeof msg.encryptedMessage.body);
+      throw new Error(`Unexpected message body type: ${typeof msg.encryptedMessage.body}`);
     }
-    
+
     console.log("Decoded ArrayBuffer:", processedBody);
     // Log the version byte
     const versionByte = new Uint8Array(processedBody)[0];
     console.log("Version byte:", versionByte);
-    
+
     // Prepare the cipher message object
     const cipherMessage = {
       type: msg.encryptedMessage.type,
@@ -469,7 +483,7 @@ export const decryptMessage = async (msg) => {
     };
 
     console.log("cipher message: ", cipherMessage);
-    
+
     // Decrypt the message
     let decryptedBuffer;
     if (cipherMessage.type === 3) {
@@ -478,18 +492,18 @@ export const decryptMessage = async (msg) => {
         // This is a PreKeyWhisperMessage (initial message in a session)
         decryptedBuffer = await sessionCipher.decryptPreKeyWhisperMessage(cipherMessage.body);
         console.log("Successfully decrypted PreKeyWhisperMessage and established session");
-        
+
         // Verify session was established
         const sessionExists = await hasSession(userId, senderId, senderDeviceId);
         console.log("Session established status:", sessionExists);
-        
+
         // Log the first few bytes of decrypted content for debugging
         const firstBytes = new Uint8Array(decryptedBuffer.slice(0, 10));
         console.log("First bytes of decrypted content:", Array.from(firstBytes));
       } catch (prekeyError) {
         console.error("PreKeyWhisperMessage decryption failed:", prekeyError);
         console.error("Error details:", prekeyError.message);
-        
+
         // Try to get more info about the session state
         try {
           const sessionExists = await hasSession(userId, senderId, senderDeviceId);
@@ -497,7 +511,7 @@ export const decryptMessage = async (msg) => {
         } catch (e) {
           console.error("Failed to check session status:", e);
         }
-        
+
         // Re-throw the error to be handled by the outer catch
         throw prekeyError;
       }
@@ -505,7 +519,7 @@ export const decryptMessage = async (msg) => {
       // Regular message handling
       decryptedBuffer = await sessionCipher.decryptWhisperMessage(cipherMessage.body);
     }
-    
+
     // Convert buffer to string
     const decryptedText = new TextDecoder().decode(decryptedBuffer);
     console.log('Message decrypted successfully: ', msg);
@@ -525,12 +539,67 @@ export const decryptMessage = async (msg) => {
         metadata: msg.metadata
       });
     } catch (error) {
-      console.log("Error saving decrypted Message to storage:" , error);
+      console.log("Error saving decrypted Message to storage:", error);
     }
-    
+
+    if (await archiveEnabledCheck(senderId)) {
+      fetchWithAuth(`${BACKEND_URL}/api/message/store`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chatId: buildChatId(userId, senderId),
+          senderUid: senderId,
+          recipientUid: userId,
+          text: decryptedText,
+          timestamp: msg.timestamp,
+        })
+      });
+    }
+
     return decryptedText;
   } catch (error) {
     console.error('Error decrypting message:', error);
     throw error;
   }
 };
+
+export const toggleArchive = async (otherUserId, optIn) => {
+  const user = getCurrentUser();
+  if (!user || !otherUserId) return false;
+
+  const chatId = buildChatId(user.uid, otherUserId);
+
+  try {
+    const res = await fetchWithAuth(`${BACKEND_URL}/api/message/toggleArchive`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chatId, uid: user.uid, optIn })
+    });
+
+    const data = await res.json();
+    return res.ok && data.archiveEnabled;
+  } catch (err) {
+    console.error("Archive toggle failed:", err);
+    return false;
+  }
+};
+
+export const archiveEnabledCheck = async (otherUserId) => {
+  const currentUser = getCurrentUser();
+  if (!currentUser || !otherUserId) return false;
+
+  const chatId = buildChatId(currentUser.uid, otherUserId);
+
+  try {
+    const res = await fetchWithAuth(`${BACKEND_URL}/api/message/archiveStatus?chatId=${chatId}`);
+    const data = await res.json();
+    return res.ok && data.archiveEnabled;
+  } catch (err) {
+    console.error("Failed to fetch archive status:", err);
+    return false;
+  }
+};
+
+export const buildChatId = async (userA, userB) => {
+  return [userA, userB].sort().join("-");
+}
