@@ -161,7 +161,7 @@ export default function Layout({ children }) {
 
         if (localMessages && localMessages.length > 0) {
           const formattedMessages = localMessages.map(msg => ({
-            sender: msg.isOutgoing ? 'Me' : selectedUser,
+            sender: msg.isOutgoing ? 'Me' : msg.senderId,
             text: msg.text,
             time: msg.time,
             status: msg.status || 'sent'
