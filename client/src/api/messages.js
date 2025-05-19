@@ -1,10 +1,11 @@
 import { BACKEND_URL } from '../config/config';
 import fetchWithAuth from '../util/FetchWithAuth';
 import getCurrentUser from '../util/getCurrentUser.js';
-import { getSessionCipher, hasSession, arrayBufferToBase64, base64ToArrayBuffer } from '../util/encryption';
+import { getSessionCipher, hasSession, arrayBufferToBase64, base64ToArrayBuffer, establishSession } from '../util/encryption';
 import { getDeviceId } from '../util/deviceId.js';
 import { storeMessage } from '../util/messagesStore.js';
-import { searchFriendUid } from "./friends.js";
+import { searchFriendUid, searchUsername } from "./friends.js";
+import { fetchKeyBundle } from './keyBundle.js';
 
 // Get all unread messages or specific chat history
 export const getChatHistory = async (username = null) => {
@@ -108,7 +109,7 @@ export const getAllMessagePreviews = async () => {
   }
 };
 
-export const sendPrivateMessage = async (recipientUsername, text, recipientInfo) => {
+export const sendPrivateMessage = async (recipientUsername, text, recipientInfo, metadata) => {
   try {
     const recipientUID = recipientInfo.uid;
     const recipientDeviceId = recipientInfo.deviceId;
@@ -211,7 +212,8 @@ export const sendPrivateMessage = async (recipientUsername, text, recipientInfo)
         encryptedMessage: {
           type: encryptedMessage.type,
           body: base64Body
-        }
+        },
+        metadata,
       }),
     });
 
@@ -228,6 +230,7 @@ export const sendPrivateMessage = async (recipientUsername, text, recipientInfo)
           timestamp: new Date().toISOString(), // Store full ISO timestamp for sorting
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           sender: 'Me',
+          metadata: metadata,
         };
 
         await storeMessage(messageObject);
@@ -242,26 +245,47 @@ export const sendPrivateMessage = async (recipientUsername, text, recipientInfo)
   }
 };
 
-export const sendGroupMessage = async (groupId, text) => {
+export const sendGroupMessage = async (groupId, text, members) => {
   try {
-    console.log("groupId:", groupId);
-    console.log("text:", text);
-    const response = await fetchWithAuth(`${BACKEND_URL}/api/message/send-group`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ groupId, text }),
-    });
+    
+    // for member in members {
+    //   getusername(userid)
+    //   fetchkeybundle(username);
+    //   !checksession() {
+    //     createSession();
+    //   }
+    //   SendPrivateMessage
+    // } 
+    for (const member of members) {
+      const userId = getCurrentUser().uid;
+      if (member === userId) {
+        console.log("Skipping self in group message");
+        continue;
+      }
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to send message");
+      console.log("Fetching info for :", member);
+      const { username } = await searchUsername(member);
+
+      console.log("Fetched username:", username);
+
+      const recipientKeyBundle = await fetchKeyBundle(username);
+      const recipientUid = recipientKeyBundle.keyBundle.uid;
+      const recipientDeviceId = recipientKeyBundle.keyBundle.deviceId;
+
+      const sessionExists = await hasSession(userId, recipientUid, recipientDeviceId);
+      if (!sessionExists) {
+        console.log("No session, establishing new session");
+        await establishSession(userId, recipientUid, recipientKeyBundle.keyBundle);
+      }
+
+      const metadata = {
+        isGroupMessage: true,
+        groupId: groupId,
+      }
+      sendPrivateMessage(username, text, {uid: recipientUid, deviceId: recipientDeviceId}, metadata);
     }
-
-    return response.json();
   } catch (error) {
-    console.error("Error sending message", error);
+    console.error("Error sending group message", error);
     return;
   }
 };
@@ -511,7 +535,8 @@ export const decryptMessage = async (msg) => {
         isOutgoing: false,
         time: msg.time,
         timestamp: msg.timestamp,
-        status: 'received'
+        status: 'received',
+        metadata: msg.metadata
       });
     } catch (error) {
       console.log("Error saving decrypted Message to storage:", error);

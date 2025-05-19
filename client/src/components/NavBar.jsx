@@ -181,7 +181,7 @@ export default function NavBar({ onProfileClick, setView }) {
           />
         </div>
 
-        <div className={`flex flex-col items-start mt-[10px] ml-[10px]`}>
+        <div className={`flex flex-col items-start mt-[10px] ml-[10px] mb-4`}>
           {/* Profile Link */}
           <button
             onClick={onProfileClick}
@@ -200,7 +200,13 @@ export default function NavBar({ onProfileClick, setView }) {
           {/* Theme Toggle Button */}
           <button
             onClick={handleThemeToggle}
-            className="w-fit text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] hover:scale-130 cursor-pointer"
+            className="w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] cursor-pointer"
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = theme.colors.background.accent;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '';
+            }}
             title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
           >
             <div className="relative w-[24px] h-[24px] flex items-center justify-center">
@@ -228,13 +234,24 @@ export default function NavBar({ onProfileClick, setView }) {
                 )}
               </AnimatePresence>
             </div>
+            {!isCollapsed && (
+              <span className="text-lg align-middle pl-[15px]">
+                Theme
+              </span>
+            )}
           </button>
 
-          {/* Collasp Button */}
+          {/* Collapse/Expand Button */}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="w-fit text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] hover:scale-130 cursor-pointer"
-            title={isCollapsed ? "Expand" : "Collapse"}
+            className="w-full text-left px-[15px] rounded-lg mb-2 transition flex items-center text-lg h-[50px] cursor-pointer"
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = theme.colors.background.accent;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '';
+            }}
+            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             <div className="relative w-[24px] h-[24px] flex items-center justify-center">
               <AnimatePresence mode="wait" initial={false}>
@@ -261,11 +278,16 @@ export default function NavBar({ onProfileClick, setView }) {
                 )}
               </AnimatePresence>
             </div>
+            {!isCollapsed && (
+              <span className="text-lg align-middle pl-[15px]">
+                {isCollapsed ? "Expand" : "Collapse"}
+              </span>
+            )}
           </button>
 
           {/* Clear Storage Button */}
-          <div className="navbar-item">
-            <ClearStorageButton />
+          <div className="w-full px-[15px]">
+            <ClearStorageButton isCollapsed={isCollapsed} />
           </div>
         </div>
       </div>

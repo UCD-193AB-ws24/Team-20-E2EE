@@ -277,65 +277,56 @@ export const sendPrivateMessage = async (req, res) => {
 
     const recipientUser = await usersCollection.findOne({ username: recipientUsername });
 
-    if (!recipientUser) {
-      return res.status(404).json({ error: "Recipient not found" });
-    }
+        const recipientId = recipientUser.uid;
+        const onlineUsers = getOnlineUsers();
+        
+        // Check if recipient is online
+        const isRecipientOnline = onlineUsers.has(recipientId);
+        const metadata = req.body.metadata;
+        
+        // Store the encrypted message
+        const message = {
+            sender: uid,
+            recipientUid: recipientId, 
+            senderUsername: senderUser.username,
+            senderDeviceId,
+            recipientUsername,
+            encryptedMessage: {
+                type: encryptedMessage.type,
+                body: encryptedMessage.body
+            },
+            isEncrypted: true,
+            timestamp: new Date(),
+            read: isRecipientOnline, // Mark as read immediately if recipient is online
+            metadata: metadata,
+        }
 
-    const recipientId = recipientUser.uid;
-    const onlineUsers = getOnlineUsers();
-
-    // Check if recipient is online
-    const isRecipientOnline = onlineUsers.has(recipientId);
-
-    // Store the encrypted message
-    const message = {
-      sender: uid,
-      recipientUid: recipientId,
-      senderUsername: senderUser.username,
-      senderDeviceId,
-      recipientUsername,
-      encryptedMessage: {
-        type: encryptedMessage.type,
-        body: encryptedMessage.body
-      },
-      isEncrypted: true,
-      timestamp: new Date(),
-      read: isRecipientOnline, // Mark as read immediately if recipient is online
-    }
-
-    const messagesCollection = db.collection("messages");
-    const result = await messagesCollection.insertOne(message);
-
-    // Format message for sending
-    const formattedMessage = {
-      _id: result.insertedId,
-      senderUid: uid,
-      sender: senderUser.username,
-      senderDeviceId,
-      encryptedMessage: encryptedMessage,
-      isEncrypted: true,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      timestamp: new Date(),
-      read: isRecipientOnline // Include read status in the response
-    };
-
-    const io = getSocketInstance();
-
-    // Send encrypted message to recipient if online
-    if (isRecipientOnline) {
-      io.to(onlineUsers.get(recipientId)).emit("receive_message", {
-        ...formattedMessage,
-        sender: senderUser.username
-      });
-
-      // You could also emit an event to inform the sender that the message was delivered
-      if (onlineUsers.has(uid)) {
-        io.to(onlineUsers.get(uid)).emit("message_delivered", {
-          messageId: result.insertedId,
-          recipientUsername
-        });
-      }
-    }
+        const messagesCollection = db.collection("messages");
+        const result = await messagesCollection.insertOne(message);
+        
+        // Format message for sending
+        const formattedMessage = {
+            _id: result.insertedId,
+            senderUid: uid,
+            sender: senderUser.username,
+            senderDeviceId,
+            encryptedMessage: encryptedMessage,
+            isEncrypted: true,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            timestamp: new Date(),
+            read: isRecipientOnline, // Include read status in the response
+            metadata
+        };
+        
+        const io = getSocketInstance();
+        
+        // Send encrypted message to recipient if online
+        if (isRecipientOnline) {
+            io.to(onlineUsers.get(recipientId)).emit("receive_message", {
+                ...formattedMessage,
+                sender: senderUser.username
+            });
+        }
 
     return res.status(200).json({
       success: true,
@@ -350,116 +341,50 @@ export const sendPrivateMessage = async (req, res) => {
   }
 }
 
-export const sendGroupMessage = async (req, res) => {
+export const sendGroupMessage = async (groupId, text, members) => {
   try {
-    const uid = req.user?.uid;
-    if (!uid) {
-      return res.status(401).json({ error: "Unauthorized - No user ID found" });
-    }
-
-    const { groupId, text } = req.body;
-    if (!groupId || !text) {
-      return res.status(406).json({ error: "Invalid message format" });
-    }
-
-    const db = await connectDB();
-    const usersCollection = db.collection("users");
-    const groupsCollection = db.collection("groups");
-    const messagesCollection = db.collection("messages");
-
-    const senderUser = await usersCollection.findOne({ uid });
-    if (!senderUser) {
-      return res.status(404).json({ error: "Sender user not found" });
-    }
-
-    const group = await groupsCollection.findOne({ _id: new ObjectId(groupId) });
-    if (!group || !Array.isArray(group.members)) {
-      return res.status(404).json({ error: "Group not found or has no members" });
-    }
-
-    const io = getSocketInstance();
-    const onlineUsers = getOnlineUsers();
-
-    const formattedMessages = [];
-
-    for (const memberUid of group.members) {
-      // Skip the sender — their message can be handled separately if needed
-      if (memberUid === uid) continue;
-
-      const recipientUser = await usersCollection.findOne({ uid: memberUid });
-      if (!recipientUser) continue;
-
-      const message = {
-        sender: uid,
-        recipient: memberUid,
-        senderUsername: senderUser.username,
-        recipientUsername: recipientUser.username,
-        groupId,
-        groupName: group.name,
-        text,
-        timestamp: new Date(),
-        read: false,
-      };
-
-      const result = await messagesCollection.insertOne(message);
-
-      const formattedMessage = {
-        _id: result.insertedId,
-        sender: senderUser.username,
-        text,
-        groupId,
-        groupName: group.name,
-        time: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      };
-
-      // Emit to recipient if online
-      if (onlineUsers.has(memberUid)) {
-        io.to(onlineUsers.get(memberUid)).emit("receive_message", formattedMessage);
+    
+    // for member in members {
+    //   getusername(userid)
+    //   fetchkeybundle(username);
+    //   !checksession() {
+    //     createSession();
+    //   }
+    //   SendPrivateMessage
+    // } 
+    for (const member of members) {
+      const userId = getCurrentUser().uid;
+      if (member === userId) {
+        console.log("Skipping self in group message");
+        continue;
       }
 
-      formattedMessages.push({
-        ...formattedMessage,
-        recipient: recipientUser.username,
-      });
+      console.log("Fetching info for :", member);
+      const { username } = await searchUsername(member);
+
+      console.log("Fetched username:", username);
+
+      const recipientKeyBundle = await fetchKeyBundle(username);
+      const recipientUid = recipientKeyBundle.keyBundle.uid;
+      const recipientDeviceId = recipientKeyBundle.keyBundle.deviceId;
+
+      const sessionExists = await hasSession(userId, recipientUid, recipientDeviceId);
+      if (!sessionExists) {
+        console.log("No session, establishing new session");
+        await establishSession(userId, recipientUid, recipientKeyBundle.keyBundle);
+      }
+
+      const metadata = {
+        isGroupMessage: true,
+        groupId: groupId,
+      }
+      sendPrivateMessage(username, text, {uid: recipientUid, deviceId: recipientDeviceId}, metadata);
     }
-
-    // Optionally insert a copy for the sender too
-    const selfMessage = {
-      sender: uid,
-      recipient: uid,
-      senderUsername: senderUser.username,
-      recipientUsername: senderUser.username,
-      groupId,
-      groupName: group.name,
-      text,
-      timestamp: new Date(),
-      read: true,
-    };
-
-    const selfResult = await messagesCollection.insertOne(selfMessage);
-
-    if (onlineUsers.has(uid)) {
-      io.to(onlineUsers.get(uid)).emit("message_sent", {
-        ...formattedMessages[0],
-        _id: selfResult.insertedId,
-        recipient: group.name,
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "Group message sent to all members individually",
-      messages: formattedMessages,
-    });
   } catch (error) {
-    console.error("Error sending group message:", error);
-    return res.status(500).json({ error: "Internal server error" });
+    console.error("Error sending group message", error);
+    return;
   }
 };
-
 
 export const deleteMessages = async (req, res) => {
   try {

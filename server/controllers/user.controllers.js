@@ -581,7 +581,7 @@ export const searchFriendUid = async (req, res) => {
     const usersCollection = db.collection("users");
 
     const user = await usersCollection.findOne({
-      username: { $regex: username, $options: "i" },
+      username: username // Exact match
     });
 
     if (!user) {
@@ -590,7 +590,7 @@ export const searchFriendUid = async (req, res) => {
 
     res.json({ uid: user.uid });
   } catch (err) {
-    console.error("Error searching user:", error);
+    console.error("Error searching user:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 };
