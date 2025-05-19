@@ -44,6 +44,7 @@ const openDB = () => {
  * @param {string} message.text - The plaintext content
  * @param {boolean} message.isOutgoing - Whether this is an outgoing message
  * @param {string} message.timestamp - ISO timestamp string
+ * @param {object} message.metadata - metadata containing group info
  * @returns {Promise<Object>} The stored message
  */
 export const storeMessage = async (message) => {
@@ -129,28 +130,36 @@ export const getConversationMessages = async (recipientId) => {
       
       outgoingRequest.onsuccess = () => {
         const outgoingMessages = outgoingRequest.result || [];
-        console.log(`Found ${outgoingMessages.length} outgoing messages`);
+        console.log(`Found ${outgoingMessages.length} total outgoing messages`);
         
         // Also get messages where current user is recipient, and the other user is sender
-        // First check if we need to swap our query parameters
         const incomingRequest = index.getAll([userId, recipientId]);
         
         incomingRequest.onsuccess = () => {
           const incomingMessages = incomingRequest.result || [];
-          console.log(`Found ${incomingMessages.length} incoming messages`);
+          console.log(`Found ${incomingMessages.length} total incoming messages`);
           
-          // Combine, deduplicate by messageId and sort by timestamp
+          // Combine all messages
+          const allMessages = [...outgoingMessages, ...incomingMessages];
+          
+          // Filter out group messages
+          const privateMessages = allMessages.filter(msg => 
+            !msg.metadata || msg.metadata.isGroup === false || msg.metadata.isGroupMessage === false
+          );
+          
+          console.log(`Found ${privateMessages.length} private messages after filtering out group messages`);
+          
+          // Deduplicate by messageId and sort by timestamp
           const messagesMap = new Map();
-          
-          [...outgoingMessages, ...incomingMessages].forEach(msg => {
+          privateMessages.forEach(msg => {
             messagesMap.set(msg.messageId, msg);
           });
           
-          const allMessages = Array.from(messagesMap.values());
-          allMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+          const uniqueMessages = Array.from(messagesMap.values());
+          uniqueMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
           
-          console.log(`Returning ${allMessages.length} total messages`);
-          resolve(allMessages);
+          console.log(`Returning ${uniqueMessages.length} total private messages`);
+          resolve(uniqueMessages);
         };
         
         incomingRequest.onerror = (event) => {
@@ -175,10 +184,11 @@ export const getConversationMessages = async (recipientId) => {
 };
 
 /**
- * Get all conversations for the current user
- * @returns {Promise<Array>} Array of unique recipient IDs
+ * Get all messages for a specific group
+ * @param {string} groupId - The group's unique identifier
+ * @returns {Promise<Array>} Array of message objects sorted by timestamp
  */
-export const getConversations = async () => {
+export const getGroupMessages = async (groupId) => {
   try {
     const user = getCurrentUser();
     if (!user || !user.uid) {
@@ -187,42 +197,37 @@ export const getConversations = async () => {
     
     const userId = user.uid;
     
+    if (!groupId) {
+      throw new Error('Group ID is required in metadata');
+    }
+    
+    console.log(`Fetching messages for group: ${groupId}`);
+    
     const db = await openDB();
     return new Promise((resolve, reject) => {
       const transaction = db.transaction([MESSAGES_STORE], 'readonly');
       const store = transaction.objectStore(MESSAGES_STORE);
-      const index = store.index('by_user');
       
-      const request = index.getAll(userId);
-      
-      request.onerror = (event) => {
-        console.error('Error retrieving conversations:', event.target.error);
-        reject(event.target.error);
-      };
+      // Get all messages from the store
+      const request = store.getAll();
       
       request.onsuccess = () => {
-        const messages = request.result || [];
+        // Filter messages that belong to the specified group
+        const groupMessages = request.result.filter(msg => 
+          msg.metadata && msg.metadata.groupId === groupId
+        );
         
-        // Extract unique recipient IDs to get the list of conversations
-        const recipientIds = [...new Set(messages.map(msg => msg.recipientId))];
+        console.log(`Found ${groupMessages.length} messages for group ${groupId}`);
         
-        // Create a map of conversation metadata
-        const conversations = recipientIds.map(recipientId => {
-          const conversationMessages = messages.filter(msg => msg.recipientId === recipientId);
-          const lastMessage = conversationMessages.sort((a, b) => 
-            new Date(b.timestamp) - new Date(a.timestamp)
-          )[0];
-          
-          return {
-            userId,
-            recipientId,
-            lastMessage: lastMessage?.text,
-            lastUpdated: lastMessage?.timestamp,
-            messageCount: conversationMessages.length
-          };
-        });
+        // Sort messages by timestamp
+        groupMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         
-        resolve(conversations);
+        resolve(groupMessages);
+      };
+      
+      request.onerror = (event) => {
+        console.error('Error retrieving group messages:', event.target.error);
+        reject(event.target.error);
       };
       
       transaction.oncomplete = () => {
@@ -230,94 +235,7 @@ export const getConversations = async () => {
       };
     });
   } catch (error) {
-    console.error('Failed to get conversations:', error);
+    console.error('Failed to get group messages:', error);
     return [];
-  }
-};
-
-/**
- * Get a specific message by ID
- * @param {string} messageId - The message ID to retrieve
- * @returns {Promise<Object|null>} The message or null if not found
- */
-export const getMessage = async (messageId) => {
-  try {
-    const user = getCurrentUser();
-    if (!user || !user.uid) {
-      throw new Error('No current user found');
-    }
-    
-    const userId = user.uid;
-    
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction([MESSAGES_STORE], 'readonly');
-      const store = transaction.objectStore(MESSAGES_STORE);
-      
-      // Since we don't know the recipientId, we need to search all messages
-      const cursorRequest = store.openCursor();
-      let foundMessage = null;
-      
-      cursorRequest.onsuccess = (event) => {
-        const cursor = event.target.result;
-        
-        if (cursor) {
-          const message = cursor.value;
-          if (message.userId === userId && message.messageId === messageId) {
-            foundMessage = message;
-            resolve(foundMessage);
-            return;
-          }
-          cursor.continue();
-        } else {
-          // No more messages to search
-          resolve(foundMessage);
-        }
-      };
-      
-      cursorRequest.onerror = (event) => {
-        console.error('Error retrieving message:', event.target.error);
-        reject(event.target.error);
-      };
-      
-      transaction.oncomplete = () => {
-        db.close();
-      };
-    });
-  } catch (error) {
-    console.error('Failed to get message:', error);
-    return null;
-  }
-};
-
-/**
- * Clear all messages for testing/debugging purposes
- */
-export const clearAllMessages = async () => {
-  try {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction([MESSAGES_STORE], 'readwrite');
-      const store = transaction.objectStore(MESSAGES_STORE);
-      
-      const request = store.clear();
-      
-      request.onsuccess = () => {
-        console.log('All messages cleared from IndexedDB');
-        resolve();
-      };
-      
-      request.onerror = (event) => {
-        console.error('Error clearing messages:', event.target.error);
-        reject(event.target.error);
-      };
-      
-      transaction.oncomplete = () => {
-        db.close();
-      };
-    });
-  } catch (error) {
-    console.error('Failed to clear messages:', error);
-    throw error;
   }
 };

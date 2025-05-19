@@ -9,7 +9,7 @@ import {
 import getCurrentUser from '../util/getCurrentUser';
 import { establishSession, hasSession } from '../util/encryption/sessionManager';
 import { fetchKeyBundle } from '../api/keyBundle';
-import { getConversationMessages } from '../util/messagesStore';
+import { getConversationMessages, getGroupMessages } from '../util/messagesStore';
 import { getChatHistory, getGroupHistory, sendPrivateMessage, sendGroupMessage, decryptMessage } from '../api/messages';
 import { useAppContext } from './AppContext';
 import { BACKEND_URL } from '../config/config';
@@ -29,6 +29,8 @@ export default function Layout({ children }) {
     deviceId: null,
     uid: null
   });
+
+  
 
   const prevSelectedUser = useRef(null);
   const hasMounted = useRef(false);
@@ -120,18 +122,41 @@ export default function Layout({ children }) {
   useEffect(() => {
     const loadChatHistory = async () => {
       if (!selectedUser) return;
+      console.log(selectedUser)
+
+      let localMessages = [];
 
       try {
-        const recipientKeyBundle = await fetchKeyBundle(selectedUser);
-        const recipientUid = recipientKeyBundle.keyBundle.uid;
-        const recipientDeviceId = recipientKeyBundle.keyBundle.deviceId;
+        // if private user
+        if (typeof selectedUser === 'string') {
+          const recipientKeyBundle = await fetchKeyBundle(selectedUser);
+          const recipientUid = recipientKeyBundle.keyBundle.uid;
+          const recipientDeviceId = recipientKeyBundle.keyBundle.deviceId;
 
         setSelectedUserInfo({
           deviceId: recipientDeviceId,
           uid: recipientUid
         });
 
-        const localMessages = await getConversationMessages(recipientUid);
+        const sessionExists = await hasSession(userId, recipientUid, recipientDeviceId);
+        if (!sessionExists) {
+          console.log("No session, establishing new session");
+          await establishSession(userId, recipientUid, recipientKeyBundle.keyBundle);
+        }
+
+        const metadata= {isGroup: false, groupdId: null}
+
+        localMessages = await getConversationMessages(recipientUid, metadata);
+      } // group chat
+      else if (typeof selectedUser === 'object' && selectedUser.type === 'group'){
+        setSelectedUserInfo({
+          deviceId: null,
+          uid: null
+        });
+
+        localMessages = await getGroupMessages(selectedUser.id);
+      }
+
         console.log(`Loaded ${localMessages?.length || 0} messages from local storage`);
 
         if (localMessages && localMessages.length > 0) {
@@ -146,11 +171,6 @@ export default function Layout({ children }) {
           setMessages([]);
         }
 
-        const sessionExists = await hasSession(userId, recipientUid, recipientDeviceId);
-        if (!sessionExists) {
-          console.log("No session, establishing new session");
-          await establishSession(userId, recipientUid, recipientKeyBundle.keyBundle);
-        }
       } catch (error) {
         console.error('Error loading chat messages:', error);
       }
@@ -233,9 +253,14 @@ export default function Layout({ children }) {
     setMessages(prev => [...prev, newMessage]);
 
     if (typeof selectedUser === 'string') {
-      sendPrivateMessage(selectedUser, text, selectedUserInfo);
+      const metadata = 
+        {
+          isGroupMessage: false,
+          groupId: null,
+        }
+      sendPrivateMessage(selectedUser, text, selectedUserInfo, metadata);
     } else if (typeof selectedUser === 'object' && selectedUser.type === 'group') {
-      await sendGroupMessage(selectedUser.id, text);
+      await sendGroupMessage(selectedUser.id, text, selectedUser.members);
     }
 
     if (typingTimeout) {

@@ -286,6 +286,7 @@ export const sendPrivateMessage = async (req, res) => {
         
         // Check if recipient is online
         const isRecipientOnline = onlineUsers.has(recipientId);
+        const metadata = req.body.metadata;
         
         // Store the encrypted message
         const message = {
@@ -301,6 +302,7 @@ export const sendPrivateMessage = async (req, res) => {
             isEncrypted: true,
             timestamp: new Date(),
             read: isRecipientOnline, // Mark as read immediately if recipient is online
+            metadata: metadata,
         }
 
         const messagesCollection = db.collection("messages");
@@ -316,7 +318,8 @@ export const sendPrivateMessage = async (req, res) => {
             isEncrypted: true,
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             timestamp: new Date(),
-            read: isRecipientOnline // Include read status in the response
+            read: isRecipientOnline, // Include read status in the response
+            metadata
         };
         
         const io = getSocketInstance();

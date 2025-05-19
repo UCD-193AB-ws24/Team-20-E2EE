@@ -276,6 +276,7 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
                       type: "group",
                       id: group._id,
                       name: group.name,
+                      members: group.members,
                     })}
                   >
                     <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
