@@ -1,7 +1,7 @@
 import { BACKEND_URL } from '../config/config';
 import fetchWithAuth from '../util/FetchWithAuth';
 import getCurrentUser from '../util/getCurrentUser.js';
-import { getSessionCipher, hasSession, arrayBufferToBase64, base64ToArrayBuffer } from '../util/encryption';
+import { getSessionCipher, hasSession, arrayBufferToBase64, base64ToArrayBuffer, establishSession } from '../util/encryption';
 import { getDeviceId } from '../util/deviceId.js';
 import { storeMessage } from '../util/messagesStore.js';
 import { searchFriendUid, searchUsername } from "./friends.js";

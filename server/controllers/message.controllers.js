@@ -330,14 +330,6 @@ export const sendPrivateMessage = async (req, res) => {
                 ...formattedMessage,
                 sender: senderUser.username
             });
-            
-            // You could also emit an event to inform the sender that the message was delivered
-            if (onlineUsers.has(uid)) {
-                io.to(onlineUsers.get(uid)).emit("message_delivered", {
-                    messageId: result.insertedId,
-                    recipientUsername
-                });
-            }
         }
 
         return res.status(200).json({ 
@@ -352,117 +344,6 @@ export const sendPrivateMessage = async (req, res) => {
         res.status(500).json({ error: "Internal server error" })
     }
 }
-
-export const sendGroupMessage = async (req, res) => {
-  try {
-    const uid = req.user?.uid;
-    if (!uid) {
-      return res.status(401).json({ error: "Unauthorized - No user ID found" });
-    }
-
-    const { groupId, text } = req.body;
-    if (!groupId || !text) {
-      return res.status(406).json({ error: "Invalid message format" });
-    }
-
-    const db = await connectDB();
-    const usersCollection = db.collection("users");
-    const groupsCollection = db.collection("groups");
-    const messagesCollection = db.collection("messages");
-
-    const senderUser = await usersCollection.findOne({ uid });
-    if (!senderUser) {
-      return res.status(404).json({ error: "Sender user not found" });
-    }
-
-    const group = await groupsCollection.findOne({ _id: new ObjectId(groupId) });
-    if (!group || !Array.isArray(group.members)) {
-      return res.status(404).json({ error: "Group not found or has no members" });
-    }
-
-    const io = getSocketInstance();
-    const onlineUsers = getOnlineUsers();
-
-    const formattedMessages = [];
-
-    for (const memberUid of group.members) {
-      // Skip the sender — their message can be handled separately if needed
-      if (memberUid === uid) continue;
-
-      const recipientUser = await usersCollection.findOne({ uid: memberUid });
-      if (!recipientUser) continue;
-
-      const message = {
-        sender: uid,
-        recipient: memberUid,
-        senderUsername: senderUser.username,
-        recipientUsername: recipientUser.username,
-        groupId,
-        groupName: group.name,
-        text,
-        timestamp: new Date(),
-        read: false,
-      };
-
-      const result = await messagesCollection.insertOne(message);
-
-      const formattedMessage = {
-        _id: result.insertedId,
-        sender: senderUser.username,
-        text,
-        groupId,
-        groupName: group.name,
-        time: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      };
-
-      // Emit to recipient if online
-      if (onlineUsers.has(memberUid)) {
-        io.to(onlineUsers.get(memberUid)).emit("receive_message", formattedMessage);
-      }
-
-      formattedMessages.push({
-        ...formattedMessage,
-        recipient: recipientUser.username,
-      });
-    }
-
-    // Optionally insert a copy for the sender too
-    const selfMessage = {
-      sender: uid,
-      recipient: uid,
-      senderUsername: senderUser.username,
-      recipientUsername: senderUser.username,
-      groupId,
-      groupName: group.name,
-      text,
-      timestamp: new Date(),
-      read: true,
-    };
-    
-    const selfResult = await messagesCollection.insertOne(selfMessage);
-
-    if (onlineUsers.has(uid)) {
-      io.to(onlineUsers.get(uid)).emit("message_sent", {
-        ...formattedMessages[0],
-        _id: selfResult.insertedId,
-        recipient: group.name,
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "Group message sent to all members individually",
-      messages: formattedMessages,
-    });
-  } catch (error) {
-    console.error("Error sending group message:", error);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-};
-
 
 export const deleteMessages = async (req, res) => {
   try {

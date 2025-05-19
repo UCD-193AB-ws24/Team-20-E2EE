@@ -37,7 +37,7 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
   const loadGroupChats = async () => {
     try {
       const groups = await getAllGroupChat();
-      setGroupChats(groups);
+      setGroupChats(groups && Array.isArray(groups) ? groups : []);
     } catch (err) {
       console.error("Error loading group chats:", err);
     }

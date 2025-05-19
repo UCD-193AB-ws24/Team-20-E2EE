@@ -192,8 +192,22 @@ export default function Layout({ children }) {
         .then(text => {
           const sender = message.sender;
           const time = message.time;
+          const metadata = message.metadata || {};
 
-          if (sender === selectedUser) {
+        if (!selectedUser) {
+          console.log('Message received but no user selected, ignoring');
+          return; // Skip processing if no user is selected
+        }
+          
+          // Check if this is a direct message or group message
+          if (metadata && metadata.isGroupMessage && typeof selectedUser === 'object' && selectedUser.type === 'group') {
+            // For group messages, check if this message belongs to the currently selected group
+            if (metadata.groupId === selectedUser.id) {
+              setMessages(prev => [...prev, { sender, text, time }]);
+            }
+          } 
+          // For direct messages, check if sender matches selected user
+          else if (typeof selectedUser === 'string' && sender === selectedUser) {
             setMessages(prev => [...prev, { sender, text, time }]);
           }
         })
