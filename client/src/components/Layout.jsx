@@ -97,25 +97,25 @@ export default function Layout({ children }) {
   //   deleteMessages();
   // }, [selectedUser]);
 
-  useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user'));
+  // useEffect(() => {
+  //   const user = JSON.parse(localStorage.getItem('user'));
 
-    const handleBeforeUnload = async (event) => {
-      if (user?.accessToken && selectedUser) {
-        navigator.sendBeacon(
-          `${BACKEND_URL}/api/message/vanish`,
-          JSON.stringify({
-            username: identifyChatType(),
-          })
-        );
-      }
-    };
+  //   const handleBeforeUnload = async (event) => {
+  //     if (user?.accessToken && selectedUser) {
+  //       navigator.sendBeacon(
+  //         `${BACKEND_URL}/api/message/vanish`,
+  //         JSON.stringify({
+  //           username: identifyChatType(),
+  //         })
+  //       );
+  //     }
+  //   };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [selectedUser]);
+  //   window.addEventListener('beforeunload', handleBeforeUnload);
+  //   return () => {
+  //     window.removeEventListener('beforeunload', handleBeforeUnload);
+  //   };
+  // }, [selectedUser]);
 
   useEffect(() => {
     const loadChatHistory = async () => {
@@ -300,6 +300,7 @@ export default function Layout({ children }) {
         <ChatWindow
           messages={messages}
           selectedUser={selectedUser || ""}
+          selectedUserID={selectedUserInfo.uid || ""}
         />
         <MessageInput
           sendMessage={sendMessage}
