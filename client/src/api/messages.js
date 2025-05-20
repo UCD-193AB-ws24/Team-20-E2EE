@@ -129,11 +129,12 @@ export const sendPrivateMessage = async (recipientUsername, text, recipientInfo,
     }
 
     if (await archiveEnabledCheck(recipientUID)) {
+      console.log("Archiving message: ", text);
       fetchWithAuth(`${BACKEND_URL}/api/message/store`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          chatId: buildChatId(userId, senderId),
+          chatId: buildChatId(userId, recipientUID),
           senderUid: userId,
           recipientUid: recipientUID,
           text: text,
@@ -543,6 +544,7 @@ export const decryptMessage = async (msg) => {
     }
 
     if (await archiveEnabledCheck(senderId)) {
+      console.log("Archiving message: ", text);
       fetchWithAuth(`${BACKEND_URL}/api/message/store`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -600,6 +602,19 @@ export const archiveEnabledCheck = async (otherUserId) => {
   }
 };
 
-export const buildChatId = async (userA, userB) => {
+export const checkUserOptInStatus = async (currentUid, otherUid) => {
+  const chatId = buildChatId(currentUid, otherUid);
+  try {
+    const res = await fetchWithAuth(`${BACKEND_URL}/api/message/userArchive?chatId=${chatId}&uid=${currentUid}`);
+    const data = await res.json();
+    return res.ok && data.optedIn;
+  } catch (err) {
+    console.error("Failed to fetch opt-in status:", err);
+    return false;
+  }
+};
+
+
+export const buildChatId = (userA, userB) => {
   return [userA, userB].sort().join("-");
 }

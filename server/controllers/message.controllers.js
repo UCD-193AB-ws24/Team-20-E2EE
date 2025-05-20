@@ -112,71 +112,58 @@ export const getChatHistory = async (req, res) => {
 
 export const getChatArchive = async (req, res) => {
   try {
-    const { username } = req.query;
+    const { otherUid } = req.query; 
     const currentUserId = req.user?.uid;
 
     if (!currentUserId) {
       return res.status(401).json({ error: "Unauthorized - No user ID found" });
     }
 
-    if (!username) {
-      return res.status(400).json({ error: "Username parameter is required" });
+    if (!otherUid) {
+      return res.status(400).json({ error: "Missing other user's ID (otherUid)" });
     }
+
+    // Generate chatId
+    const chatId = [currentUserId, otherUid].sort().join("-");
 
     const db = await connectDB();
+    const messagesCollection = db.collection("archiveMessages");
     const usersCollection = db.collection("users");
 
-    // Find the recipient user by username
-    const recipientUser = await usersCollection.findOne({ username });
+    const messages = await messagesCollection
+      .find({ chatId })
+      .sort({ timestamp: 1 })
+      .toArray();
 
-    if (!recipientUser) {
-      return res.status(404).json({ error: "User not found" });
-    }
+    // Fetch usernames only once
+    const [userA, userB] = await Promise.all([
+      usersCollection.findOne({ uid: currentUserId }),
+      usersCollection.findOne({ uid: otherUid }),
+    ]);
 
-    const recipientId = recipientUser.uid;
-    // Get messages between the two users
-    const messagesCollection = db.collection("deleted_messages");
-    const messages = await messagesCollection.find({
-      $or: [
-        { sender: currentUserId, recipient: recipientId },
-        { sender: recipientId, recipient: currentUserId }
-      ]
-    }).sort({ timestamp: 1 }).toArray();
+    const formattedMessages = messages.map((msg) => {
+      const isCurrentUser = msg.senderUid === currentUserId;
+      const senderUsername = isCurrentUser ? "Me" : userB?.username || "Unknown";
 
-    // Format messages for client
-    const formattedMessages = await Promise.all(
-      messages.map(async (msg) => {
-        // Get sender username if needed
-        let senderUsername = msg.senderUsername;
-        if (!senderUsername) {
-          const sender = await usersCollection.findOne({ uid: msg.sender });
-          senderUsername = sender?.username || "Unknown";
-        }
-
-        return {
-          _id: msg._id,
-          sender: msg.sender === currentUserId ? "Me" : senderUsername,
-          text: msg.text,
-          time: msg.timestamp.toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        };
-      })
-    );
-
-    // Mark messages as read
-    await messagesCollection.updateMany(
-      { sender: recipientId, recipient: currentUserId, read: false },
-      { $set: { read: true } }
-    );
+      return {
+        _id: msg._id,
+        sender: senderUsername,
+        text: msg.text,
+        time: new Date(msg.timestamp).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      };
+    });
 
     res.json({ messages: formattedMessages });
+
   } catch (error) {
     console.error("Error fetching chat archive:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
 
 export const getMessagePreviews = async (req, res) => {
   try {
@@ -277,56 +264,56 @@ export const sendPrivateMessage = async (req, res) => {
 
     const recipientUser = await usersCollection.findOne({ username: recipientUsername });
 
-        const recipientId = recipientUser.uid;
-        const onlineUsers = getOnlineUsers();
-        
-        // Check if recipient is online
-        const isRecipientOnline = onlineUsers.has(recipientId);
-        const metadata = req.body.metadata;
-        
-        // Store the encrypted message
-        const message = {
-            sender: uid,
-            recipientUid: recipientId, 
-            senderUsername: senderUser.username,
-            senderDeviceId,
-            recipientUsername,
-            encryptedMessage: {
-                type: encryptedMessage.type,
-                body: encryptedMessage.body
-            },
-            isEncrypted: true,
-            timestamp: new Date(),
-            read: isRecipientOnline, // Mark as read immediately if recipient is online
-            metadata: metadata,
-        }
+    const recipientId = recipientUser.uid;
+    const onlineUsers = getOnlineUsers();
 
-        const messagesCollection = db.collection("messages");
-        const result = await messagesCollection.insertOne(message);
-        
-        // Format message for sending
-        const formattedMessage = {
-            _id: result.insertedId,
-            senderUid: uid,
-            sender: senderUser.username,
-            senderDeviceId,
-            encryptedMessage: encryptedMessage,
-            isEncrypted: true,
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            timestamp: new Date(),
-            read: isRecipientOnline, // Include read status in the response
-            metadata
-        };
-        
-        const io = getSocketInstance();
-        
-        // Send encrypted message to recipient if online
-        if (isRecipientOnline) {
-            io.to(onlineUsers.get(recipientId)).emit("receive_message", {
-                ...formattedMessage,
-                sender: senderUser.username
-            });
-        }
+    // Check if recipient is online
+    const isRecipientOnline = onlineUsers.has(recipientId);
+    const metadata = req.body.metadata;
+
+    // Store the encrypted message
+    const message = {
+      sender: uid,
+      recipientUid: recipientId,
+      senderUsername: senderUser.username,
+      senderDeviceId,
+      recipientUsername,
+      encryptedMessage: {
+        type: encryptedMessage.type,
+        body: encryptedMessage.body
+      },
+      isEncrypted: true,
+      timestamp: new Date(),
+      read: isRecipientOnline, // Mark as read immediately if recipient is online
+      metadata: metadata,
+    }
+
+    const messagesCollection = db.collection("messages");
+    const result = await messagesCollection.insertOne(message);
+
+    // Format message for sending
+    const formattedMessage = {
+      _id: result.insertedId,
+      senderUid: uid,
+      sender: senderUser.username,
+      senderDeviceId,
+      encryptedMessage: encryptedMessage,
+      isEncrypted: true,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: new Date(),
+      read: isRecipientOnline, // Include read status in the response
+      metadata
+    };
+
+    const io = getSocketInstance();
+
+    // Send encrypted message to recipient if online
+    if (isRecipientOnline) {
+      io.to(onlineUsers.get(recipientId)).emit("receive_message", {
+        ...formattedMessage,
+        sender: senderUser.username
+      });
+    }
 
     return res.status(200).json({
       success: true,
@@ -343,7 +330,7 @@ export const sendPrivateMessage = async (req, res) => {
 
 export const sendGroupMessage = async (groupId, text, members) => {
   try {
-    
+
     // for member in members {
     //   getusername(userid)
     //   fetchkeybundle(username);
@@ -378,7 +365,7 @@ export const sendGroupMessage = async (groupId, text, members) => {
         isGroupMessage: true,
         groupId: groupId,
       }
-      sendPrivateMessage(username, text, {uid: recipientUid, deviceId: recipientDeviceId}, metadata);
+      sendPrivateMessage(username, text, { uid: recipientUid, deviceId: recipientDeviceId }, metadata);
     }
   } catch (error) {
     console.error("Error sending group message", error);
@@ -451,7 +438,12 @@ export const storeMessage = async (req, res) => {
 
     const bothOptedIn = AOptedIn && BOptedIn;
 
+    console.log("storeMessage: User A opted in status: ", AOptedIn);
+    console.log("storeMessage: User B opted in status: ", BOptedIn);
+    console.log("storeMessage: Both opted in status: ", bothOptedIn);
+
     if (bothOptedIn) {
+      console.log("Archiving message: ", text);
       const result = await messagesCollection.insertOne({
         chatId,
         senderUid,
@@ -486,9 +478,9 @@ export const getArchiveStatus = async (req, res) => {
     const BOptedIn = prefs[`${prefs.userB}OptedIn`]
 
     const bothOptedIn = AOptedIn && BOptedIn;
-    console.log("User A opted in status: ", prefs.userA);
-    console.log("User B opted in status: ", prefs.userB);
-    console.log("Both opted in status: ", prefs.bothOptedIn);
+    console.log("getArchiveStatus: User A opted in status: ", AOptedIn);
+    console.log("getArchiveStatus: User B opted in status: ", BOptedIn);
+    console.log("getArchiveStatus: Both opted in status: ", bothOptedIn);
 
     return res.status(200).json({ archiveEnabled: bothOptedIn });
   } catch (err) {
@@ -509,7 +501,7 @@ export const toggleArchiveStatus = async (req, res) => {
     }
 
     if (!prefs) {
-      console.log("No preferences found.");
+      console.log("No preferences found. Creating preferences:");
       const [userA, userB] = chatId.split("-");
       prefs = {
         chatId,
@@ -519,27 +511,49 @@ export const toggleArchiveStatus = async (req, res) => {
         [`${userB}OptedIn`]: false,
         archiveEnabled: false
       };
+      console.log(prefs);
       await prefsCollection.insertOne(prefs);
     }
     else {
+      console.log("Preferences found.");
       await prefsCollection.updateOne(
         { chatId },
         { $set: { [`${uid}OptedIn`]: optIn } }
       );
     }
     const updated = await prefsCollection.findOne({ chatId });
+
     const AOptedIn = updated[`${updated.userA}OptedIn`]
     const BOptedIn = updated[`${updated.userB}OptedIn`]
 
     const bothOptedIn = AOptedIn && BOptedIn;
+
+    console.log("A Opted In: ", AOptedIn);
+    console.log("B Opted In: ", BOptedIn);
+    console.log("Both Opted In: ", bothOptedIn);
+
+
     await prefsCollection.updateOne(
       { chatId },
       { $set: { archiveEnabled: bothOptedIn } }
     );
 
     if (!bothOptedIn && updated.archiveEnabled) {
-      await db.collection("archiveMessages").deleteMany({ chatId });
+      console.log("User opted out of archive. Deleting archive.");
+      console.log(chatId);
+      await db.collection("archive").deleteMany({ chatId });
     }
+
+    const io = getSocketInstance();
+
+    if (io) {
+      io.to(chatId).emit("archiveStatusChanged", {
+        chatId,
+        mutualArchive: bothOptedIn
+      });
+    }
+
+
     return res.status(200).json({ archiveEnabled: bothOptedIn });
   }
 
@@ -548,6 +562,23 @@ export const toggleArchiveStatus = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+export const getUserOptInStatus = async (req, res) => {
+  try {
+    const { chatId, uid } = req.query;
+    const db = await connectDB();
+    const prefs = await db.collection("archivePreferences").findOne({ chatId });
+
+    if (!prefs) return res.status(200).json({ optedIn: false });
+
+    const optedIn = prefs[`${uid}OptedIn`] || false;
+    return res.status(200).json({ optedIn });
+  } catch (err) {
+    console.error("Error checking user opt-in status:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 
 export const getGroupMessages = async (req, res) => {
   try {

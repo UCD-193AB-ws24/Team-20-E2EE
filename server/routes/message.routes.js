@@ -1,5 +1,5 @@
 import express from 'express';
-import { getChatHistory, getMessagePreviews, sendPrivateMessage, getChatArchive, deleteMessages, storeMessage, getArchiveStatus, toggleArchiveStatus, createGroup, getGroupMessages, getAllGroupChat, addMemberToGroup, removeMemberFromGroup, updateGroupName } from '../controllers/message.controllers.js';
+import { getChatHistory, getMessagePreviews, sendPrivateMessage, getChatArchive, deleteMessages, storeMessage, getArchiveStatus, toggleArchiveStatus, getUserOptInStatus, createGroup, getGroupMessages, getAllGroupChat, addMemberToGroup, removeMemberFromGroup, updateGroupName } from '../controllers/message.controllers.js';
 
 import { authenticateUser } from '../middlewares/authMiddleware.js';
 
@@ -13,6 +13,7 @@ router.post('/vanish', authenticateUser, deleteMessages);
 router.post('/store', authenticateUser, storeMessage);
 router.get('/archiveStatus', authenticateUser, getArchiveStatus);
 router.post('/toggleArchive', authenticateUser, toggleArchiveStatus);
+router.get('/userArchive', authenticateUser, getUserOptInStatus);
 
 
 
