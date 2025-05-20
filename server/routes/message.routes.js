@@ -1,5 +1,5 @@
 import express from 'express';
-import { getChatHistory, getMessagePreviews, sendPrivateMessage, getChatArchive, deleteMessages, createGroup, getGroupMessages, getAllGroupChat, addMemberToGroup, removeMemberFromGroup, updateGroupName } from '../controllers/message.controllers.js';
+import { getChatHistory, getMessagePreviews, sendPrivateMessage, getChatArchive, deleteMessages, storeMessage, getArchiveStatus, toggleArchiveStatus, createGroup, getGroupMessages, getAllGroupChat, addMemberToGroup, removeMemberFromGroup, updateGroupName } from '../controllers/message.controllers.js';
 
 import { authenticateUser } from '../middlewares/authMiddleware.js';
 

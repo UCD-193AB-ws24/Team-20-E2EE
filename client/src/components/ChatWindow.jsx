@@ -4,7 +4,7 @@ import { useAppContext } from './AppContext';
 import { toggleArchive, archiveEnabledCheck } from '../api/messages';
 import { searchUsername, searchFriendUid } from '../api/friends';
 
-export default function ChatWindow({ messages, selectedUser }) {
+export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
   const [avatars, setAvatars] = useState({});
