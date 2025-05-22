@@ -1,22 +1,23 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import NavBar from './NavBar';
-import { ChatWindow, MessageInput, ProfileModal, useSocket } from './index';
+import { ChatWindow, MessageInput, ProfileModal, ArchiveWindow, useSocket } from './index';
 import { Archive, Friends, Requests } from '../pages';
-import { 
-  registerMessageListener, removeListener, 
-  sendTypingStatus, registerTypingListener 
+import {
+  registerMessageListener, removeListener,
+  sendTypingStatus, registerTypingListener
 } from '../api/socket';
 import getCurrentUser from '../util/getCurrentUser';
 import { establishSession, hasSession } from '../util/encryption/sessionManager';
 import { fetchKeyBundle } from '../api/keyBundle';
 import { getConversationMessages, getGroupMessages } from '../util/messagesStore';
-import { getChatHistory, getGroupHistory, sendPrivateMessage, sendGroupMessage, decryptMessage } from '../api/messages';
+import { getChatHistory, getGroupHistory, getArchivedChatHistory, sendPrivateMessage, sendGroupMessage, decryptMessage, buildChatId } from '../api/messages';
 import { useAppContext } from './AppContext';
 import { BACKEND_URL } from '../config/config';
 
 export default function Layout({ children }) {
   const [selectedUser, setSelectedUser] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [archivedMessages, setArchivedMessages] = useState([]);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [view, setView] = useState();
   const [isTyping, setIsTyping] = useState({});
@@ -30,7 +31,7 @@ export default function Layout({ children }) {
     uid: null
   });
 
-  
+
 
   const prevSelectedUser = useRef(null);
   const hasMounted = useRef(false);
@@ -133,29 +134,29 @@ export default function Layout({ children }) {
           const recipientUid = recipientKeyBundle.keyBundle.uid;
           const recipientDeviceId = recipientKeyBundle.keyBundle.deviceId;
 
-        setSelectedUserInfo({
-          deviceId: recipientDeviceId,
-          uid: recipientUid
-        });
+          setSelectedUserInfo({
+            deviceId: recipientDeviceId,
+            uid: recipientUid
+          });
 
-        const sessionExists = await hasSession(userId, recipientUid, recipientDeviceId);
-        if (!sessionExists) {
-          console.log("No session, establishing new session");
-          await establishSession(userId, recipientUid, recipientKeyBundle.keyBundle);
+          const sessionExists = await hasSession(userId, recipientUid, recipientDeviceId);
+          if (!sessionExists) {
+            console.log("No session, establishing new session");
+            await establishSession(userId, recipientUid, recipientKeyBundle.keyBundle);
+          }
+
+          const metadata = { isGroup: false, groupdId: null }
+
+          localMessages = await getConversationMessages(recipientUid, metadata);
+        } // group chat
+        else if (typeof selectedUser === 'object' && selectedUser.type === 'group') {
+          setSelectedUserInfo({
+            deviceId: null,
+            uid: null
+          });
+
+          localMessages = await getGroupMessages(selectedUser.id);
         }
-
-        const metadata= {isGroup: false, groupdId: null}
-
-        localMessages = await getConversationMessages(recipientUid, metadata);
-      } // group chat
-      else if (typeof selectedUser === 'object' && selectedUser.type === 'group'){
-        setSelectedUserInfo({
-          deviceId: null,
-          uid: null
-        });
-
-        localMessages = await getGroupMessages(selectedUser.id);
-      }
 
         console.log(`Loaded ${localMessages?.length || 0} messages from local storage`);
 
@@ -182,6 +183,36 @@ export default function Layout({ children }) {
   }, [selectedUser, view]);
 
   useEffect(() => {
+    const loadChatArchive = async () => {
+      if (!selectedUser) return;
+      if (!user) return;
+
+      const chatId = buildChatId(userId, selectedUserInfo.uid);
+
+      try {
+        const { messages: archivedMessages } = await getArchivedChatHistory(chatId);
+
+        const formattedMessages = archivedMessages.map(msg => ({
+          sender: msg.senderUid === userId ? 'Me' : msg.senderUid,
+          text: msg.text,
+          time: new Date(msg.timestamp).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+        }));
+
+        console.log("messages: ", formattedMessages);
+
+        setArchivedMessages(formattedMessages || []);
+      } catch (err) {
+        console.error("Error fetching archived chat history:", err);
+      }
+    };
+
+    loadChatArchive();
+  }, [selectedUserInfo.uid]);
+
+  useEffect(() => {
     if (!socketReady) {
       console.log('Socket not ready, waiting to set up listeners');
       return;
@@ -194,18 +225,18 @@ export default function Layout({ children }) {
           const time = message.time;
           const metadata = message.metadata || {};
 
-        if (!selectedUser) {
-          console.log('Message received but no user selected, ignoring');
-          return; // Skip processing if no user is selected
-        }
-          
+          if (!selectedUser) {
+            console.log('Message received but no user selected, ignoring');
+            return; // Skip processing if no user is selected
+          }
+
           // Check if this is a direct message or group message
           if (metadata && metadata.isGroupMessage && typeof selectedUser === 'object' && selectedUser.type === 'group') {
             // For group messages, check if this message belongs to the currently selected group
             if (metadata.groupId === selectedUser.id) {
               setMessages(prev => [...prev, { sender, text, time }]);
             }
-          } 
+          }
           // For direct messages, check if sender matches selected user
           else if (typeof selectedUser === 'string' && sender === selectedUser) {
             setMessages(prev => [...prev, { sender, text, time }]);
@@ -267,11 +298,11 @@ export default function Layout({ children }) {
     setMessages(prev => [...prev, newMessage]);
 
     if (typeof selectedUser === 'string') {
-      const metadata = 
-        {
-          isGroupMessage: false,
-          groupId: null,
-        }
+      const metadata =
+      {
+        isGroupMessage: false,
+        groupId: null,
+      }
       sendPrivateMessage(selectedUser, text, selectedUserInfo, metadata);
     } else if (typeof selectedUser === 'object' && selectedUser.type === 'group') {
       await sendGroupMessage(selectedUser.id, text, selectedUser.members);
@@ -336,11 +367,19 @@ export default function Layout({ children }) {
             }
           </h2>
         </div>
-        <ChatWindow
-          messages={messages}
-          selectedUser={selectedUser || ""}
-          selectedUserID={selectedUserInfo.uid || ""}
-        />
+        {view === 'archive' ? (
+          <ArchiveWindow
+            messages={archivedMessages}
+            selectedUser={selectedUser || ""}
+            selectedUserID={selectedUserInfo.uid || ""}
+          />
+        ) : (
+          <ChatWindow
+            messages={messages}
+            selectedUser={selectedUser || ""}
+            selectedUserID={selectedUserInfo.uid || ""}
+          />
+        )}
         <MessageInput
           sendMessage={sendMessage}
           onTyping={handleTyping}

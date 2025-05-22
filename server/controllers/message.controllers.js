@@ -112,49 +112,27 @@ export const getChatHistory = async (req, res) => {
 
 export const getChatArchive = async (req, res) => {
   try {
-    const { otherUid } = req.query; 
-    const currentUserId = req.user?.uid;
-
-    if (!currentUserId) {
-      return res.status(401).json({ error: "Unauthorized - No user ID found" });
+    const { chatId } = req.query;
+    console.log("chatId: ", chatId);
+    if (!chatId) {
+      return res.status(400).json({ error: "Missing chatId parameter" });
     }
-
-    if (!otherUid) {
-      return res.status(400).json({ error: "Missing other user's ID (otherUid)" });
-    }
-
-    // Generate chatId
-    const chatId = [currentUserId, otherUid].sort().join("-");
 
     const db = await connectDB();
-    const messagesCollection = db.collection("archiveMessages");
-    const usersCollection = db.collection("users");
+    const messagesCollection = db.collection("archive");
 
     const messages = await messagesCollection
       .find({ chatId })
       .sort({ timestamp: 1 })
       .toArray();
 
-    // Fetch usernames only once
-    const [userA, userB] = await Promise.all([
-      usersCollection.findOne({ uid: currentUserId }),
-      usersCollection.findOne({ uid: otherUid }),
-    ]);
-
-    const formattedMessages = messages.map((msg) => {
-      const isCurrentUser = msg.senderUid === currentUserId;
-      const senderUsername = isCurrentUser ? "Me" : userB?.username || "Unknown";
-
-      return {
-        _id: msg._id,
-        sender: senderUsername,
-        text: msg.text,
-        time: new Date(msg.timestamp).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      };
-    });
+    const formattedMessages = messages.map((msg) => ({
+      _id: msg._id,
+      senderUid: msg.senderUid,
+      recipientUid: msg.recipientUid,
+      text: msg.text,
+      timestamp: msg.timestamp,
+    }));
 
     res.json({ messages: formattedMessages });
 

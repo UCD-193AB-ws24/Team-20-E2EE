@@ -54,6 +54,16 @@ export default function Archive({ selectedUser, setSelectedUser }) {
     setSearchTerm(e.target.value.toLowerCase());
   };
 
+  const handleUnfriend = async (username) => {
+    try {
+      await unfriendUser(username);
+      setFriends(friends.filter(friend => friend.username !== username));
+      setUnfriendConfirm(null);
+    } catch (err) {
+      alert(err.message || 'Failed to unfriend user');
+    }
+  };
+
   const filteredFriends = searchTerm.trim() === ''
     ? friends
     : friends.filter(friend => friend.username.toLowerCase().includes(searchTerm.toLowerCase()));

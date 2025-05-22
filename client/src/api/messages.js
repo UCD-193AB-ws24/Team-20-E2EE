@@ -61,24 +61,25 @@ export const getGroupHistory = async (groupId) => {
   }
 };
 
-export const getArchivedChatHistory = async (token, username) => {
+export const getArchivedChatHistory = async ( chatId ) => {
   try {
-    const response = await fetch(`${BACKEND_URL}/api/message/archive?username=${username}`, {
+    console.log("chatId: ", chatId);
+    const response = await fetchWithAuth(`${BACKEND_URL}/api/message/archive?chatId=${chatId}`, {
       method: 'GET',
       headers: {
-        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     });
 
+
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || "Failed to fetch chat history");
+      throw new Error(error.error || "Failed to fetch archive");
     }
 
     return await response.json();
   } catch (error) {
-    console.error("Error fetching chat history:", error);
+    console.error("Error fetching archive:", error);
     return { messages: [] };
   }
 };
