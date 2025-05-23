@@ -31,97 +31,52 @@ export default function Login() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row w-full">
-      <div className="pointer-event-none select-none flex flex-row md:flex-col text-[#FFC519] font-bold items-center text-2xl w-full h-[60px] md:w-[60px] md:h-screen bg-[#1D4776]">
-        <p className="ml-6 md:mt-6 md:ml-0">U</p>
-        <p>C</p>
-        <p className="ml-2 md:mt-4 md:ml-0">D</p>
-        <p>A</p>
-        <p>V</p>
-        <p>I</p>
-        <p>S</p>
-      </div>
-      <div className="flex flex-col gap-8 justify-center items-center h-screen bg-gray-100 w-full">
-        <div className="w-[400px] text-black rounded-xl p-8 border-2 border-gray-300 shadow-lg bg-white">
-          <h1 className="text-3xl font-bold text-center">Login</h1>
+<div className="min-h-screen flex flex-col">
+  <div className="p-8">
+    <a href="/" className="block">
+      <img src="../public/images/bark-logo.png" alt="bark-logo" className="w-[60px] h-auto object-contain scale-80" />
+    </a>
+  </div>
 
-          {/* Login Form */}
-          {!verificationRequired && (
-            <form onSubmit={handleLogin}>
-              {/* Email Input */}
-              <div className="relative w-full h-12 mt-6">
-                <input
-                  type="email"
-                  placeholder="Email"
-                  required
-                  className="w-full h-full bg-transparent border-2 border-gray-300 rounded-full px-6 text-lg outline-none focus:border-[#FFC519] transition"
-                />
-                <FontAwesomeIcon
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-600"
-                  icon={faUser}
-                />
-              </div>
+  <div className="flex flex-col md:flex-row items-start gap-[170px] px-[170px] pb-[170px] flex-1">
+    <div className="flex-1 mt-5">
+      <h1 className="text-[80px] font-bold text-[#0d47a1] leading-[1.1] max-w-[600px] whitespace-nowrap">
+        Connect Securely,<br />Chat Confidently
+      </h1>
+      <p className="text-[#65686c] mt-[35px] text-[18px]">
+        End-to-end encryption for every message,<br />because your words deserve total protection.
+      </p>
 
-              {/* Password Input */}
-              <div className="relative w-full h-12 my-6 ">
-                <input
-                  type="password"
-                  placeholder="Password"
-                  required
-                  className="w-full h-full bg-transparent border-2 border-gray-300 rounded-full px-6 text-lg outline-none focus:border-[#FFC519] transition"
-                />
-                <FontAwesomeIcon
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-600"
-                  icon={faKey}
-                />
-              </div>
-
-              {/* Login Button */}
-              <button
-                type="submit"
-                className="w-full h-12 bg-[#1D4776] text-[#FFC519] font-bold rounded-full shadow-md mt-4 hover:translate-y-[-2px] hover:brightness-110 cursor-pointer transition my-8"
-              >
-                Login
-              </button>
-
-              {/* Password Reset Button */}
-              <div className="text-center">
-                <Link to="/forgot" className="text-sm text-blue-500 hover:underline">
-                  Forgot your password?
-                </Link>
-              </div>
-
-              {/* Signup Link */}
-              <span>
-                Don't have an account?{" "}
-                <Link to="/signup" className="text-blue-500 underline hover:text-blue-400">
-                  Sign Up
-                </Link>
-              </span>
-
-              {/* Error Message (If Any) */}
-              {verificationRequired ? (
-                <p style={{ color: "yellow" }}>
-                  Email not verified. Please check your email.
-                </p>
-              ) : error ? (
-                <p style={{ color: "red" }}>{error}</p>
-              ) : null}
-            </form>
-          )}
-
-        </div>
-        <div className="flex items-center w-full max-w-sm">
-          <hr className="flex-grow border-t border-gray-400" />
-          <span className="mx-4 text-gray-500">OR</span>
-          <hr className="flex-grow border-t border-gray-400" />
-        </div>
-        <div>
-          <button className="p-4 bg-white rounded-lg text-black border-lg border-black border-2 font-bold hover:brightness-105 cursor-pointer hover:translate-y-[-5px] transition-transform shadow-lg" onClick={() => { navigate("/passkey") }}>
-            Passkey Secure Login
+      <div className="flex flex-col gap-[10px] mt-[35px]">
+        <input
+          type="email"
+          placeholder="Email"
+          className="max-w-[380px] w-[380px] bg-[#f5f5f5] text-[#242424] px-4 min-h-[50px] h-[50px] rounded-[10px] outline-none border border-transparent transition-all duration-200 text-base hover:border-[#0A7CFF] focus:border-[#0A7CFF]"
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          className="max-w-[380px] w-[380px] bg-[#f5f5f5] text-[#242424] px-4 min-h-[50px] h-[50px] rounded-[10px] outline-none border border-transparent transition-all duration-200 text-base hover:border-[#0A7CFF] focus:border-[#0A7CFF]"
+        />
+        
+        <div className="flex items-center gap-5 mt-[10px]">
+          <button
+            type="submit"
+            className="max-w-[100px] w-[100px] px-6 py-2 bg-[#0d47a1] text-white rounded-[10px] cursor-pointer text-[18px] transition-colors duration-200 min-h-[40px] h-[40px] font-medium hover:bg-[#1565c0]"
+          >
+            Log In
           </button>
+          <Link to="/forgot" className="text-[#0A7CFF] text-sm no-underline hover:underline transition-colors duration-200">
+            Forgot your password?
+          </Link>
         </div>
       </div>
     </div>
+
+    <div className="flex justify-center flex-1 mt-[60px]">
+      <img src="../public/images/chat-3d-icon.png" alt="hovering 3D chat graphic" className="w-[80%] h-auto object-contain" />
+    </div>
+  </div>
+</div>
   );
 }
