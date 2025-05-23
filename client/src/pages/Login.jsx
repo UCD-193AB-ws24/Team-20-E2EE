@@ -32,14 +32,14 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <div className="p-8">
+      <div className="px-[170px] pt-8">
         <a href="/" className="block">
           <img src="/images/bark-logo.png" alt="bark-logo" className="w-[60px] h-auto object-contain scale-80" />
         </a>
       </div>
 
       <div className="flex flex-col md:flex-row items-start gap-[170px] px-[170px] pb-[170px] flex-1">
-        <div className="flex-1 mt-5">
+        <div className="flex-1 mt-[90px]">
           <h1 className="text-[80px] font-bold text-[#0d47a1] leading-[1.1] max-w-[600px] whitespace-nowrap">
             Connect Securely,<br />Chat Confidently
           </h1>
@@ -48,7 +48,7 @@ export default function Login() {
           </p>
 
           {!verificationRequired ? (
-            <form onSubmit={handleLogin} className="flex flex-col gap-[10px] mt-[35px]">
+            <form onSubmit={handleLogin} className="mt-[35px] flex flex-col gap-4">
               {/* Email Input */}
               <input
                 type="email"
@@ -91,7 +91,7 @@ export default function Login() {
         </div>
 
         <div className="flex justify-center flex-1 mt-[60px]">
-          <img src="/images/chat-3d-icon.png" alt="hovering 3D chat graphic" className="w-[80%] h-auto object-contain" />
+          <img src="/images/chat-3d-icon.png" alt="hovering 3D chat graphic" className="w-[90%] h-auto object-contain" />
         </div>
       </div>
     </div>
