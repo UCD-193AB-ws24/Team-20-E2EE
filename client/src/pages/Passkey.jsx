@@ -80,9 +80,9 @@ const Passkey = () => {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Logo Header */}
-      <div className="px-6 pt-8 md:px-12">
+      <div className="px-6 pt-8 md:px-12 ml-[20px] md:ml-[40px] lg:ml-[80px]">
         <a href="/" className="block">
-          <img src="/images/ema-logo.png" alt="ema-logo" className="w-12 h-auto object-contain" />
+          <img src="/images/ema-logo.png" alt="ema-logo" className="w-16 md:w-20 h-auto object-contain" />
         </a>
       </div>
 
@@ -105,7 +105,7 @@ const Passkey = () => {
             {isLoading ? (
               <div className="flex items-center">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#0d47a1]"></div>
-                <span className="ml-2">Setting up your account...</span>
+                <span className="ml-2">Logging you in...</span>
               </div>
             ) : (
               <div className="p-6 rounded-lg">
