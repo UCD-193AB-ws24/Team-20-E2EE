@@ -31,7 +31,7 @@ export default function SignUp() {
     <div className="min-h-screen flex flex-col">
       <div className="px-6 pt-8 md:px-12">
         <a href="/" className="block">
-          <img src="/images/bark-logo.png" alt="bark-logo" className="w-12 h-auto object-contain" />
+          <img src="/images/ema-logo.png" alt="ema-logo" className="w-12 h-auto object-contain" />
         </a>
       </div>
 

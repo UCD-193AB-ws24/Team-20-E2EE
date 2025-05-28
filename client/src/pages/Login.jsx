@@ -27,12 +27,12 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <div className="px-6 pt-8 md:px-12">
-        <a href="/" className="block">
+      <div className="px-6 pt-8 md:px-12 ml-[20px] md:ml-[40px] lg:ml-[80px]">
+        <a href="/" className="inline-block">
           <img
-            src="/images/bark-logo.png"
-            alt="bark-logo"
-            className="w-12 h-auto object-contain"
+            src="/images/ema-logo.png"
+            alt="ema-logo"
+            className="w-16 md:w-20 h-auto object-contain"
           />
         </a>
       </div>
@@ -81,7 +81,7 @@ export default function Login() {
               </div>
 
               <p className="mt-4 text-sm text-black">
-                Don’t have an account?{" "}
+                Don't have an account?{" "}
                 <Link to="/signup" className="underline text-blue-500">
                   Sign Up
                 </Link>

@@ -82,7 +82,7 @@ const Passkey = () => {
       {/* Logo Header */}
       <div className="px-6 pt-8 md:px-12">
         <a href="/" className="block">
-          <img src="/images/bark-logo.png" alt="bark-logo" className="w-12 h-auto object-contain" />
+          <img src="/images/ema-logo.png" alt="ema-logo" className="w-12 h-auto object-contain" />
         </a>
       </div>
 
@@ -93,10 +93,8 @@ const Passkey = () => {
             Passkey Login,<br />Secure and Fast
           </h1>
           <p className="text-[#65686c] mt-6 text-base md:text-lg">
-            Use biometrics or device credentials to log in<br />
-            without remembering passwords.
+          Log in faster and safer with passkeys — no passwords, just secure access.
           </p>
-
           <div className="mt-6 w-full max-w-md">
             {error && (
               <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
