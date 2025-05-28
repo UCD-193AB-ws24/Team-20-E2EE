@@ -14,7 +14,8 @@ import {
   unfriendUser,
   getFriendIdByUsername,
   searchFriendUid,
-  searchFriendUsernameByUid
+  searchFriendUsernameByUid,
+  matchedUsers
 } from "../controllers/user.controllers.js";
 import { authenticateUser } from "../middlewares/authMiddleware.js"; // Import middleware
 
@@ -38,5 +39,6 @@ router.post("/unfriend", authenticateUser, unfriendUser);
 router.get("/friend-id", authenticateUser, getFriendIdByUsername);
 router.get("/searchFriendUid", authenticateUser, searchFriendUid);
 router.get("/get-friend-username-by-id", authenticateUser, searchFriendUsernameByUid);
+router.get("/matchedUsers",authenticateUser, matchedUsers)
 
 export default router;
