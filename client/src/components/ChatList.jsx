@@ -33,6 +33,8 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [groupChats, setGroupChats] = useState([]);
   const [selectedGroupInfo, setSelectedGroupInfo] = useState(null);
+  const [hoveredFriend, setHoveredFriend] = useState(null);
+
 
   const loadGroupChats = async () => {
     try {
@@ -145,7 +147,10 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
     yesterday.setDate(now.getDate() - 1);
 
     if (date.toDateString() === now.toDateString())
-      return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      return date.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
     if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
     if (now - date < 7 * 24 * 60 * 60 * 1000)
       return date.toLocaleDateString([], { weekday: "short" });
@@ -218,12 +223,18 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
                       whileTap={{
                         backgroundColor: theme.colors.background.secondary,
                       }}
+                      onMouseEnter={() => setHoveredFriend(friend.username)}
+                      onMouseLeave={() => setHoveredFriend(null)}
                       onClick={() => setSelectedUser(friend.username)}
                     >
                       <div className="relative">
                         <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center bg-gray-200">
                           {friend.avatar ? (
-                            <img src={friend.avatar} alt={friend.username} className="w-full h-full object-cover" />
+                            <img
+                              src={friend.avatar}
+                              alt={friend.username}
+                              className="w-full h-full object-cover"
+                            />
                           ) : (
                             friend.username.charAt(0).toUpperCase()
                           )}
@@ -234,14 +245,30 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
                       </div>
                       <div className="flex flex-col justify-center flex-1 ml-4 overflow-hidden">
                         <div className="flex justify-between items-center">
-                          <span className="font-semibold truncate">{friend.username}</span>
+                          <span className="font-semibold truncate">
+                            {friend.username}
+                          </span>
                           {preview && (
-                            <span className="text-xs text-gray-500">{formatTimestamp(preview.timestamp)}</span>
+                            <span className="text-xs text-gray-500">
+                              {formatTimestamp(preview.timestamp)}
+                            </span>
                           )}
                         </div>
+                        {/* Show description on hover */}
+                        <div className="hidden md:block">
+                        {hoveredFriend === friend.username && (
+                            <p className="text-sm text-gray-400">
+                              Status: {friend.description ? friend.description : "nothing on my mind..."}
+                            </p>
+                            
+                          )}
+                          </div>
+                          
                         {preview && (
                           <p className="text-sm text-gray-600 truncate mt-1">
-                            {preview.sender === "Me" ? "You: " : `${preview.sender}: `}
+                            {preview.sender === "Me"
+                              ? "You: "
+                              : `${preview.sender}: `}
                             {preview.text}
                           </p>
                         )}
@@ -255,7 +282,9 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
             {groupChats.length > 0 && (
               <>
                 <hr className="my-4" />
-                <h2 className="text-xl font-semibold text-ucd-blue-900 mt-4">Groups</h2>
+                <h2 className="text-xl font-semibold text-ucd-blue-900 mt-4">
+                  Groups
+                </h2>
                 {groupChats.map((group) => (
                   <motion.li
                     key={group.id || group.name}
@@ -272,22 +301,34 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
                     whileTap={{
                       backgroundColor: theme.colors.background.secondary,
                     }}
-                    onClick={() => setSelectedUser({
-                      type: "group",
-                      id: group._id,
-                      name: group.name,
-                      members: group.members,
-                    })}
+                    onClick={() =>
+                      setSelectedUser({
+                        type: "group",
+                        id: group._id,
+                        name: group.name,
+                        members: group.members,
+                      })
+                    }
                   >
                     <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
                       {group.avatar ? (
-                        <img src={group.avatar} alt={group.name} className="w-full h-full object-cover" />
+                        <img
+                          src={group.avatar}
+                          alt={group.name}
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
-                        <img src="/images/default-group-avatar.jpg" alt={group.name} className="w-full h-full object-cover" />
+                        <img
+                          src="/images/default-group-avatar.jpg"
+                          alt={group.name}
+                          className="w-full h-full object-cover"
+                        />
                       )}
                     </div>
                     <div className="flex flex-row justify-between flex-1 overflow-hidden ml-4">
-                      <span className="font-semibold truncate">{group.name}</span>
+                      <span className="font-semibold truncate">
+                        {group.name}
+                      </span>
                       <button
                         className="text-gray-600 hover:text-blue-700 hover:brightness-150 transition"
                         onClick={(e) => {
@@ -311,7 +352,10 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
           friends={friends}
           onClose={() => setShowGroupModal(false)}
           onCreate={async (groupData) => {
-            const response = await createGroupChat(groupData.name, groupData.members);
+            const response = await createGroupChat(
+              groupData.name,
+              groupData.members
+            );
             await loadGroupChats();
             setShowGroupModal(false);
           }}
@@ -323,7 +367,7 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
           group={selectedGroupInfo}
           onClose={() => {
             setSelectedGroupInfo(null);
-            loadGroupChats(); 
+            loadGroupChats();
           }}
         />
       )}
