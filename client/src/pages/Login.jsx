@@ -1,9 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faUser, faKey } from "@fortawesome/free-solid-svg-icons";
-import { loginUser } from "../api/auth";
-import { useAppContext } from '../components';
+import { useAppContext } from "../components";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -15,72 +12,81 @@ export default function Login() {
     e.preventDefault();
     const email = e.target[0].value;
     const password = e.target[1].value;
-
-    // Use the login function from AppContext
     const result = await login(email, password);
 
     if (result.success) {
-      navigate("/"); // Navigate to the home page after successful login
+      navigate("/");
     } else if (
       result.error === "Email not verified. Please check your email."
     ) {
-      setVerificationRequired(true); // Show email verification message
+      setVerificationRequired(true);
     } else {
-      setError(result.error); // Display other errors
+      setError(result.error);
     }
   };
 
   return (
     <div className="min-h-screen flex flex-col">
-      <div className="px-[170px] pt-8">
+      <div className="px-6 pt-8 md:px-12">
         <a href="/" className="block">
-          <img src="/images/bark-logo.png" alt="bark-logo" className="w-[60px] h-auto object-contain scale-80" />
+          <img
+            src="/images/bark-logo.png"
+            alt="bark-logo"
+            className="w-12 h-auto object-contain"
+          />
         </a>
       </div>
 
-      <div className="flex flex-col md:flex-row items-start gap-[170px] px-[170px] pb-[170px] flex-1">
-        <div className="flex-1 mt-[90px]">
-          <h1 className="text-[80px] font-bold text-[#0d47a1] leading-[1.1] max-w-[600px] whitespace-nowrap">
-            Connect Securely,<br />Chat Confidently
+      <div className="flex flex-col md:flex-row items-start md:items-center gap-10 md:gap-20 px-6 md:px-12 lg:px-32 py-10 flex-1">
+        <div className="w-full md:w-1/2 mt-10 md:mt-0">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-[#0d47a1] leading-tight">
+            Connect Securely,
+            <br />
+            Chat Confidently
           </h1>
-          <p className="text-[#65686c] mt-[35px] text-[18px]">
-            End-to-end encryption for every message,<br />because your words deserve total protection.
+          <p className="text-[#65686c] mt-6 text-base md:text-lg">
+            End-to-end encryption for every message,
+            <br />
+            because your words deserve total protection.
           </p>
 
           {!verificationRequired ? (
-            <form onSubmit={handleLogin} className="mt-[35px] flex flex-col gap-4">
-              {/* Email Input */}
+            <form onSubmit={handleLogin} className="mt-6 flex flex-col gap-4">
               <input
                 type="email"
                 placeholder="Email"
                 required
-                className="max-w-[380px] w-[380px] bg-[#f5f5f5] text-[#242424] px-4 min-h-[50px] h-[50px] rounded-[10px] outline-none border border-transparent transition-all duration-200 text-base hover:border-[#0A7CFF] focus:border-[#0A7CFF]"
+                className="w-full max-w-md bg-[#f5f5f5] text-[#242424] px-4 py-3 rounded-lg border border-transparent transition-all duration-200 text-base hover:border-[#0A7CFF] focus:border-[#0A7CFF]"
               />
-
-              {/* Password Input */}
               <input
                 type="password"
                 placeholder="Password"
                 required
-                className="max-w-[380px] w-[380px] bg-[#f5f5f5] text-[#242424] px-4 min-h-[50px] h-[50px] rounded-[10px] outline-none border border-transparent transition-all duration-200 text-base hover:border-[#0A7CFF] focus:border-[#0A7CFF]"
+                className="w-full max-w-md bg-[#f5f5f5] text-[#242424] px-4 py-3 rounded-lg border border-transparent transition-all duration-200 text-base hover:border-[#0A7CFF] focus:border-[#0A7CFF]"
               />
-              
-              {/* Login Button */}
-              <div className="flex items-center gap-5 mt-[10px]">
+
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-2">
                 <button
                   type="submit"
-                  className="max-w-[100px] w-[100px] px-6 py-2 bg-[#0d47a1] text-white rounded-[10px] cursor-pointer text-[18px] transition-colors duration-200 min-h-[40px] h-[40px] font-medium hover:bg-[#1565c0]"
+                  className="w-full max-w-md sm:w-auto px-6 py-2 bg-[#0d47a1] text-white rounded-lg text-base font-medium hover:bg-[#1565c0] transition"
                 >
                   Log In
                 </button>
-
-                {/* Password Reset Link */}
-                <Link to="/forgot" className="text-[#0A7CFF] text-sm no-underline hover:underline transition-colors duration-200">
+                <Link
+                  to="/forgot"
+                  className="text-[#0A7CFF] text-sm hover:underline"
+                >
                   Forgot your password?
                 </Link>
               </div>
 
-              {/* Error Message */}
+              <p className="mt-4 text-sm text-black">
+                Don’t have an account?{" "}
+                <Link to="/signup" className="underline text-blue-500">
+                  Sign Up
+                </Link>
+              </p>
+
               {error && <p className="text-red-500 mt-2">{error}</p>}
             </form>
           ) : (
@@ -89,9 +95,12 @@ export default function Login() {
             </p>
           )}
         </div>
-
-        <div className="flex justify-center flex-1 mt-[60px]">
-          <img src="/images/chat-3d-icon.png" alt="hovering 3D chat graphic" className="w-[90%] h-auto object-contain" />
+        <div className="hidden lg:flex lg:w-1/2 justify-center mt-5">
+          <img
+            src="/images/chat-3d-icon.png"
+            alt="hovering 3D chat graphic"
+            className="w-80 h-80 object-contain"
+          />
         </div>
       </div>
     </div>
