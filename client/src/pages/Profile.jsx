@@ -230,7 +230,7 @@ export default function Profile({ onClose }) {
           )}
 
           <h1 className="text-3xl font-bold text-blue-500 mt-4">
-            {userInfo ? `${userInfo.username}'s Profile` : "Profile"}
+            {userInfo ? userInfo.username : "Profile"}
           </h1>
 
           <div className="mt-4">

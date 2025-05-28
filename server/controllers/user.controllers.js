@@ -317,34 +317,33 @@ export const deleteFriendRequest = async (req, res) => {
 };
 
 export const getFriendIdByUsername = async (req, res) => {
-    try {
-        const { username } = req.query;
-        const uid = req.user?.uid;
+  try {
+    const { username } = req.query;
+    const uid = req.user?.uid;
 
-        if (!uid) {
-            return res.status(401).json({ error: "Unauthorized - No user ID found" });
-        }
-
-        if (!username) {
-            return res.status(400).json({ error: "Username is required" });
-        }
-
-        const db = await connectDB();
-        const usersCollection = db.collection("users");
-
-        const friend = await usersCollection.findOne({ username: username });
-        console.log("Founded friend:", friend.uid);
-        if (!friend) {
-            return res.status(404).json({ error: "Friend not found" });
-        }
-
-        res.json({ friendId: friend.uid });
-
-    } catch (error) {
-        console.error("Error retrieving friend ID:", error);
-        res.status(500).json({ error: "Internal server error" });
+    if (!uid) {
+      return res.status(401).json({ error: "Unauthorized - No user ID found" });
     }
-}
+
+    if (!username) {
+      return res.status(400).json({ error: "Username is required" });
+    }
+
+    const db = await connectDB();
+    const usersCollection = db.collection("users");
+
+    const friend = await usersCollection.findOne({ username: username });
+    console.log("Founded friend:", friend.uid);
+    if (!friend) {
+      return res.status(404).json({ error: "Friend not found" });
+    }
+
+    res.json({ friendId: friend.uid });
+  } catch (error) {
+    console.error("Error retrieving friend ID:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
 
 export const unfriendUser = async (req, res) => {
   try {
@@ -581,7 +580,7 @@ export const searchFriendUid = async (req, res) => {
     const usersCollection = db.collection("users");
 
     const user = await usersCollection.findOne({
-      username: username // Exact match
+      username: username, // Exact match
     });
 
     if (!user) {
@@ -596,27 +595,43 @@ export const searchFriendUid = async (req, res) => {
 };
 
 export const searchFriendUsernameByUid = async (req, res) => {
-try{
+  try {
     const { uid } = req.query;
-    
+
     if (!uid) {
-        return res.status(400).json({ error: "UID is required" });
+      return res.status(400).json({ error: "UID is required" });
     }
-    
+
     const db = await connectDB();
     const usersCollection = db.collection("users");
-    
-    const user = await usersCollection.findOne({ uid });
-    
-    if (!user) {
-        return res.status(404).json({ error: "User not found" });
-    }
-    
-    res.json({ username: user.username });
 
-}catch (error) {
+    const user = await usersCollection.findOne({ uid });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json({ username: user.username });
+  } catch (error) {
     console.error("Error searching user:", error);
     res.status(500).json({ error: "Internal server error" });
   }
+};
 
-}
+export const matchedUsers = async (req, res) => {
+  try {
+    const q = req.query.q || "";
+    const db = await connectDB();
+    const users = await db
+      .collection("users")
+      .find(
+        { username: { $regex: q, $options: "i" } },
+        { projection: { username: 1, uid: 1, _id: 0 } }
+      )
+      .toArray();
+    res.json({ users });
+  } catch (error) {
+    console.error("Failed to search users:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
