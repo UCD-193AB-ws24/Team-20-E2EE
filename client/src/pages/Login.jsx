@@ -80,12 +80,29 @@ export default function Login() {
                 </Link>
               </div>
 
-              <p className="mt-4 text-sm text-black">
-                Don't have an account?{" "}
-                <Link to="/signup" className="underline text-blue-500">
+              <div className="mt-4 text-left max-w-md">
+                <span className="text-gray-600">Don't have an account? </span>
+                <Link to="/signup" className="text-[#0d47a1] hover:underline">
                   Sign Up
                 </Link>
-              </p>
+              </div>
+
+              {/* Divider */}
+              <div className="flex items-center mt-6 max-w-md">
+                <hr className="flex-grow border-t border-gray-400" />
+                <span className="mx-4 text-gray-500">OR</span>
+                <hr className="flex-grow border-t border-gray-400" />
+              </div>
+
+              {/* Passkey login button */}
+              <div className="mt-4">
+                <button
+                  onClick={() => navigate("/passkey")}
+                  className="w-full max-w-md px-6 py-2 bg-[#0d47a1] text-white rounded-lg font-medium hover:bg-[#1565c0] transition"
+                >
+                  Use Passkey
+                </button>
+              </div>
 
               {error && <p className="text-red-500 mt-2">{error}</p>}
             </form>
