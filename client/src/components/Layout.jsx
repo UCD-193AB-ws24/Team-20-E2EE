@@ -53,76 +53,15 @@ export default function Layout({ children }) {
     }
   }, []);
 
-  // Vanish feature: Deprecated for testing purposes
-
-  // useEffect(() => {
-  //   const user = JSON.parse(localStorage.getItem('user'));
-  //   if (!user?.accessToken) {
-  //     setTimeout(() => {
-  //       const delayedUser = JSON.parse(localStorage.getItem("user"));
-  //       if (delayedUser?.accessToken) {
-  //         setSelectedUser((prev) => prev); // trigger re-run
-  //       }
-  //     }, 300);
-  //     return;
-  //   }
-
-  //   const shouldDelete =
-  //     hasMounted.current &&
-  //     prevSelectedUser.current !== null &&
-  //     identifyChatType(selectedUser) !== identifyChatType(prevSelectedUser.current);
-
-  //   const deleteMessages = async () => {
-  //     if (shouldDelete) {
-  //       try {
-  //         const res = await fetch(`${BACKEND_URL}/api/message/vanish`, {
-  //           method: 'POST',
-  //           headers: {
-  //             'Content-Type': 'application/json',
-  //             'Authorization': `Bearer ${user.accessToken}`
-  //           },
-  //           body: JSON.stringify({
-  //             username: identifyChatType(prevSelectedUser.current),
-  //           })
-  //         });
-
-  //         const result = await res.json();
-  //         console.log(`Archived messages with ${prevSelectedUser.current}:`, result);
-  //       } catch (err) {
-  //         console.error('Error archiving messages:', err);
-  //       }
-  //     }
-
-  //     prevSelectedUser.current = selectedUser;
-  //     hasMounted.current = true;
-  //   };
-
-  //   deleteMessages();
-  // }, [selectedUser]);
-
-  // useEffect(() => {
-  //   const user = JSON.parse(localStorage.getItem('user'));
-
-  //   const handleBeforeUnload = async (event) => {
-  //     if (user?.accessToken && selectedUser) {
-  //       navigator.sendBeacon(
-  //         `${BACKEND_URL}/api/message/vanish`,
-  //         JSON.stringify({
-  //           username: identifyChatType(),
-  //         })
-  //       );
-  //     }
-  //   };
-
-  //   window.addEventListener('beforeunload', handleBeforeUnload);
-  //   return () => {
-  //     window.removeEventListener('beforeunload', handleBeforeUnload);
-  //   };
-  // }, [selectedUser]);
-
   useEffect(() => {
     const loadChatHistory = async () => {
-      if (!selectedUser) return;
+      if (!selectedUser) {
+        setMessages([]); // Clear messages when no user selected
+        return;
+      }
+    
+      setMessages([]);
+      
       console.log(selectedUser)
 
       let localMessages = [];
@@ -174,6 +113,7 @@ export default function Layout({ children }) {
 
       } catch (error) {
         console.error('Error loading chat messages:', error);
+        setMessages([]); // Clear messages on error
       }
     };
 
