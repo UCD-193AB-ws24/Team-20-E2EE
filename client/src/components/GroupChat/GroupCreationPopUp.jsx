@@ -89,7 +89,7 @@ export default function GroupCreationPopUp({ friends, onClose, onCreate }) {
         <div className="flex justify-end space-x-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded hover:opacity-90 transition"
+            className="px-4 py-2 rounded-lg hover:opacity-90 transition cursor-pointer"
             style={{ 
               backgroundColor: theme.colors.background.accent,
               color: theme.colors.text.primary
@@ -99,7 +99,7 @@ export default function GroupCreationPopUp({ friends, onClose, onCreate }) {
           </button>
           <button
             onClick={handleCreate}
-            className="px-4 py-2 rounded hover:opacity-90 transition"
+            className="px-4 py-2 rounded-lg hover:opacity-90 transition cursor-pointer"
             style={{ 
               backgroundColor: theme.colors.button.secondary,
               color: theme.colors.text.secondary

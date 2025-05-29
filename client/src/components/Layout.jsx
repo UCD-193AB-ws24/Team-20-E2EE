@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import NavBar from './NavBar';
-import { ChatWindow, MessageInput, ProfileModal, ArchiveWindow, useSocket } from './index';
+import { ChatWindow, MessageInput, ProfileModal, ArchiveWindow, useSocket, EmptyChat } from './index';
 import { Archive, Friends, Requests } from '../pages';
 import {
   registerMessageListener, removeListener,
@@ -360,31 +360,35 @@ export default function Layout({ children }) {
       >
         <div className="p-4">
           <h2 className="text-xl font-bold">
-            {selectedKey || 'Select a user to start chatting'}
+            {selectedKey}
             {selectedUser && view === 'archive' && ' (Archive)'}
             {selectedUser && isTyping[selectedKey] &&
               <span className="ml-2 text-sm text-gray-500 italic">typing...</span>
             }
           </h2>
         </div>
-        {view === 'archive' ? (
+        {!selectedUser ? (
+          <EmptyChat />
+        ) : view === 'archive' ? (
           <ArchiveWindow
             messages={archivedMessages}
             selectedUser={selectedUser || ""}
             selectedUserID={selectedUserInfo.uid || ""}
           />
         ) : (
-          <ChatWindow
-            messages={messages}
-            selectedUser={selectedUser || ""}
-            selectedUserID={selectedUserInfo.uid || ""}
-          />
+          <>
+            <ChatWindow
+              messages={messages}
+              selectedUser={selectedUser || ""}
+              selectedUserID={selectedUserInfo.uid || ""}
+            />
+            <MessageInput
+              sendMessage={sendMessage}
+              onTyping={handleTyping}
+              disabled={!selectedUser}
+            />
+          </>
         )}
-        <MessageInput
-          sendMessage={sendMessage}
-          onTyping={handleTyping}
-          disabled={!selectedUser || view === 'archive'}
-        />
       </div>
 
       {showProfileModal && (

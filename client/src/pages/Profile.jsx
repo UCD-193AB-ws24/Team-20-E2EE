@@ -48,6 +48,29 @@ export default function Profile({ onClose }) {
     fetchUserInfo();
   }, []);
 
+  // Add click outside handler
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (event.target.className.includes('bg-opacity-80')) {
+        onClose();
+      }
+    };
+
+    // Add ESC key handler
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscKey);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [onClose]);
 
   const handleCorbadoLogout = async () => {
     // Save device ID before logout
@@ -157,7 +180,7 @@ export default function Profile({ onClose }) {
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 bg-opacity-80">
       <div className="rounded-lg p-6 w-full max-w-md shadow-lg relative" style={{ backgroundColor: theme.colors.background.secondary }}>
-        <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center"
+        <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer"
           style={{ backgroundColor: theme.colors.background.accent }}>
           <span className="text-xl">&times;</span>
         </button>
@@ -230,7 +253,7 @@ export default function Profile({ onClose }) {
           )}
 
           <h1 className="text-3xl font-bold text-blue-500 mt-4">
-            {userInfo ? `${userInfo.username}'s Profile` : "Profile"}
+            {userInfo ? userInfo.username : "Profile"}
           </h1>
 
           <div className="mt-4">
@@ -250,25 +273,54 @@ export default function Profile({ onClose }) {
             {isEditing ? (
               <button
                 onClick={handleSaveDescription}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg text-lg shadow-md cursor-pointer hover:translate-y-[-2px] transition-transform"
+                className="text-white font-bold py-2 px-6 rounded-lg text-lg shadow-md cursor-pointer hover:translate-y-[-2px] transition-transform"
+                style={{
+                  backgroundColor: theme.colors.button.primary,
+                  color: theme.colors.text.primary
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = theme.colors.button.primaryHover;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = theme.colors.button.primary;
+                }}
               >
                 Save Description
               </button>
             ) : (
               <button
                 onClick={() => setIsEditing(true)}
-                className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg text-lg shadow-md cursor-pointer hover:translate-y-[-2px] transition-transform"
+                className="text-medium font-medium py-2 px-6 rounded-lg text-lg shadow-md cursor-pointer hover:translate-y-[-2px] transition-transform"
+                style={{
+                  backgroundColor: theme.colors.button.primary,
+                  color: theme.colors.text.primary
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = theme.colors.button.primaryHover;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = theme.colors.button.primary;
+                }}
               >
                 Edit Description
               </button>
             )}
-
           </div>
 
           <div className="mt-4">
             <button
               onClick={() => setShowLogoutConfirmation(true)}
-              className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-lg shadow-md cursor-pointer hover:translate-y-[-2px] transition-transform"
+              className="font-medium py-2 px-6 rounded-lg text-md shadow-md cursor-pointer hover:translate-y-[-2px] transition-transform"
+              style={{
+                color: theme.colors.text.primary,
+                backgroundColor: theme.type === 'light' ? '#E27D7D' : '#DC2626'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = theme.type === 'light' ? '#C96B6B' : '#B91C1C';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = theme.type === 'light' ? '#E27D7D' : '#DC2626';
+              }}
             >
               Logout
             </button>

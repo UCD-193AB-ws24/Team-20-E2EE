@@ -9,6 +9,7 @@ export { default as MessageInput } from './MessageInput';
 export { default as NavBar } from './NavBar';
 export { default as ProfileModal } from './ProfileModal';
 export { default as ProtectedRoute } from './ProtectedRoute';
+export { default as EmptyChat } from './EmptyChat';
 
 // Context
 export { SocketProvider, useSocket } from './SocketContext';

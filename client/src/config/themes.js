@@ -12,8 +12,8 @@ export const lightTheme = {
             muted: "#6a7282"
         },
         button: {
-            primary: "#FFD966",
-            primaryHover: "#FFBF00",
+            primary: "#7EA3E5",
+            primaryHover: "#5F85D6",
             secondary: "#4F7094",
             secondaryHover: "#033266"
         },
@@ -42,8 +42,8 @@ export const darkTheme = {
             muted: "#6a7282"
         },
         button: {
-            primary: "#e6b117",
-            primaryHover: "#b99015",
+            primary: "#2F4884",
+            primaryHover: "#4A65A3",
             secondary: "#4F7094",
             secondaryHover: "#033266"
         },
