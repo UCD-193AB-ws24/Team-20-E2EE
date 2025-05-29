@@ -94,7 +94,7 @@ export const resetPassword = async (req, res) => {
     await admin.auth().getUserByEmail(email);
 
     const actionCodeSettings = {
-      url: "http://localhost:5173/reset",
+      url: "https://ema-chat.com/reset",
       handleCodeInApp: true,
     };
 
