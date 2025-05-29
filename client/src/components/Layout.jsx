@@ -13,6 +13,7 @@ import { getConversationMessages, getGroupMessages } from '../util/messagesStore
 import { getChatHistory, getGroupHistory, getArchivedChatHistory, sendPrivateMessage, sendGroupMessage, decryptMessage, buildChatId } from '../api/messages';
 import { useAppContext } from './AppContext';
 import { BACKEND_URL } from '../config/config';
+import LoadingEffect from './LoadingEffect';
 
 export default function Layout({ children }) {
   const [selectedUser, setSelectedUser] = useState(null);
@@ -261,7 +262,7 @@ export default function Layout({ children }) {
           backgroundColor: theme.colors.background.primary,
           color: theme.colors.text.primary
         }}>
-        <h1 className="text-lg">Loading...</h1>
+        <LoadingEffect />
       </div>
     );
   }
