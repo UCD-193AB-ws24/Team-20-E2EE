@@ -130,7 +130,7 @@ export const resetPassword = async (req, res) => {
       html: `
         <p>You requested a password reset.</p>
         <p><a href="${customLink}">Click here to reset your password</a></p>
-        <p>This link will expire soon. If you didn’t request this, please ignore it.</p>
+        <p>This link will expire soon. If you didn't request this, please ignore it.</p>
       `,
     });
 
@@ -169,7 +169,7 @@ export const updatePassword = async (req, res) => {
 
 export const corbadoLogin = async (req, res) => {
   try {
-    const email = req.body.email;
+    const { email, deviceId } = req.body;
     console.log("Email from Corbado:", email);
     if (!email) return res.status(400).json({ error: "Invalid token: no email" });
 
@@ -177,11 +177,27 @@ export const corbadoLogin = async (req, res) => {
     const authCollection = db.collection("auth");
     const usersCollection = db.collection("users");
 
+    // Check if user exists in auth collection
     let auth = await authCollection.findOne({ email });
+    
+    // If user doesn't exist, create new user
     if (!auth) {
-      const result = await authCollection.insertOne({ email, createdAt: new Date(), emailVerified: true, loginMethod: "corbado" });
-      auth = { _id: result.insertedId, email, emailVerified: true, loginMethod: "corbado" };
+      console.log("Creating new user for Corbado login:", email);
+      const result = await authCollection.insertOne({
+        email,
+        createdAt: new Date(),
+        emailVerified: true,
+        loginMethod: "corbado"
+      });
+      
+      auth = {
+        _id: result.insertedId,
+        email,
+        emailVerified: true,
+        loginMethod: "corbado"
+      };
 
+      // Create user record
       await usersCollection.insertOne({
         uid: result.insertedId.toString(),
         friends: [],
@@ -189,36 +205,41 @@ export const corbadoLogin = async (req, res) => {
         avatar: "",
         username: "",
         description: "",
-        createdAt: new Date(),
+        createdAt: new Date()
       });
     }
 
+    // Get user record
     const user = await usersCollection.findOne({ uid: auth._id.toString() });
     if (!user) {
       console.error("User not found after auth:", email);
       return res.status(500).json({ error: "Internal server error" });
     }
 
+    // Generate tokens
     const accessToken = jwt.sign({ uid: auth._id.toString() }, process.env.JWT_ACCESS_TOKEN_SECRET, { expiresIn: "1h" });
     const refreshToken = jwt.sign({ uid: auth._id.toString() }, process.env.JWT_REFRESH_TOKEN_SECRET, { expiresIn: "7d" });
 
+    // Set cookies
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
       secure: true,
       sameSite: "None",
-      maxAge: 3600000,
+      maxAge: 3600000
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: true,
       sameSite: "None",
-      maxAge: 604800000,
+      maxAge: 604800000
     });
 
+    // Check for key bundle
     const keyBundlesCollection = db.collection("keyBundles");
     const keyBundleExists = await keyBundlesCollection.findOne({
-      uid: user.uid
+      uid: user.uid,
+      deviceId: deviceId
     });
 
     const userData = {
@@ -228,20 +249,22 @@ export const corbadoLogin = async (req, res) => {
       emailVerified: true,
       loginMethod: "corbado",
       description: user.description,
-      needsKeyBundle: !keyBundleExists,
+      needsKeyBundle: !keyBundleExists
     };
 
     if (!user.username) {
       return res.json({
         message: "User authenticated successfully",
         warning: "Please set your username to continue",
-        user: userData, accessToken
+        user: userData,
+        accessToken
       });
     }
 
     return res.status(200).json({
       message: "User authenticated successfully",
-      user: userData, accessToken
+      user: userData,
+      accessToken
     });
 
   } catch (error) {
@@ -266,7 +289,7 @@ export const login = async (req, res) => {
     // Ensure DB connection
     const db = await connectDB();
     const authCollection = db.collection("auth");
-    const auth = await authCollection.findOne({ email: email });
+    const auth = await authCollection.findOne({ email });
     if (!auth) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
