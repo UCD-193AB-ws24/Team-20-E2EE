@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "postbuild": "if [ -f ./dist/_redirects ]; then echo '✅ _redirects is in dist'; else echo '❌ _redirects is MISSING from dist'; fi",
     "lint": "eslint .",
     "preview": "vite preview"
   },
