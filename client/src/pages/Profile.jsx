@@ -213,7 +213,11 @@ export default function Profile({ onClose }) {
             <label htmlFor="file-input" className="cursor-pointer mb-4">
               <div className="w-32 h-32 rounded-full bg-gray-300 overflow-hidden flex items-center justify-center">
                 <img
-                  src={avatar || "https://via.placeholder.com/150"}
+                  src={avatar || "/images/default_avatar.png"}
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = "/images/default_avatar.png";
+                  }}
                   alt="Avatar"
                   className="w-full h-full object-cover"
                 />
