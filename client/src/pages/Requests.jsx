@@ -217,7 +217,9 @@ export default function Requests() {
           </form>
 
           {matchedUsers.length > 0 && (
-            <ul className="bg-white rounded shadow max-h-40 overflow-y-auto mt-1 z-50 relative border border-gray-300">
+            <ul className="rounded shadow max-h-40 overflow-y-auto mt-1 z-50 relative border border-gray-300"
+            style={{ background: theme.colors.background.primary,
+                color: theme.colors.text}}  >
               {matchedUsers.map((user) => (
                 <li
                   key={user.uid}
@@ -225,6 +227,7 @@ export default function Requests() {
                     setUsername(user.username);
                   }}
                   className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                  
                 >
                   {user.username}
                 </li>
