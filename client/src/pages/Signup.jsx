@@ -72,7 +72,7 @@ export default function SignUp() {
               {/* Submit */}
               <button
                 type="submit"
-                className="w-full max-w-md sm:w-auto px-6 py-2 bg-[#0d47a1] text-white rounded-lg text-base font-medium hover:bg-[#1565c0] transition mt-2"
+                className="cursor-pointer w-full max-w-md sm:w-auto px-6 py-2 bg-[#0d47a1] text-white rounded-lg text-base font-medium hover:bg-[#1565c0] transition mt-2"
               >
                 Sign Up
               </button>

@@ -213,7 +213,11 @@ export default function Profile({ onClose }) {
             <label htmlFor="file-input" className="cursor-pointer mb-4">
               <div className="w-32 h-32 rounded-full bg-gray-300 overflow-hidden flex items-center justify-center">
                 <img
-                  src={avatar || "https://via.placeholder.com/150"}
+                  src={avatar || "/images/default_avatar.png"}
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = "/images/default_avatar.png";
+                  }}
                   alt="Avatar"
                   className="w-full h-full object-cover"
                 />
@@ -238,13 +242,13 @@ export default function Profile({ onClose }) {
           {tempAvatar && (
             <div className="flex gap-3 mt-2">
               <button
-                className="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-4 rounded"
+                className="cursor-pointer bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-4 rounded"
                 onClick={handleConfirmUpload}
               >
                 Confirm
               </button>
               <button
-                className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-1 px-4 rounded"
+                className="cursor-pointer bg-gray-500 hover:bg-gray-600 text-white font-bold py-1 px-4 rounded"
                 onClick={() => {
                   setTempAvatar(null);
                   setSelectedFile(null);
@@ -345,7 +349,7 @@ export default function Profile({ onClose }) {
                 </button>
                 <button
                   onClick={handleLogout}
-                  className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300"
+                  className="cursor-pointer bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300"
                 >
                   Logout
                 </button>

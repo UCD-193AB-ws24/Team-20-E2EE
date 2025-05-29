@@ -94,8 +94,7 @@ export const resetPassword = async (req, res) => {
     await admin.auth().getUserByEmail(email);
 
     const actionCodeSettings = {
-      // url: "http://localhost:5173/reset",
-      url: process.env.FRONTEND_URL + "/reset",
+      url: "https://ema-chat.com/reset",
       handleCodeInApp: true,
     };
 
@@ -111,8 +110,7 @@ export const resetPassword = async (req, res) => {
 
     const url = new URL(resetLink);
     const oobCode = url.searchParams.get("oobCode");
-    // const customLink = `http://localhost:5173/reset?oobCode=${oobCode}`;
-    const customLink = process.env.FRONTEND_URL + `/reset?oobCode=${oobCode}`;
+    const customLink = `https://ema-chat.com/reset?oobCode=${oobCode}`;
 
     console.log("Reset Link: ", resetLink);
     console.log("Custom Link: ", customLink);

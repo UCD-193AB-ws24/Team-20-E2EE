@@ -72,11 +72,6 @@ export default function ArchiveWindow({ messages, selectedUser, selectedUserID }
       className="flex-1 flex flex-col p-4 overflow-y-auto rounded-lg m-4"
       style={{ backgroundColor: theme.colors.background.secondary }}
     >
-      {selectedUser && (
-        <div className="absolute top-2 right-4 flex items-center space-x-2 text-sm text-white">
-          <label htmlFor="archive-toggle">Archive with {selectedUserID}</label>
-        </div>
-      )}
       {messages.map((msg, index) => {
         const showAvatar =
           index === 0 || messages[index - 1].sender !== msg.sender;

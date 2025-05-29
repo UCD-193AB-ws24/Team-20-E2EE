@@ -369,6 +369,7 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
             setSelectedGroupInfo(null);
             loadGroupChats();
           }}
+          setSelectedUser={setSelectedUser}
         />
       )}
     </>

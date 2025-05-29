@@ -5,6 +5,14 @@ import { createServer } from "http";
 import { connectDB } from "./mongo/connection.js";
 import { initializeSocket } from "./socketManager.js";
 import cookieParser from "cookie-parser";
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+// Fix __dirname for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 // Import routes
 import authRoutes from "./routes/auth.routes.js";
 import messageRoutes from "./routes/message.routes.js";
@@ -16,13 +24,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Create HTTP server
 const httpServer = createServer(app);
-
-// Create Socket.io server
 const io = initializeSocket(httpServer);
 
-// Initialize MongoDB connection
 const initializeApp = async () => {
   try {
     await connectDB();
@@ -33,25 +37,33 @@ const initializeApp = async () => {
   }
 };
 
-// Middleware setup
+// Middleware
 app.use(cookieParser());
 app.use(express.json());
 app.use(
-    cors({
-      origin: ["https://ema-chat.com", "http://localhost:5173"],// Replace with your frontend URL
-      methods: "GET, POST, PUT, DELETE", // Allow multiple HTTP methods
-      allowedHeaders: ["Content-Type", "Authorization"], // Allow Content-Type header
-      credentials: true // Enable credentials
-    })
+  cors({
+    origin: ["https://ema-chat.com", "http://localhost:5173"],
+    methods: "GET, POST, PUT, DELETE",
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true
+  })
 );
 
 // Routes
 app.use("/api/message", messageRoutes);
 app.use("/api/auth", authRoutes);  
 app.use("/api/user", userRoutes);
-app.use('/api/keys', keyBundleRoutes);
+app.use("/api/keys", keyBundleRoutes);
 
-// Initialize the app and start the server
+// Serve static files
+app.use(express.static(path.join(__dirname, '..', 'client', 'dist')));
+
+// Fallback route for React Router
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'client', 'dist', 'index.html'));
+});
+
+// Start server
 initializeApp().then(() => {
   httpServer.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

@@ -3,8 +3,9 @@ import { searchUsername } from "../../api/friends";
 import { LoadingAnimation } from "../index"; // adjust this import if needed
 import { addMemberToGroup, removeMemberFromGroup, updateGroupName } from "../../api/messages";
 import getCurrentUser from "../../util/getCurrentUser";
+import { useAppContext } from "../index";
 
-export default function GroupInfoPopUp({ group, onClose }) {
+export default function GroupInfoPopUp({ group, onClose, setSelectedUser }) {
   const [memberUsernames, setMemberUsernames] = useState([]);
   const [isAddMemberSelected, setIsAddMemberSelected] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -12,6 +13,7 @@ export default function GroupInfoPopUp({ group, onClose }) {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(group.name);
   const currentUser = getCurrentUser();
+  const { theme } = useAppContext();
 
   useEffect(() => {
     if (!group?._id) return;
@@ -71,6 +73,7 @@ export default function GroupInfoPopUp({ group, onClose }) {
       setMemberUsernames((prev) =>
         prev.filter((user) => user !== currentUser.username)
       );
+      setSelectedUser(null);
       onClose();
     } else {
       console.error("Failed to leave group chat");
@@ -91,12 +94,15 @@ export default function GroupInfoPopUp({ group, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-opacity-30">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-lg">
+      <div className="rounded-lg p-6 max-w-md w-full shadow-lg"
+      style={{background: theme.colors.background.secondary,
+              color:theme.colors.text.primary}}>
         {!isAddMemberSelected ? (
           <div className="flex flex-row justify-between items-center mb-4">
             <h3 className="text-xl font-bold">Group Info</h3>
             <button
-              className="hover:bg-gray-300 cursor-pointer bg-gray-200 px-4 py-2 rounded-lg"
+              className="cursor-pointer px-4 py-2 rounded-lg hover:brightness-105"
+              style={{background: theme.colors.button.primary}}
               onClick={() => setIsAddMemberSelected((prev) => !prev)}
             >
               Add Members
@@ -190,7 +196,7 @@ export default function GroupInfoPopUp({ group, onClose }) {
 
         <div className="mt-8 flex justify-between">
           <button
-            className="px-4 py-2 bg-red-700 text-white rounded hover:bg-red-800"
+            className="px-4 py-2 text-white bg-red-700 rounded hover:bg-red-800"
             onClick={handleLeaveGroupChat}
           >
             Leave Group
