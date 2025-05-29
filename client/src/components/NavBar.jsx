@@ -286,9 +286,9 @@ export default function NavBar({ onProfileClick, setView }) {
           </button>
 
           {/* Clear Storage Button */}
-          <div className="w-full px-[15px]">
+{/*           <div className="w-full px-[15px]">
             <ClearStorageButton isCollapsed={isCollapsed} />
-          </div>
+          </div> */}
         </div>
       </div>
     </motion.div>
