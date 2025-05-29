@@ -8,8 +8,10 @@ import fetchWithAuth from '../util/FetchWithAuth';
 import { useCorbado } from '@corbado/react';
 import getCurrentUser from '../util/getCurrentUser.js';
 import { useNavigate } from 'react-router-dom';
+import { PasskeyList } from "@corbado/react";
 
-export default function Profile({ onClose, onManagePasskeys }) {
+
+export default function PasskeyManagement({ onClose, onBack }) {
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
   const [userInfo, setUserInfo] = useState(null);
   const [description, setDescription] = useState("");
@@ -264,6 +266,11 @@ export default function Profile({ onClose, onManagePasskeys }) {
           </h1>
 
           <div className="mt-4">
+            <h1 className="text-xl font-semibold mb-2">Manage your Passkeys</h1>
+            <PasskeyList />
+          </div>
+
+          <div className="mt-4">
             {isEditing ? (
               <textarea
                 className="w-full p-2 border border-gray-300 rounded"
@@ -275,48 +282,10 @@ export default function Profile({ onClose, onManagePasskeys }) {
               <p className="text-lg text-gray-600 mt-4">{description || "Your profile description goes here..."}</p>
             )}
           </div>
-
-          <div className="mt-4">
-            {isEditing ? (
-              <button
-                onClick={handleSaveDescription}
-                className="text-white font-bold py-2 px-6 rounded-lg text-lg shadow-md cursor-pointer hover:translate-y-[-2px] transition-transform"
-                style={{
-                  backgroundColor: theme.colors.button.primary,
-                  color: theme.colors.text.primary
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = theme.colors.button.primaryHover;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = theme.colors.button.primary;
-                }}
-              >
-                Save Description
-              </button>
-            ) : (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="text-medium font-medium py-2 px-6 rounded-lg text-lg shadow-md cursor-pointer hover:translate-y-[-2px] transition-transform"
-                style={{
-                  backgroundColor: theme.colors.button.primary,
-                  color: theme.colors.text.primary
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = theme.colors.button.primaryHover;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = theme.colors.button.primary;
-                }}
-              >
-                Edit Description
-              </button>
-            )}
-          </div>
-
+            {/* Back Button (to Profile) */}
           <div className="mt-4">
             <button
-              onClick={() => setShowLogoutConfirmation(true)}
+              onClick={onBack}
               className="font-medium py-2 px-6 rounded-lg text-md shadow-md cursor-pointer hover:translate-y-[-2px] transition-transform"
               style={{
                 color: theme.colors.text.primary,
@@ -329,26 +298,7 @@ export default function Profile({ onClose, onManagePasskeys }) {
                 e.currentTarget.style.backgroundColor = theme.type === 'light' ? '#E27D7D' : '#DC2626';
               }}
             >
-              Logout
-            </button>
-          </div>
-
-          <div className="mt-4">
-            <button
-              onClick={() => onManagePasskeys()}
-              className="font-medium py-2 px-6 rounded-lg text-md shadow-md cursor-pointer hover:translate-y-[-2px] transition-transform"
-              style={{
-                color: theme.colors.text.primary,
-                backgroundColor: theme.colors.button.primary
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = theme.colors.button.primaryHover;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = theme.colors.button.primary;
-              }}
-            >
-              Manage Passkeys
+              Back
             </button>
           </div>
         </div>

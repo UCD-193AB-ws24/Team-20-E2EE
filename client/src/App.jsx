@@ -1,7 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ChatList, Layout, ProtectedRoute, AuthRedirectRoute, WelcomeScreenRedirectRoute, SocketProvider } from './components';
-import { Archive, ForgotPassword, Friends, Login, Profile, Requests, ResetPassword, SignUp, Welcome, Passkey } from './pages';
+import { Archive, ForgotPassword, Friends, Login, Profile, Requests, ResetPassword, SignUp, Welcome, Passkey, PasskeyManagement } from './pages';
 
 export default function App() {
   return (
@@ -21,6 +21,7 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<Layout><ChatList /></Layout>} />
         <Route path="/profile" element={<Layout><Profile /></Layout>} />
+        <Route path="/passkey-management" element={<Layout><PasskeyManagement /></Layout>} />
         <Route path="/friends" element={<Layout><Friends /></Layout>} />
         <Route path="/requests" element={<Layout><Requests /></Layout>} />
         <Route path="/archive" element={<Layout><Archive /></Layout>} />

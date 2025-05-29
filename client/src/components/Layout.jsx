@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import NavBar from './NavBar';
 import { ChatWindow, MessageInput, ProfileModal, ArchiveWindow, useSocket, EmptyChat } from './index';
-import { Archive, Friends, Requests } from '../pages';
+import { Archive, Friends, Requests, Profile, PasskeyManagement } from '../pages';
 import {
   registerMessageListener, removeListener,
   sendTypingStatus, registerTypingListener
@@ -20,6 +20,7 @@ export default function Layout({ children }) {
   const [messages, setMessages] = useState([]);
   const [archivedMessages, setArchivedMessages] = useState([]);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showPasskeyManagement, setShowPasskeyManagement] = useState(false);
   const [view, setView] = useState();
   const [isTyping, setIsTyping] = useState({});
   const [typingTimeout, setTypingTimeout] = useState(null);
@@ -31,8 +32,6 @@ export default function Layout({ children }) {
     deviceId: null,
     uid: null
   });
-
-
 
   const prevSelectedUser = useRef(null);
   const hasMounted = useRef(false);
@@ -255,6 +254,11 @@ export default function Layout({ children }) {
     }
   };
 
+  const handleManagePasskeys = () => {
+    setShowPasskeyManagement(true);
+    setShowProfileModal(false);
+  };
+
   if (!appReady) {
     return (
       <div className="flex items-center justify-center h-screen"
@@ -277,7 +281,10 @@ export default function Layout({ children }) {
         color: theme.colors.text.primary
       }}
     >
-      <NavBar onProfileClick={() => setShowProfileModal(true)} setView={setView} />
+      <NavBar onProfileClick={() => {
+        setShowProfileModal(true);
+        setShowPasskeyManagement(false);
+      }} setView={setView} />
 
       <div className="min-w-[250px] w-[25%] m-3 flex flex-col">
         {view === 'archive' ? (
@@ -333,7 +340,23 @@ export default function Layout({ children }) {
       </div>
 
       {showProfileModal && (
-        <ProfileModal onClose={() => setShowProfileModal(false)} />
+        <ProfileModal onClose={() => {
+          setShowProfileModal(false);
+          setShowPasskeyManagement(false);
+        }} onManagePasskeys={handleManagePasskeys} />
+      )}
+
+      {showPasskeyManagement && (
+        <PasskeyManagement 
+          onClose={() => {
+            setShowPasskeyManagement(false);
+            setShowProfileModal(false);
+          }}
+          onBack={() => {
+            setShowPasskeyManagement(false);
+            setShowProfileModal(true);
+          }}
+        />
       )}
     </div>
   );

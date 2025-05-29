@@ -10,4 +10,5 @@ export { default as Archive } from './Archive';
 export { default as Friends } from './Friends';
 export { default as Profile } from './Profile';
 export { default as Requests } from './Requests';
-export {default as Passkey} from './Passkey';
+export { default as Passkey } from './Passkey';
+export { default as PasskeyManagement } from './PasskeyManagement';
