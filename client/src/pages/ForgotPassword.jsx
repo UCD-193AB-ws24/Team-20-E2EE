@@ -51,12 +51,14 @@ export default function ForgotPassword() {
             Send Reset Link
           </button>
         </form>
-        <Link
-          to="/login"
-          className="text-[#0A7CFF] text-sm hover:underline"
-        >
-          Back to Login
-        </Link>
+        <div className="mt-4 text-center">
+          <Link
+            to="/login"
+            className="text-[#0A7CFF] text-sm hover:underline"
+          >
+            Back to Login
+          </Link>
+        </div>
         {message && <p className="text-green-600 mt-4">{message}</p>}
         {error && <p className="text-red-600 mt-4">{error}</p>}
       </div>
