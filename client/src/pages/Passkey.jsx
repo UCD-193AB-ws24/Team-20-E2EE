@@ -132,7 +132,7 @@ const Passkey = () => {
             <div className="mt-4">
               <button
                 onClick={() => navigate("/login")}
-                className="w-full px-6 py-2 bg-[#0d47a1] text-white rounded-lg font-medium hover:bg-[#1565c0] transition"
+                className="cursor-pointer w-full px-6 py-2 bg-[#0d47a1] text-white rounded-lg font-medium hover:bg-[#1565c0] transition"
                 disabled={isLoading}
               >
                 Use Email & Password

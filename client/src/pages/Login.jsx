@@ -68,7 +68,7 @@ export default function Login() {
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-2">
                 <button
                   type="submit"
-                  className="w-full max-w-md sm:w-auto px-6 py-2 bg-[#0d47a1] text-white rounded-lg text-base font-medium hover:bg-[#1565c0] transition"
+                  className="cursor-pointer w-full max-w-md sm:w-auto px-6 py-2 bg-[#0d47a1] text-white rounded-lg text-base font-medium hover:bg-[#1565c0] transition"
                 >
                   Log In
                 </button>
@@ -98,7 +98,7 @@ export default function Login() {
               <div className="mt-4">
                 <button
                   onClick={() => navigate("/passkey")}
-                  className="w-full max-w-md px-6 py-2 bg-[#0d47a1] text-white rounded-lg font-medium hover:bg-[#1565c0] transition"
+                  className="cursor-pointer w-full max-w-md px-6 py-2 bg-[#0d47a1] text-white rounded-lg font-medium hover:bg-[#1565c0] transition"
                 >
                   Use Passkey
                 </button>
