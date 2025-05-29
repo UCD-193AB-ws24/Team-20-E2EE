@@ -27,7 +27,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <div className="px-6 pt-8 md:px-12 ml-[20px] md:ml-[40px] lg:ml-[80px]">
+      <div className="px-6 md:px-12 lg:px-32 py-10">
         <a href="/" className="inline-block">
           <img
             src="/images/ema-logo.png"
