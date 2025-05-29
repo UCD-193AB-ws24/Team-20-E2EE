@@ -228,7 +228,7 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
                       onClick={() => setSelectedUser(friend.username)}
                     >
                       <div className="relative">
-                        <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center bg-gray-200">
+                        <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center bg-gray-200 cursor-pointer">
                           {friend.avatar ? (
                             <img
                               src={friend.avatar}
@@ -243,7 +243,7 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
                           <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
                         )}
                       </div>
-                      <div className="flex flex-col justify-center flex-1 ml-4 overflow-hidden">
+                      <div className="flex flex-col justify-center flex-1 ml-4 overflow-hidden cursor-pointer">
                         <div className="flex justify-between items-center">
                           <span className="font-semibold truncate">
                             {friend.username}
@@ -310,7 +310,7 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
                       })
                     }
                   >
-                    <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center cursor-pointer">
                       {group.avatar ? (
                         <img
                           src={group.avatar}
@@ -325,7 +325,7 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
                         />
                       )}
                     </div>
-                    <div className="flex flex-row justify-between flex-1 overflow-hidden ml-4">
+                    <div className="flex flex-row justify-between flex-1 overflow-hidden ml-4 cursor-pointer">
                       <span className="font-semibold truncate">
                         {group.name}
                       </span>

@@ -7,6 +7,7 @@ import { useAppContext } from '../components';
 import fetchWithAuth from '../util/FetchWithAuth';
 import { useCorbado } from '@corbado/react';
 import getCurrentUser from '../util/getCurrentUser.js';
+import { useNavigate } from 'react-router-dom';
 
 export default function Profile({ onClose }) {
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
@@ -19,6 +20,7 @@ export default function Profile({ onClose }) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const navigate = useNavigate();
 
   const { theme } = useAppContext();
   const { logout } = useCorbado();
@@ -172,7 +174,8 @@ export default function Profile({ onClose }) {
       localStorage.clear();
       if (deviceId) localStorage.setItem('e2ee-device-id', deviceId);
       if (loginMethod === "corbado") await logout();
-      window.location.href = "/login";
+      // window.location.href = "/login";
+      navigate("/login");
     }
   };
 
