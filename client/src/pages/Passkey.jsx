@@ -63,6 +63,7 @@ const Passkey = () => {
 
         await setupEncryptionKeys();
         navigate("/");
+        window.location.reload();
       } catch (err) {
         console.error("Login error:", err);
         setError(err.message || "An error occurred during login.");
