@@ -4,7 +4,7 @@ import { LoadingAnimation } from "../index"; // adjust this import if needed
 import { addMemberToGroup, removeMemberFromGroup, updateGroupName } from "../../api/messages";
 import getCurrentUser from "../../util/getCurrentUser";
 
-export default function GroupInfoPopUp({ group, onClose }) {
+export default function GroupInfoPopUp({ group, onClose, setSelectedUser }) {
   const [memberUsernames, setMemberUsernames] = useState([]);
   const [isAddMemberSelected, setIsAddMemberSelected] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -71,6 +71,7 @@ export default function GroupInfoPopUp({ group, onClose }) {
       setMemberUsernames((prev) =>
         prev.filter((user) => user !== currentUser.username)
       );
+      setSelectedUser(null);
       onClose();
     } else {
       console.error("Failed to leave group chat");
