@@ -21,6 +21,9 @@ export default function EmptyChat() {
         <p className="text-lg mb-6" style={{ color: theme.type === 'light' ? '#000000' : theme.colors.text.secondary }}>
           Select a chat from the list to start messaging
         </p>
+        <p className="text-lg mb-6" style={{ color: theme.type === 'light' ? '#000000' : theme.colors.text.secondary }}>
+          Warning: Activating archive will disable encryption temporarily as messages will be stored. Deselect it to delete all archive.
+        </p>
         <div className="flex flex-col items-center space-y-4">
           <div className="flex items-center space-x-2">
             <div className="w-3 h-3 rounded-full bg-green-500"></div>
