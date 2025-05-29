@@ -124,7 +124,9 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
         style={{ backgroundColor: theme.colors.background.secondary }}
       >
         {selectedUser && (
-          <div className="absolute top-2 right-4 flex items-center mt-2 space-x-2 text-sm text-white">
+          <div 
+          className="absolute top-2 right-4 flex items-center mt-2 space-x-2 text-sm"
+          style={{color: theme.colors.text}}>
             <label htmlFor="archive-toggle text-black">Archive On/Off</label>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
