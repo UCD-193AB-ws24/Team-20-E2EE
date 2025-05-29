@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAppContext } from './AppContext';
 import { motion } from "motion/react";
 
@@ -6,6 +6,15 @@ export default function MessageInput({ sendMessage, onTyping, disabled = false }
   const [text, setText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const { theme } = useAppContext();
+  const inputRef = useRef(null);
+  const formRef = useRef(null);
+
+  // Focus the input when the component mounts or when disabled state changes
+  useEffect(() => {
+    if (!disabled) {
+      inputRef.current?.focus();
+    }
+  }, [disabled]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -14,6 +23,10 @@ export default function MessageInput({ sendMessage, onTyping, disabled = false }
       try {
         await sendMessage(text);
         setText('');
+        // Refocus the input after sending
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 0);
       } catch (error) {
         console.error('Error sending message:', error);
       } finally {
@@ -30,12 +43,26 @@ export default function MessageInput({ sendMessage, onTyping, disabled = false }
     }
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="p-4 rounded-lg m-4 flex">
+    <form 
+      ref={formRef}
+      onSubmit={handleSubmit} 
+      className="p-4 rounded-lg m-4 flex"
+      onClick={() => inputRef.current?.focus()}
+    >
       <input
+        ref={inputRef}
         type="text"
         value={text}
         onChange={handleChange}
+        onKeyDown={handleKeyDown}
         className={`flex-1 p-2 rounded-lg focus:outline-none ${disabled ? 'bg-gray-100' : ''}`}
         style={{backgroundColor: theme.colors.background.primary}}
         placeholder={disabled ? "Select a user to chat" : "Type your message..."}
