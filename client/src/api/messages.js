@@ -233,7 +233,10 @@ export const sendPrivateMessage = async (recipientUsername, text, recipientInfo,
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           sender: 'Me',
           metadata: metadata,
+          blur: false
         };
+
+        console.log("Message Object: ", messageObject);
 
         await storeMessage(messageObject);
       } catch (error) {
@@ -538,8 +541,10 @@ export const decryptMessage = async (msg) => {
         time: msg.time,
         timestamp: msg.timestamp,
         status: 'received',
-        metadata: msg.metadata
+        metadata: msg.metadata,
+        blur: msg.blur
       });
+      console.log("blur: ", msg.blur);
     } catch (error) {
       console.log("Error saving decrypted Message to storage:", error);
     }

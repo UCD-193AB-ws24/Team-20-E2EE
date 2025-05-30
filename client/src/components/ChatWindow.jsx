@@ -17,6 +17,8 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
   const { theme } = useAppContext();
   const isGroupChat = (typeof selectedUser === 'object' && selectedUser.type === 'group');
 
+  
+
   // Load avatars when selectedUser changes
   useEffect(() => {
     const loadAvatars = async () => {
@@ -71,18 +73,18 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
   }, [selectedUser, currentUsername, isGroupChat]);
 
   useEffect(() => {
-  const fetchStatuses = async () => {
-    if (!selectedUserID || !currentUserId) return;
+    const fetchStatuses = async () => {
+      if (!selectedUserID || !currentUserId) return;
 
-    const userOptIn = await checkUserOptInStatus(currentUserId, selectedUserID);
-    const isMutual = await archiveEnabledCheck(selectedUser);
+      const userOptIn = await checkUserOptInStatus(currentUserId, selectedUserID);
+      const isMutual = await archiveEnabledCheck(selectedUser);
 
-    setArchiveEnabled(userOptIn);
-    setMutualArchive(isMutual);
-  };
+      setArchiveEnabled(userOptIn);
+      setMutualArchive(isMutual);
+    };
 
-  fetchStatuses();
-}, [selectedUserID]);
+    fetchStatuses();
+  }, [selectedUserID]);
 
 
 
@@ -124,9 +126,9 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
         style={{ backgroundColor: theme.colors.background.secondary }}
       >
         {selectedUser && (
-          <div 
-          className="absolute top-2 right-4 flex items-center mt-2 space-x-2 text-sm"
-          style={{color: theme.colors.text}}>
+          <div
+            className="absolute top-2 right-4 flex items-center mt-2 space-x-2 text-sm"
+            style={{ color: theme.colors.text }}>
             <label htmlFor="archive-toggle text-black">Archive On/Off</label>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -145,6 +147,10 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
           const showAvatar =
             index === 0 || messages[index - 1].sender !== msg.sender;
           const isMe = msg.sender === 'Me';
+
+          if (!msg.blur) {
+            console.log("Render message:", msg.text, msg.blur);
+          }
 
           return (
             <div
@@ -171,7 +177,13 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
                 className={'p-3 max-w-[75%] rounded-lg'}
                 style={{ backgroundColor: isMe ? theme.colors.chatBubble.primary : theme.colors.chatBubble.secondary }}
               >
-                <p>{msg.text}</p>
+                <p
+                  title="This message is archived. Hover to reveal."
+                  className={`transition duration-300 ${msg.blur ? 'blur-sm hover:blur-none text-gray-500 cursor-pointer' : 'text-inherit'
+                    }`}
+                >
+                  {msg.text}
+                </p>
                 <span className="text-xs block mt-1">
                   {msg.time}
                 </span>
@@ -212,6 +224,11 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
 
           // Get the username for this sender ID, or fallback to the ID itself
           const senderUsername = usernames[senderId] || senderId;
+
+          if (!msg.blur) {
+            console.log("Render message:", msg.text, msg.blur);
+          }
+
 
           return (
             <div

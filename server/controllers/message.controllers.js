@@ -280,7 +280,7 @@ export const sendPrivateMessage = async (req, res) => {
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       timestamp: new Date(),
       read: isRecipientOnline, // Include read status in the response
-      metadata
+      metadata,
     };
 
     const io = getSocketInstance();
