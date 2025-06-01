@@ -248,7 +248,6 @@ export const sendPrivateMessage = async (req, res) => {
 
     const { recipientUsername, encryptedMessages, senderDeviceId, metadata } = req.body;
 
-    // Validate that we have encrypted messages for multiple devices
     if (!recipientUsername || !encryptedMessages || !Array.isArray(encryptedMessages)) {
       return res.status(400).json({ error: "Invalid message format - encryptedMessages array required" });
     }
@@ -267,7 +266,7 @@ export const sendPrivateMessage = async (req, res) => {
       const message = {
         sender: uid,
         recipientUid: recipientId,
-        recipientDeviceId: deviceMessage.deviceId, // Store target device ID
+        recipientDeviceId: deviceMessage.deviceId,
         senderUsername: senderUser.username,
         senderDeviceId,
         recipientUsername,
@@ -286,13 +285,11 @@ export const sendPrivateMessage = async (req, res) => {
 
     const results = await Promise.all(messagePromises);
 
-    // Send real-time notification to recipient if they're online
-    // Let the client handle device-specific filtering
+    // Send real-time notification if recipient is online
     const io = getSocketInstance();
     
     if (onlineUsers.has(recipientId)) {
-      // Send ALL device messages to the online user
-      // The client will filter which ones are for their current device
+      // Send all encrypted messages to the online user
       encryptedMessages.forEach((deviceMessage, index) => {
         const formattedMessage = {
           _id: results[index].insertedId,
@@ -309,6 +306,10 @@ export const sendPrivateMessage = async (req, res) => {
 
         io.to(onlineUsers.get(recipientId)).emit("receive_message", formattedMessage);
       });
+
+      console.log(`Sent ${encryptedMessages.length} device-specific messages to ${recipientUsername}`);
+    } else {
+      console.log(`User ${recipientUsername} is offline - messages stored for later delivery`);
     }
 
     return res.status(200).json({
@@ -321,7 +322,7 @@ export const sendPrivateMessage = async (req, res) => {
     console.error("Error sending message:", error);
     res.status(500).json({ error: "Internal server error" });
   }
-}
+};
 
 export const sendGroupMessage = async (groupId, text, members) => {
   try {

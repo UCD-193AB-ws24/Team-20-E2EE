@@ -113,20 +113,29 @@ export const AppProvider = ({ children }) => {
           
           for (const msg of messages) {
             const username = msg.sender !== 'Me' ? msg.sender : msg.recipientUsername;
+            
             countByUsername[username] = (countByUsername[username] || 0) + 1;
             
             try {
-              // Group messages by sender for session management
               if (!decryptedMessagesByUsername[username]) {
                 decryptedMessagesByUsername[username] = [];
               }
               
-              // Only decrypt if the message is encrypted
               if (msg.encryptedMessage) {
-                // Decrypt the message
-                const decryptedText = await decryptMessage(msg);
+                // Check if message is for current device before attempting decryption
+                const currentDeviceId = getDeviceId();
+                if (msg.recipientDeviceId && msg.recipientDeviceId !== currentDeviceId) {
+                  console.log(`Skipping message for device ${msg.recipientDeviceId} (we are ${currentDeviceId})`);
+                  continue;
+                }
                 
-                // Create processed message object
+                const decryptedText = await decryptMessage(msg);
+
+                if (decryptedText === null) {
+                  console.log(`Skipping message for device ${msg.recipientDeviceId}`);
+                  continue; // Move to next message
+                }
+                
                 const processedMsg = {
                   ...msg,
                   text: decryptedText,
@@ -134,17 +143,20 @@ export const AppProvider = ({ children }) => {
                   timestamp: new Date(msg.timestamp || Date.now())
                 };
                 
-                // Add to both collections
                 decryptedMessagesByUsername[username].push(processedMsg);
                 processedMessages.push(processedMsg);
               } else {
-                // Non-encrypted message handling if needed
                 decryptedMessagesByUsername[username].push(msg);
                 processedMessages.push(msg);
               }
             } catch (error) {
+              if (error.message === 'MESSAGE_NOT_FOR_THIS_DEVICE') {
+                console.log(`Message filtered out for device - not counting in unread`);
+                countByUsername[username] = Math.max(0, (countByUsername[username] || 1) - 1);
+                continue;
+              }
+              
               console.warn(`Failed to decrypt message from ${username}:`, error);
-              // Add to UI with error indicator
               const errorMsg = {
                 ...msg,
                 text: "⚠️ Could not decrypt this message",

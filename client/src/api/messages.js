@@ -11,19 +11,30 @@ import { fetchKeyBundle, fetchAllUserKeyBundles } from './keyBundle.js';
 export const getChatHistory = async (username = null) => {
   try {
     let url = `${BACKEND_URL}/api/message/history`;
+    
+    // Always include device ID for proper filtering
+    const deviceId = getDeviceId();
+    const params = new URLSearchParams();
 
     // Only add username parameter if provided
     if (username) {
-      url += `?username=${encodeURIComponent(username)}`;
+      params.append('username', username);
+    }
+
+    // Always include device ID to filter messages for this specific device
+    params.append('deviceId', deviceId);
+
+    if (params.toString()) {
+      url += `?${params.toString()}`;
     }
 
     const response = await fetchWithAuth(url, {
       method: 'GET',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-Device-ID': deviceId // Also send in header as backup
       }
-    }
-    );
+    });
 
     if (!response.ok) {
       const error = await response.json();
@@ -115,76 +126,102 @@ export const sendPrivateMessage = async (recipientUsername, text, recipientInfo,
     const senderDeviceId = getDeviceId();
     const userId = getCurrentUser().uid;
 
-    // Fetch key bundles for ALL recipient devices
-    const keyBundleResult = await fetchAllUserKeyBundles(recipientUsername);
+    console.log(`Sending message to ${recipientUsername}`);
+
+    // Determine if we need single device or all devices
+    let keyBundleResult;
+    
+    if (recipientInfo && recipientInfo.deviceId) {
+      // If we have specific device info, try to get key bundle for that specific device first
+      console.log(`Targeting specific device: ${recipientInfo.deviceId}`);
+      keyBundleResult = await fetchAllUserKeyBundles(recipientUsername);
+    } else {
+      // For new conversations, get all devices
+      keyBundleResult = await fetchAllUserKeyBundles(recipientUsername);
+    }
+
     if (!keyBundleResult.success) {
-      throw new Error(`Failed to fetch key bundles for ${recipientUsername}: ${keyBundleResult.error}`);
+      // Fallback to single device bundle
+      console.log('Multi-device fetch failed, trying single device...');
+      const singleBundle = await fetchKeyBundle(recipientUsername);
+      if (!singleBundle.success) {
+        throw new Error(`Failed to fetch key bundles for ${recipientUsername}: ${singleBundle.error}`);
+      }
+      keyBundleResult = {
+        success: true,
+        keyBundles: [singleBundle.keyBundle],
+        deviceCount: 1
+      };
     }
 
     const encryptedMessages = [];
-
-    // Encrypt message for each recipient device
+    
+    // Process each device
     for (const deviceBundle of keyBundleResult.keyBundles) {
       const recipientUID = deviceBundle.uid;
       const recipientDeviceId = deviceBundle.deviceId;
 
-      // Check if session exists for this device
-      const sessionExists = await hasSession(userId, recipientUID, recipientDeviceId);
-      if (!sessionExists) {
-        console.log(`No session exists with ${recipientUsername} device ${recipientDeviceId}, establishing session`);
-        
-        const sessionEstablished = await establishSession(
-          userId,
-          recipientUID,
-          deviceBundle
-        );
-        
-        if (!sessionEstablished) {
-          console.error(`Failed to establish session with ${recipientUsername} device ${recipientDeviceId}`);
-          continue; // Skip this device
+      try {
+        // Check if session exists for this device
+        const sessionExists = await hasSession(userId, recipientUID, recipientDeviceId);
+        if (!sessionExists) {
+          console.log(`No session exists with ${recipientUsername} device ${recipientDeviceId}, establishing session`);
+          
+          const sessionEstablished = await establishSession(userId, recipientUID, deviceBundle);
+          if (!sessionEstablished) {
+            console.error(`Failed to establish session with ${recipientUsername} device ${recipientDeviceId}`);
+            continue; // Skip this device
+          }
+          
+          console.log(`Successfully established session with ${recipientUsername}:${recipientDeviceId}`);
         }
-      }
 
-      // Get session cipher for this device
-      const sessionCipher = await getSessionCipher(userId, recipientUID, recipientDeviceId);
-      if (!sessionCipher) {
-        console.error(`Failed to create session cipher for device ${recipientDeviceId}`);
-        continue;
-      }
-
-      // Encrypt message for this device
-      const plaintextBuffer = new TextEncoder().encode(text).buffer;
-      const encryptedMessage = await sessionCipher.encrypt(plaintextBuffer);
-
-      let processedBody;
-      if (typeof encryptedMessage.body === "string") {
-        const bytes = new Uint8Array(encryptedMessage.body.length);
-        for (let i = 0; i < encryptedMessage.body.length; i++) {
-          bytes[i] = encryptedMessage.body.charCodeAt(i);
+        // Get session cipher for this device
+        const sessionCipher = await getSessionCipher(userId, recipientUID, recipientDeviceId);
+        if (!sessionCipher) {
+          console.error(`Failed to create session cipher for device ${recipientDeviceId}`);
+          continue;
         }
-        processedBody = bytes.buffer;
-      } else if (encryptedMessage.body instanceof ArrayBuffer) {
-        processedBody = encryptedMessage.body;
-      } else {
-        throw new Error(`Unexpected message body type: ${typeof encryptedMessage.body}`);
-      }
 
-      const base64Body = arrayBufferToBase64(processedBody);
+        // Encrypt message for this device
+        const plaintextBuffer = new TextEncoder().encode(text).buffer;
+        const encryptedMessage = await sessionCipher.encrypt(plaintextBuffer);
 
-      encryptedMessages.push({
-        deviceId: recipientDeviceId,
-        encryptedMessage: {
-          type: encryptedMessage.type,
-          body: base64Body
+        let processedBody;
+        if (typeof encryptedMessage.body === "string") {
+          const bytes = new Uint8Array(encryptedMessage.body.length);
+          for (let i = 0; i < encryptedMessage.body.length; i++) {
+            bytes[i] = encryptedMessage.body.charCodeAt(i);
+          }
+          processedBody = bytes.buffer;
+        } else if (encryptedMessage.body instanceof ArrayBuffer) {
+          processedBody = encryptedMessage.body;
+        } else {
+          throw new Error(`Unexpected message body type: ${typeof encryptedMessage.body}`);
         }
-      });
 
-      console.log(`Encrypted message for device ${recipientDeviceId}`);
+        const base64Body = arrayBufferToBase64(processedBody);
+
+        encryptedMessages.push({
+          deviceId: recipientDeviceId,
+          encryptedMessage: {
+            type: encryptedMessage.type,
+            body: base64Body
+          }
+        });
+
+        console.log(`Successfully encrypted message for device ${recipientDeviceId} (type: ${encryptedMessage.type})`);
+      } catch (encryptionError) {
+        console.error(`Failed to encrypt message for device ${deviceBundle.deviceId}:`, encryptionError);
+        // Continue with other devices
+      }
     }
 
     if (encryptedMessages.length === 0) {
       throw new Error(`Failed to encrypt message for any device of ${recipientUsername}`);
     }
+
+    console.log(`Successfully encrypted message for ${encryptedMessages.length} out of ${keyBundleResult.keyBundles.length} devices`);
 
     // Send all encrypted messages to server
     const response = await fetchWithAuth(`${BACKEND_URL}/api/message/send`, {
@@ -454,54 +491,34 @@ export const decryptMessage = async (msg) => {
     const userId = getCurrentUser().uid;
     const senderId = msg.senderUid;
     const senderDeviceId = msg.senderDeviceId;
+    const recipientDeviceId = msg.recipientDeviceId;
+    const currentDeviceId = getDeviceId();
 
     console.log('Attempting to decrypt message from:', senderId, 'with deviceId:', senderDeviceId);
+    console.log('Message target device:', recipientDeviceId, 'Current device:', currentDeviceId);
+
+    // Only decrypt messages intended for this device
+    if (recipientDeviceId && recipientDeviceId !== currentDeviceId) {
+      console.log(`Message is for device ${recipientDeviceId}, but we are ${currentDeviceId}. Skipping decryption.`);
+      return null;
+    }
+
+    if (!recipientDeviceId) {
+      console.warn('Message has no target device ID - this may be a legacy message or multi-device broadcast');
+    }
 
     // Check if we have a session for this sender device
     const sessionExists = await hasSession(userId, senderId, senderDeviceId);
     
     if (!sessionExists) {
-      console.log(`No session exists with ${senderId}:${senderDeviceId}, need to fetch key bundle for new device`);
+      console.log(`No session exists with ${senderId}:${senderDeviceId}, this should be a PreKeyWhisperMessage that establishes the session`);
       
-      // Get sender's username to fetch their key bundle
-      const senderInfo = await getSenderInfo(senderId);
-      if (!senderInfo || !senderInfo.username) {
-        console.error(`Cannot find username for sender ${senderId}`);
-        throw new Error(`Unknown sender: ${senderId}`);
-      }
-
-      console.log(`Fetching key bundles for ${senderInfo.username} to handle new device ${senderDeviceId}`);
-      
-      // Fetch key bundles for all devices of this user
-      const keyBundleResult = await fetchAllUserKeyBundles(senderInfo.username);
-      if (!keyBundleResult.success) {
-        console.error(`Failed to fetch key bundles for ${senderInfo.username}:`, keyBundleResult.error);
-        throw new Error(`Cannot establish session with ${senderInfo.username}: ${keyBundleResult.error}`);
-      }
-
-      // Find the specific device bundle we need
-      const targetDeviceBundle = keyBundleResult.keyBundles.find(bundle => bundle.deviceId === senderDeviceId);
-      
-      if (!targetDeviceBundle) {
-        console.error(`Device ${senderDeviceId} not found in key bundles for ${senderInfo.username}`);
-        throw new Error(`Device ${senderDeviceId} not available for ${senderInfo.username}`);
-      }
-
-      console.log(`Found key bundle for device ${senderDeviceId}, establishing session`);
-      
-      // Establish session with the new device
-      const sessionEstablished = await establishSession(
-        userId,
-        senderId,
-        targetDeviceBundle
-      );
-      
-      if (!sessionEstablished) {
-        console.error(`Failed to establish session with ${senderInfo.username}:${senderDeviceId}`);
-        throw new Error(`Cannot establish secure session with ${senderInfo.username}:${senderDeviceId}`);
+      if (msg.encryptedMessage.type !== 3) {
+        console.error('Received regular message without existing session');
+        throw new Error(`No session exists for regular message from ${senderId}:${senderDeviceId}`);
       }
       
-      console.log(`Successfully established session with ${senderInfo.username}:${senderDeviceId}`);
+      console.log('This is a PreKeyWhisperMessage - it will establish the session during decryption');
     }
 
     // Get session cipher for decryption
@@ -512,8 +529,6 @@ export const decryptMessage = async (msg) => {
     }
 
     console.log('Session cipher created successfully, decrypting message...');
-    console.log(sessionCipher);
-
     console.log("encrypted body: ", msg.encryptedMessage.body);
 
     let processedBody;
@@ -550,8 +565,9 @@ export const decryptMessage = async (msg) => {
     let decryptedBuffer;
     if (cipherMessage.type === 3) {
       try {
-        console.log("Decrypting PreKeyWhisperMessage, establishing session...");
+        console.log("Decrypting PreKeyWhisperMessage - this will establish/update the session");
         // This is a PreKeyWhisperMessage (initial message in a session)
+        // The prekey used for encryption is embedded in the message itself
         decryptedBuffer = await sessionCipher.decryptPreKeyWhisperMessage(cipherMessage.body);
         console.log("Successfully decrypted PreKeyWhisperMessage and established session");
 
@@ -566,31 +582,22 @@ export const decryptMessage = async (msg) => {
         console.error("PreKeyWhisperMessage decryption failed:", prekeyError);
         console.error("Error details:", prekeyError.message);
 
-        // If PreKeyWhisperMessage fails and we don't have a session, try to establish one
-        if (prekeyError.message.includes("Bad MAC") || prekeyError.message.includes("No session")) {
-          console.log("PreKey decryption failed, attempting to establish fresh session...");
+        // For PreKeyWhisperMessage, if it fails, it usually means:
+        // 1. The prekey was already used (Bad MAC)
+        // 2. The message is corrupted
+        // 3. There's a version mismatch
+        
+        if (prekeyError.message.includes("Bad MAC")) {
+          // This is likely because the prekey in the message was already consumed
+          console.error("PreKey message failed with Bad MAC - prekey likely already used");
           
+          // Get sender info for better error reporting
           try {
-            // Get sender info and establish session
             const senderInfo = await getSenderInfo(senderId);
-            if (senderInfo && senderInfo.username) {
-              const keyBundleResult = await fetchAllUserKeyBundles(senderInfo.username);
-              if (keyBundleResult.success) {
-                const deviceBundle = keyBundleResult.keyBundles.find(bundle => bundle.deviceId === senderDeviceId);
-                if (deviceBundle) {
-                  await establishSession(userId, senderId, deviceBundle);
-                  console.log("Fresh session established, retrying decryption...");
-                  
-                  // Get new session cipher and retry
-                  sessionCipher = await getSessionCipher(userId, senderId, senderDeviceId);
-                  decryptedBuffer = await sessionCipher.decryptPreKeyWhisperMessage(cipherMessage.body);
-                  console.log("Retry successful!");
-                }
-              }
-            }
-          } catch (retryError) {
-            console.error("Retry attempt failed:", retryError);
-            throw prekeyError; // Throw original error
+            const senderName = senderInfo ? senderInfo.username : senderId;
+            throw new Error(`Cannot decrypt message from ${senderName} - encryption keys may be out of sync. Please ask them to send a new message.`);
+          } catch (infoError) {
+            throw new Error('Cannot decrypt message - encryption keys may be out of sync. Please ask sender to send a new message.');
           }
         } else {
           throw prekeyError;
@@ -599,15 +606,24 @@ export const decryptMessage = async (msg) => {
     } else {
       // Regular message handling
       try {
+        console.log("Decrypting regular WhisperMessage");
         decryptedBuffer = await sessionCipher.decryptWhisperMessage(cipherMessage.body);
+        console.log("Successfully decrypted WhisperMessage");
       } catch (whisperError) {
         console.error("WhisperMessage decryption failed:", whisperError);
         
         // If regular message fails, the session might be out of sync
         if (whisperError.message.includes("Bad MAC")) {
           console.log("Regular message decryption failed, session might be out of sync");
-          // For regular messages, we can't easily recover without the sender resending
-          throw new Error(`Message decryption failed - session out of sync with ${senderDeviceId}`);
+          
+          // For regular messages, we can try to get sender info for better error
+          try {
+            const senderInfo = await getSenderInfo(senderId);
+            const senderName = senderInfo ? senderInfo.username : senderId;
+            throw new Error(`Message from ${senderName} could not be decrypted - session out of sync. Please ask them to restart their app.`);
+          } catch (infoError) {
+            throw new Error(`Message decryption failed - session out of sync with ${senderDeviceId}`);
+          }
         }
         
         throw whisperError;
@@ -656,7 +672,8 @@ export const decryptMessage = async (msg) => {
   } catch (error) {
     console.error('Error decrypting message:', error);
     
-    // Store failed decryption for debugging
+    // Store failed decryption for debugging - fix the userId scope issue
+    const userId = getCurrentUser().uid; // Define userId in catch block
     try {
       await storeMessage({
         messageId: msg._id,
@@ -749,5 +766,5 @@ export const checkUserOptInStatus = async (currentUid, otherUid) => {
 };
 
 export const buildChatId = (userA, userB) => {
-  return [userA, userB].sort().join("-");
+  return [userA, userB].sort().join("-")
 }

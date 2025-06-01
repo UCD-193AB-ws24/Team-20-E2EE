@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { MdSearch } from "react-icons/md";
 import { getFriendList } from "../api/friends";
 import {
-  getAllMessagePreviews,
   createGroupChat,
   getAllGroupChat,
 } from "../api/messages";
@@ -12,8 +11,6 @@ import {
   registerInitialStatusListener,
   requestInitialStatus,
   removeListener,
-  registerMessageListener,
-  registerMessageSentListener,
 } from "../api/socket";
 import { getAvatar } from "../api/user";
 import { LoadingAnimation, useSocket, useAppContext } from "./index";
@@ -27,7 +24,6 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState({});
-  const [messagePreviews, setMessagePreviews] = useState({});
   const { socketReady } = useSocket();
   const { theme } = useAppContext();
   const [showGroupModal, setShowGroupModal] = useState(false);
@@ -35,26 +31,12 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
   const [selectedGroupInfo, setSelectedGroupInfo] = useState(null);
   const [hoveredFriend, setHoveredFriend] = useState(null);
 
-
   const loadGroupChats = async () => {
     try {
       const groups = await getAllGroupChat();
       setGroupChats(groups && Array.isArray(groups) ? groups : []);
     } catch (err) {
       console.error("Error loading group chats:", err);
-    }
-  };
-
-  const loadMessagePreviews = async () => {
-    try {
-      const data = await getAllMessagePreviews();
-      const previews = {};
-      (data.previews || []).forEach((preview) => {
-        previews[preview.username] = preview.lastMessage;
-      });
-      setMessagePreviews(previews);
-    } catch (err) {
-      console.error("Error loading message previews:", err);
     }
   };
 
@@ -78,7 +60,6 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
           })
         );
         setFriends(friendsWithAvatars);
-        await loadMessagePreviews();
       } catch (err) {
         console.error("Error loading friends:", err);
       } finally {
@@ -116,55 +97,9 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
     };
   }, [socketReady]);
 
-  useEffect(() => {
-    if (!socketReady) return;
-
-    const removeMsg = registerMessageListener(({ sender, text }) => {
-      setMessagePreviews((prev) => ({
-        ...prev,
-        [sender]: { sender, text, timestamp: new Date() },
-      }));
-    });
-
-    const removeSent = registerMessageSentListener(({ recipient, text }) => {
-      setMessagePreviews((prev) => ({
-        ...prev,
-        [recipient]: { sender: "Me", text, timestamp: new Date() },
-      }));
-    });
-
-    return () => {
-      removeMsg();
-      removeSent();
-    };
-  }, [socketReady, selectedUser]);
-
-  const formatTimestamp = (timestamp) => {
-    if (!timestamp) return "";
-    const date = new Date(timestamp);
-    const now = new Date();
-    const yesterday = new Date(now);
-    yesterday.setDate(now.getDate() - 1);
-
-    if (date.toDateString() === now.toDateString())
-      return date.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
-    if (now - date < 7 * 24 * 60 * 60 * 1000)
-      return date.toLocaleDateString([], { weekday: "short" });
-    return date.toLocaleDateString([], { month: "short", day: "numeric" });
-  };
-
   const filteredFriends = friends.filter((f) =>
     f.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
-  const sortedFriends = [...filteredFriends].sort((a, b) => {
-    const aTime = new Date(messagePreviews[a.username]?.timestamp || 0);
-    const bTime = new Date(messagePreviews[b.username]?.timestamp || 0);
-    return bTime - aTime;
-  });
 
   return (
     <>
@@ -200,82 +135,64 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
           </div>
         ) : (
           <ul className="flex-1 overflow-y-auto p-1">
-            {sortedFriends.length > 0 && (
+            {filteredFriends.length > 0 && (
               <>
                 <h2 className="text-xl font-semibold text-ucd-blue-900 mt-4">
                   Private Messages
                 </h2>
-                {sortedFriends.map((friend) => {
-                  const preview = messagePreviews[friend.username];
-                  return (
-                    <motion.li
-                      key={friend.username}
-                      className="flex items-center p-4 mb-2 rounded-lg h-[70px]"
-                      animate={{
-                        backgroundColor:
-                          selectedUser === friend.username
-                            ? theme.colors.background.primary
-                            : theme.colors.background.secondary,
-                      }}
-                      whileHover={{
-                        backgroundColor: theme.colors.background.primary,
-                      }}
-                      whileTap={{
-                        backgroundColor: theme.colors.background.secondary,
-                      }}
-                      onMouseEnter={() => setHoveredFriend(friend.username)}
-                      onMouseLeave={() => setHoveredFriend(null)}
-                      onClick={() => setSelectedUser(friend.username)}
-                    >
-                      <div className="relative">
-                        <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center bg-gray-200 cursor-pointer">
-                          {friend.avatar ? (
-                            <img
-                              src={friend.avatar}
-                              alt={friend.username}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            friend.username.charAt(0).toUpperCase()
-                          )}
-                        </div>
-                        {onlineUsers[friend.username] && (
-                          <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                {filteredFriends.map((friend) => (
+                  <motion.li
+                    key={friend.username}
+                    className="flex items-center p-4 mb-2 rounded-lg h-[70px]"
+                    animate={{
+                      backgroundColor:
+                        selectedUser === friend.username
+                          ? theme.colors.background.primary
+                          : theme.colors.background.secondary,
+                    }}
+                    whileHover={{
+                      backgroundColor: theme.colors.background.primary,
+                    }}
+                    whileTap={{
+                      backgroundColor: theme.colors.background.secondary,
+                    }}
+                    onMouseEnter={() => setHoveredFriend(friend.username)}
+                    onMouseLeave={() => setHoveredFriend(null)}
+                    onClick={() => setSelectedUser(friend.username)}
+                  >
+                    <div className="relative">
+                      <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center bg-gray-200 cursor-pointer">
+                        {friend.avatar ? (
+                          <img
+                            src={friend.avatar}
+                            alt={friend.username}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          friend.username.charAt(0).toUpperCase()
                         )}
                       </div>
-                      <div className="flex flex-col justify-center flex-1 ml-4 overflow-hidden cursor-pointer">
-                        <div className="flex justify-between items-center">
-                          <span className="font-semibold truncate">
-                            {friend.username}
-                          </span>
-                          {preview && (
-                            <span className="text-xs text-gray-500">
-                              {formatTimestamp(preview.timestamp)}
-                            </span>
-                          )}
-                        </div>
-                        {/* Show description on hover */}
-                        <div className="hidden md:block">
+                      {onlineUsers[friend.username] && (
+                        <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                      )}
+                    </div>
+                    <div className="flex flex-col justify-center flex-1 ml-4 overflow-hidden cursor-pointer">
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold truncate">
+                          {friend.username}
+                        </span>
+                      </div>
+                      {/* Show description on hover */}
+                      <div className="hidden md:block">
                         {hoveredFriend === friend.username && (
-                            <p className="text-sm text-gray-400">
-                              Status: {friend.description ? friend.description : "nothing on my mind..."}
-                            </p>
-                            
-                          )}
-                          </div>
-                          
-                        {preview && (
-                          <p className="text-sm text-gray-600 truncate mt-1">
-                            {preview.sender === "Me"
-                              ? "You: "
-                              : `${preview.sender}: `}
-                            {preview.text}
+                          <p className="text-sm text-gray-400">
+                            Status: {friend.description ? friend.description : "nothing on my mind..."}
                           </p>
                         )}
                       </div>
-                    </motion.li>
-                  );
-                })}
+                    </div>
+                  </motion.li>
+                ))}
               </>
             )}
 

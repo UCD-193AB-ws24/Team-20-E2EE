@@ -14,6 +14,7 @@ import { getChatHistory, getGroupHistory, getArchivedChatHistory, sendPrivateMes
 import { useAppContext } from './AppContext';
 import { BACKEND_URL } from '../config/config';
 import LoadingEffect from './LoadingEffect';
+import { getDeviceId } from '../util/deviceId.js';
 
 export default function Layout({ children }) {
   const [selectedUser, setSelectedUser] = useState(null);
@@ -158,34 +159,7 @@ export default function Layout({ children }) {
       return;
     }
 
-    registerMessageListener((message) => {
-      decryptMessage(message)
-        .then(text => {
-          const sender = message.sender;
-          const time = message.time;
-          const metadata = message.metadata || {};
-
-          if (!selectedUser) {
-            console.log('Message received but no user selected, ignoring');
-            return; // Skip processing if no user is selected
-          }
-
-          // Check if this is a direct message or group message
-          if (metadata && metadata.isGroupMessage && typeof selectedUser === 'object' && selectedUser.type === 'group') {
-            // For group messages, check if this message belongs to the currently selected group
-            if (metadata.groupId === selectedUser.id) {
-              setMessages(prev => [...prev, { sender, text, time }]);
-            }
-          }
-          // For direct messages, check if sender matches selected user
-          else if (typeof selectedUser === 'string' && sender === selectedUser) {
-            setMessages(prev => [...prev, { sender, text, time }]);
-          }
-        })
-        .catch(error => {
-          console.error("Failed to decrypt message:", error);
-        });
-    });
+    registerMessageListener(handleReceiveMessage);
 
     registerTypingListener((data) => {
       const { username, isTyping: typing } = data;
@@ -305,41 +279,57 @@ export default function Layout({ children }) {
         metadata
       } = data;
 
-      // Check if this message is for our current device
+      // Device filtering at socket level
       const currentDeviceId = getDeviceId();
       if (recipientDeviceId && recipientDeviceId !== currentDeviceId) {
         console.log(`Message for device ${recipientDeviceId}, but we are ${currentDeviceId}. Ignoring.`);
-        return; // This message is for a different device
+        return;
       }
 
       try {
-        // Use the enhanced decryptMessage function that handles unknown devices
+        // Pass complete message data including recipientDeviceId
         const decryptedText = await decryptMessage({
           _id,
           senderUid,
           senderDeviceId,
+          recipientDeviceId,
           encryptedMessage,
           time,
           timestamp,
           metadata
         });
 
-        const messageObject = {
-          messageId: _id,
-          recipientId: user.uid,
-          senderId: senderUid,
-          text: decryptedText,
-          isOutgoing: false,
-          timestamp: timestamp || new Date().toISOString(),
-          time: time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          sender: senderUsername,
-          senderDeviceId,
-          metadata: metadata || {},
-        };
+        // Check if message was filtered out (null return)
+        if (decryptedText === null) {
+          console.log('Message filtered out - not for this device');
+          return; // Exit early, don't update UI
+        }
 
-        // Update UI if this is the active conversation
-        if (selectedUser === senderUid) {
-          setMessages(prevMessages => [...prevMessages, messageObject]);
+        if (!selectedUser) {
+          console.log('Message received but no user selected, ignoring');
+          return; // Skip processing if no user is selected
+        }
+
+        // Handle group messages
+        if (metadata && metadata.isGroupMessage && typeof selectedUser === 'object' && selectedUser.type === 'group') {
+          // For group messages, check if this message belongs to the currently selected group
+          if (metadata.groupId === selectedUser.id) {
+            const groupMessage = {
+              sender: senderUsername,
+              text: decryptedText,
+              time: time
+            };
+            setMessages(prev => [...prev, groupMessage]);
+          }
+        }
+        // Handle direct messages
+        else if (typeof selectedUser === 'string' && senderUsername === selectedUser) {
+          const directMessage = {
+            sender: senderUsername,
+            text: decryptedText,
+            time: time
+          };
+          setMessages(prev => [...prev, directMessage]);
         }
 
         console.log(`Successfully decrypted and processed message from ${senderUsername}:${senderDeviceId}`);
@@ -347,28 +337,24 @@ export default function Layout({ children }) {
       } catch (decryptError) {
         console.error('Failed to decrypt message:', decryptError);
         
-        // Store as undecryptable message for debugging
-        const errorMessage = {
-          messageId: _id,
-          recipientId: user.uid,
-          senderId: senderUid,
-          text: `[Failed to decrypt message from ${senderUsername}:${senderDeviceId}]`,
-          isOutgoing: false,
-          timestamp: timestamp || new Date().toISOString(),
-          time: time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          sender: senderUsername,
-          senderDeviceId,
-          error: decryptError.message,
-          metadata: metadata || {},
-        };
+        // Only show error message if it's for the currently selected conversation
+        const shouldShowError = (
+          (metadata && metadata.isGroupMessage && typeof selectedUser === 'object' && selectedUser.type === 'group' && metadata.groupId === selectedUser.id) ||
+          (typeof selectedUser === 'string' && senderUsername === selectedUser)
+        );
 
-        if (selectedUser === senderUid) {
-          setMessages(prevMessages => [...prevMessages, errorMessage]);
+        if (shouldShowError) {
+          const errorMessage = {
+            sender: senderUsername,
+            text: `[Failed to decrypt message]`,
+            time: time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            error: true
+          };
+          setMessages(prev => [...prev, errorMessage]);
         }
       }
-
     } catch (error) {
-      console.error('Error processing received message:', error);
+      console.error('Error in handleReceiveMessage:', error);
     }
   };
 

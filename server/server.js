@@ -44,7 +44,7 @@ app.use(
   cors({
     origin: ["https://ema-chat.com", "http://localhost:5173"],
     methods: "GET, POST, PUT, DELETE",
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-device-id"],
     credentials: true
   })
 );
