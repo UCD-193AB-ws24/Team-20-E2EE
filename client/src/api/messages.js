@@ -118,10 +118,34 @@ export const sendPrivateMessage = async (recipientUsername, text, recipientInfo,
 
     const userId = getCurrentUser().uid;
 
+    // Check if session exists, if not, establish one
     const sessionExists = await hasSession(userId, recipientUID, recipientDeviceId);
     if (!sessionExists) {
-      console.error('No secure session established with this recipient');
-      throw new Error('No secure session established with this recipient');
+      console.log(`No session exists with ${recipientUsername}, fetching key bundle and establishing session`);
+      
+      try {
+        // Fetch the recipient's key bundle
+        const keyBundleResult = await fetchKeyBundle(recipientUsername);
+        if (!keyBundleResult.success) {
+          throw new Error(`Failed to fetch key bundle for ${recipientUsername}: ${keyBundleResult.error}`);
+        }
+        
+        // Establish session using the key bundle
+        const sessionEstablished = await establishSession(
+          userId,
+          recipientUID,
+          keyBundleResult.keyBundle
+        );
+        
+        if (!sessionEstablished) {
+          throw new Error(`Failed to establish session with ${recipientUsername}`);
+        }
+        
+        console.log(`Successfully established session with ${recipientUsername}`);
+      } catch (sessionError) {
+        console.error(`Error establishing session with ${recipientUsername}:`, sessionError);
+        throw new Error(`Cannot establish secure session with ${recipientUsername}: ${sessionError.message}`);
+      }
     }
 
     const sessionCipher = await getSessionCipher(userId, recipientUID, recipientDeviceId);
@@ -191,9 +215,11 @@ export const sendPrivateMessage = async (recipientUsername, text, recipientInfo,
       console.error("Unsupported body type:", typeof encryptedMessage.body);
       throw new Error(`Unexpected message body type: ${typeof encryptedMessage.body}`);
     }
+    
     const versionByte = new Uint8Array(processedBody)[0];
     console.log("Version byte:", versionByte);
     console.log("processed body: ", processedBody);
+    
     // Convert the processed body to Base64
     const base64Body = arrayBufferToBase64(processedBody);
     console.log("Base64 encoded body:", base64Body);
@@ -243,52 +269,82 @@ export const sendPrivateMessage = async (recipientUsername, text, recipientInfo,
     return result;
   } catch (error) {
     console.error("Error sending message", error);
-    return;
+    throw error; // Re-throw so calling code can handle it
   }
 };
 
 export const sendGroupMessage = async (groupId, text, members) => {
   try {
-    
-    // for member in members {
-    //   getusername(userid)
-    //   fetchkeybundle(username);
-    //   !checksession() {
-    //     createSession();
-    //   }
-    //   SendPrivateMessage
-    // } 
+    const userId = getCurrentUser().uid;
+    const results = [];
+
     for (const member of members) {
-      const userId = getCurrentUser().uid;
       if (member === userId) {
         console.log("Skipping self in group message");
         continue;
       }
 
-      console.log("Fetching info for :", member);
-      const { username } = await searchUsername(member);
+      try {
+        console.log("Processing group message for member:", member);
+        const { username } = await searchUsername(member);
+        console.log("Fetched username:", username);
 
-      console.log("Fetched username:", username);
+        const recipientKeyBundle = await fetchKeyBundle(username);
+        if (!recipientKeyBundle.success) {
+          console.error(`Failed to fetch key bundle for ${username}:`, recipientKeyBundle.error);
+          continue; // Skip this member but continue with others
+        }
 
-      const recipientKeyBundle = await fetchKeyBundle(username);
-      const recipientUid = recipientKeyBundle.keyBundle.uid;
-      const recipientDeviceId = recipientKeyBundle.keyBundle.deviceId;
+        const recipientUid = recipientKeyBundle.keyBundle.uid;
+        const recipientDeviceId = recipientKeyBundle.keyBundle.deviceId;
 
-      const sessionExists = await hasSession(userId, recipientUid, recipientDeviceId);
-      if (!sessionExists) {
-        console.log("No session, establishing new session");
-        await establishSession(userId, recipientUid, recipientKeyBundle.keyBundle);
+        const sessionExists = await hasSession(userId, recipientUid, recipientDeviceId);
+        if (!sessionExists) {
+          console.log(`No session exists with ${username}, establishing new session`);
+          const sessionEstablished = await establishSession(userId, recipientUid, recipientKeyBundle.keyBundle);
+          
+          if (!sessionEstablished) {
+            console.error(`Failed to establish session with ${username}, skipping this member`);
+            continue; // Skip this member but continue with others
+          }
+          
+          console.log(`Successfully established session with ${username}`);
+        }
+
+        const metadata = {
+          isGroupMessage: true,
+          groupId: groupId,
+        };
+
+        // Send the message to this member
+        const result = await sendPrivateMessage(
+          username, 
+          text, 
+          { uid: recipientUid, deviceId: recipientDeviceId }, 
+          metadata
+        );
+        
+        results.push({ member: username, success: !!result?.success, result });
+        console.log(`Successfully sent group message to ${username}`);
+        
+      } catch (memberError) {
+        console.error(`Error sending group message to member ${member}:`, memberError);
+        results.push({ member, success: false, error: memberError.message });
+        // Continue with other members even if one fails
       }
-
-      const metadata = {
-        isGroupMessage: true,
-        groupId: groupId,
-      }
-      sendPrivateMessage(username, text, {uid: recipientUid, deviceId: recipientDeviceId}, metadata);
     }
+
+    console.log("Group message sending completed. Results:", results);
+    return {
+      success: true,
+      results,
+      totalMembers: members.length - 1, // Excluding self
+      successfulSends: results.filter(r => r.success).length
+    };
+
   } catch (error) {
     console.error("Error sending group message", error);
-    return;
+    throw error;
   }
 };
 

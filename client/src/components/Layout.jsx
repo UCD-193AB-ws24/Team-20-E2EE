@@ -259,6 +259,36 @@ export default function Layout({ children }) {
     setShowProfileModal(false);
   };
 
+  const handleSelectUser = async (selectedUserId) => {
+    try {
+      setSelectedUser(selectedUserId);
+      
+      // Don't establish session preemptively - let the first message do it
+      console.log(`Selected user ${selectedUserId}, waiting for messages to establish session`);
+      
+      // Just fetch the key bundle for caching purposes
+      const username = usernames[selectedUserId];
+      if (username) {
+        try {
+          console.log(`Fetching key bundle for ${username} for caching`);
+          const keyBundleResult = await fetchKeyBundle(username);
+          if (keyBundleResult.success) {
+            console.log(`Successfully cached key bundle for ${username}`);
+          }
+        } catch (error) {
+          console.warn(`Failed to fetch key bundle for ${username}:`, error);
+        }
+      }
+      
+      // Load existing messages
+      const messages = await getMessagesFromConversation(user.uid, selectedUserId);
+      console.log("Loaded messages from local storage", messages);
+      setMessages(messages);
+    } catch (error) {
+      console.error("Error selecting user:", error);
+    }
+  };
+
   if (!appReady) {
     return (
       <div className="flex items-center justify-center h-screen"

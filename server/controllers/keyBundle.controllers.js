@@ -69,22 +69,52 @@ export const getKeyBundle = async (req, res) => {
     const usersCollection = db.collection("users");
     const keyBundlesCollection = db.collection("keyBundles");
 
-    // First, find the user by username
+    // Find the user by username
     const user = await usersCollection.findOne({ username });
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Then, get their key bundle
-    const keyBundle = await keyBundlesCollection.findOne({ uid: user.uid });
-    if (!keyBundle) {
-      return res.status(404).json({ error: "Key bundle not found for this user" });
+    // Get their key bundle with atomic prekey removal
+    const keyBundle = await keyBundlesCollection.findOneAndUpdate(
+      { 
+        uid: user.uid,
+        preKeys: { $exists: true, $not: { $size: 0 } } // Only if preKeys array exists and is not empty
+      },
+      {
+        $pop: { preKeys: -1 }, // Remove the first prekey atomically
+        $set: { updatedAt: new Date() }
+      },
+      {
+        returnDocument: 'before' // Return the document before modification
+      }
+    );
+
+    if (!keyBundle || !keyBundle.preKeys || keyBundle.preKeys.length === 0) {
+      return res.status(410).json({ 
+        error: "No prekeys available - user needs to replenish prekeys" 
+      });
     }
 
-    // Remove MongoDB specific fields
-    delete keyBundle._id;
+    // Create response bundle with the consumed prekey
+    const consumedPrekey = keyBundle.preKeys[0];
+    const responseBundle = {
+      uid: keyBundle.uid,
+      deviceId: keyBundle.deviceId,
+      registrationId: keyBundle.registrationId,
+      identityPubKey: keyBundle.identityPubKey,
+      signedPreKeyId: keyBundle.signedPreKeyId,
+      signedPreKeyPub: keyBundle.signedPreKeyPub,
+      signedPreKeySignature: keyBundle.signedPreKeySignature,
+      preKeys: [consumedPrekey] // Only return the consumed prekey
+    };
 
-    return res.status(200).json({ keyBundle });
+    console.log(`Consumed prekey ${consumedPrekey.keyId} for user ${username}. Remaining prekeys: ${keyBundle.preKeys.length - 1}`);
+
+    // Remove MongoDB specific fields
+    delete responseBundle._id;
+
+    return res.status(200).json({ keyBundle: responseBundle });
   } catch (error) {
     console.error("Error retrieving key bundle:", error);
     return res.status(500).json({ error: "Internal server error" });
