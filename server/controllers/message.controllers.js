@@ -261,6 +261,9 @@ export const sendPrivateMessage = async (req, res) => {
     const onlineUsers = getOnlineUsers();
     const messagesCollection = db.collection("messages");
 
+    // Check if recipient is online
+    const isRecipientOnline = onlineUsers.has(recipientId);
+
     // Store a separate message record for each recipient device
     const messagePromises = encryptedMessages.map(async (deviceMessage) => {
       const message = {
@@ -276,7 +279,7 @@ export const sendPrivateMessage = async (req, res) => {
         },
         isEncrypted: true,
         timestamp: new Date(),
-        read: false,
+        read: isRecipientOnline, // Set read to true if recipient is online
         metadata: metadata,
       };
 
@@ -288,7 +291,7 @@ export const sendPrivateMessage = async (req, res) => {
     // Send real-time notification if recipient is online
     const io = getSocketInstance();
     
-    if (onlineUsers.has(recipientId)) {
+    if (isRecipientOnline) {
       // Send all encrypted messages to the online user
       encryptedMessages.forEach((deviceMessage, index) => {
         const formattedMessage = {
@@ -307,16 +310,17 @@ export const sendPrivateMessage = async (req, res) => {
         io.to(onlineUsers.get(recipientId)).emit("receive_message", formattedMessage);
       });
 
-      console.log(`Sent ${encryptedMessages.length} device-specific messages to ${recipientUsername}`);
+      console.log(`Sent ${encryptedMessages.length} device-specific messages to ${recipientUsername} (online - marked as read)`);
     } else {
-      console.log(`User ${recipientUsername} is offline - messages stored for later delivery`);
+      console.log(`User ${recipientUsername} is offline - messages stored for later delivery (marked as unread)`);
     }
 
     return res.status(200).json({
       success: true,
       message: "Encrypted message sent to all devices successfully",
       deviceCount: encryptedMessages.length,
-      messageIds: results.map(r => r.insertedId)
+      messageIds: results.map(r => r.insertedId),
+      recipientOnline: isRecipientOnline
     });
   } catch (error) {
     console.error("Error sending message:", error);
