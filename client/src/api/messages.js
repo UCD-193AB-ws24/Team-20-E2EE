@@ -486,6 +486,61 @@ export const updateGroupName = async (groupId, groupName) => {
   }
 };
 
+export const transferGroupAdmin = async (groupId, newAdminUsername) => {
+  try {
+    const { uid: newAdminId } = await searchFriendUid(newAdminUsername);
+    if (!newAdminId) {
+      throw new Error("User not found");
+    }
+
+    const response = await fetchWithAuth(
+      `${BACKEND_URL}/api/message/transfer-group-admin`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ groupId, newAdminId }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to transfer admin privileges");
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error("Error transferring group admin:", error);
+    throw error;
+  }
+};
+
+export const deleteGroup = async (groupId) => {
+  try {
+    const response = await fetchWithAuth(
+      `${BACKEND_URL}/api/message/delete-group`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ groupId }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to delete group");
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error("Error deleting group:", error);
+    throw error;
+  }
+};
+
 export const decryptMessage = async (msg) => {
   try {
     const userId = getCurrentUser().uid;

@@ -1,5 +1,7 @@
 import express from 'express';
-import { getChatHistory, getMessagePreviews, sendPrivateMessage, getChatArchive, deleteMessages, storeMessage, getArchiveStatus, toggleArchiveStatus, getUserOptInStatus, createGroup, getGroupMessages, getAllGroupChat, addMemberToGroup, removeMemberFromGroup, updateGroupName } from '../controllers/message.controllers.js';
+import { getChatHistory, getMessagePreviews, sendPrivateMessage, getChatArchive, deleteMessages, storeMessage, getArchiveStatus, toggleArchiveStatus, getUserOptInStatus, createGroup, getGroupMessages, getAllGroupChat, addMemberToGroup, removeMemberFromGroup, updateGroupName,
+transferGroupAdmin, deleteGroup 
+ } from '../controllers/message.controllers.js';
 
 import { authenticateUser } from '../middlewares/authMiddleware.js';
 
@@ -25,5 +27,8 @@ router.get("/get-groups", authenticateUser, getAllGroupChat)
 router.post("/add-member-to-group", authenticateUser, addMemberToGroup);
 router.post("/remove-member-from-group", authenticateUser, removeMemberFromGroup);
 router.post("/update-group-name", authenticateUser, updateGroupName);
+
+router.post("/transfer-group-admin", authenticateUser, transferGroupAdmin);
+router.post("/delete-group", authenticateUser, deleteGroup);
 
 export default router;
