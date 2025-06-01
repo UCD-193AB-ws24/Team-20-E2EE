@@ -13,6 +13,7 @@ import { motion } from "motion/react";
 import { BACKEND_URL } from "../config/config";
 import fetchWithAuth from "../util/FetchWithAuth";
 import { fetchKeyBundle } from '../api/keyBundle';
+import { showToast } from "../components";
 
 export default function Requests() {
   const [friendRequests, setFriendRequests] = useState([]);
@@ -87,9 +88,9 @@ export default function Requests() {
         // Don't fail the friend acceptance, just log the warning
       }
       
-      alert(`Friend request from ${username} accepted`);
+      showToast(`Friend request from ${username} accepted`, "success");
     } catch (err) {
-      alert(err.message || "Failed to accept friend request");
+      showToast(err.message || "Failed to accept friend request", "error");
     }
   };
 
@@ -97,9 +98,9 @@ export default function Requests() {
     try {
       await deleteFriendRequest(username);
       setFriendRequests(friendRequests.filter((request) => request.username !== username));
-      alert(`Friend request from ${username} declined`);
+      showToast(`Friend request from ${username} declined`, "info");
     } catch (err) {
-      alert(err.message || "Failed to decline friend request");
+      showToast(err.message || "Failed to decline friend request", "error");
     }
   };
 
@@ -116,20 +117,6 @@ export default function Requests() {
 
     try {
       const result = await sendFriendRequest(username);
-
-      // Fetch the recipient's key bundle preemptively
-      try {
-        console.log(`Fetching key bundle for ${username} after sending friend request`);
-        const keyBundleResult = await fetchKeyBundle(username);
-        if (keyBundleResult.success) {
-          console.log(`Successfully fetched key bundle for ${username}`);
-        } else {
-          console.warn(`Failed to fetch key bundle for ${username}:`, keyBundleResult.error);
-        }
-      } catch (keyBundleError) {
-        console.error(`Error fetching key bundle for ${username}:`, keyBundleError);
-        // Don't fail the friend request, just log the warning
-      }
 
       setSendStatus({
         success: true,

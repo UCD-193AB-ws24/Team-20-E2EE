@@ -15,6 +15,7 @@ import {
   registerNewGroupCreatedListener,
   registerGroupMemberRemovedListener,
 } from '../api/socket';
+import { showToast } from './ToastManager';
 
 const AppContext = createContext();
 
@@ -241,6 +242,9 @@ export const AppProvider = ({ children }) => {
           if (exists) return prev;
           return [...prev, data.group];
         });
+        
+        // Show global toast notification
+        showToast(`You were added to "${data.group.name}" by ${data.addedBy?.username || 'someone'}!`, 'success');
       });
 
       registerNewGroupCreatedListener((data) => {
@@ -251,6 +255,8 @@ export const AppProvider = ({ children }) => {
           if (exists) return prev;
           return [...prev, data.group];
         });
+
+        showToast(`A new group "${data.group.name}" was created by ${data.createdBy?.username || 'someone'}`, 'info');
       });
 
       registerGroupMemberRemovedListener((data) => {
@@ -271,8 +277,8 @@ export const AppProvider = ({ children }) => {
             }
           }));
           
-          // Could add toast notification here
-          console.log(`🚫 You have been removed from "${data.groupName}"`);
+          // Show global toast notification
+          showToast(`You were removed from group "${data.groupName}" by ${data.removedBy?.username || 'Admin'}`, 'error', 6000);
         } else {
           // Another member was removed - update group members
           setGroupChats(prev => 
@@ -282,6 +288,8 @@ export const AppProvider = ({ children }) => {
                 : group
             )
           );
+
+          showToast(`${data.removedMember.username} was removed from "${data.groupName}" by ${data.removedBy?.username || 'Admin'}`, 'warning', 5000);
         }
       });
     };

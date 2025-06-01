@@ -15,6 +15,7 @@ import { useAppContext } from './AppContext';
 import { BACKEND_URL } from '../config/config';
 import LoadingEffect from './LoadingEffect';
 import { getDeviceId } from '../util/deviceId.js';
+import ToastManager from './ToastManager';
 
 export default function Layout({ children }) {
   const [selectedUser, setSelectedUser] = useState(null);
@@ -520,6 +521,8 @@ export default function Layout({ children }) {
           }}
         />
       )}
+
+      <ToastManager />
     </div>
   );
 }

@@ -105,13 +105,9 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
             : group
         )
       );
-      
-      // Show notification
-      console.log(`${newMember.username} was added to ${data.groupName}`);
     });
 
     const removeAddedToGroupListener = registerAddedToGroupListener((data) => {
-      console.log('Added to new group:', data);
       const { group } = data;
       
       // Add the new group to groupChats
@@ -123,9 +119,6 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
         }
         return [...prevGroups, group];
       });
-      
-      // Show notification
-      console.log(`You were added to group: ${group.name}`);
     });
 
     const removeNewGroupCreatedListener = registerNewGroupCreatedListener((data) => {
@@ -138,9 +131,6 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
         if (groupExists) return prevGroups;
         return [...prevGroups, group];
       });
-      
-      // Show notification
-      console.log(`${createdBy.username} created a new group: ${group.name}`);
     });
 
     const removeGroupMemberRemovedListener = registerGroupMemberRemovedListener((data) => {
@@ -157,8 +147,6 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
         if (typeof selectedUser === 'object' && selectedUser.id === groupId) {
           setSelectedUser(null);
         }
-        
-        console.log(`You were removed from "${data.groupName}" by ${removedBy?.username || 'Admin'}`);
       } else {
         // Another member was removed - update group members
         setGroupChats(prevGroups => 
@@ -168,8 +156,6 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
               : group
           )
         );
-        
-        console.log(`${removedMember.username} was removed from "${data.groupName}"`);
       }
     });
 
