@@ -223,7 +223,7 @@ export default function Profile({ onClose, onManagePasskeys }) {
               />
             </div>
           ) : (
-            <label htmlFor="file-input" className="cursor-pointer mb-4">
+            <label htmlFor="file-input" className="cursor-pointer mb-4 relative group">
               <div className="w-32 h-32 rounded-full bg-gray-300 overflow-hidden flex items-center justify-center">
                 <img
                   src={avatar || "/images/default_avatar.png"}
@@ -234,6 +234,9 @@ export default function Profile({ onClose, onManagePasskeys }) {
                   alt="Avatar"
                   className="w-full h-full object-cover"
                 />
+                <div className="absolute inset-0 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200" style={{ backgroundColor: 'rgba(0, 0, 0, 0.2)' }}>
+                  <span className="text-white font-medium">Edit Photo</span>
+                </div>
               </div>
             </label>
           )}
