@@ -142,6 +142,27 @@ export const isSocketConnected = () => {
   return socket?.connected || false;
 };
 
+// Add new event listeners for group updates
+export const registerGroupMemberAddedListener = (callback) => {
+  socket.on('group_member_added', callback);
+  return () => socket.off('group_member_added', callback);
+};
+
+export const registerAddedToGroupListener = (callback) => {
+  socket.on('added_to_group', callback);
+  return () => socket.off('added_to_group', callback);
+};
+
+export const registerNewGroupCreatedListener = (callback) => {
+  socket.on('new_group_created', callback);
+  return () => socket.off('new_group_created', callback);
+};
+
+export const registerGroupMemberRemovedListener = (callback) => {
+  socket.on('group_member_removed', callback);
+  return () => socket.off('group_member_removed', callback);
+};
+
 export default {
   initializeSocket,
   disconnectSocket,
@@ -156,5 +177,9 @@ export default {
   requestInitialStatus,
   registerUserOfflineListener,
   removeListener,
-  isSocketConnected
+  isSocketConnected,
+  registerGroupMemberAddedListener,
+  registerAddedToGroupListener,
+  registerNewGroupCreatedListener,
+  registerGroupMemberRemovedListener
 };

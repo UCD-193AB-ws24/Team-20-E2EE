@@ -9,6 +9,12 @@ import { uploadKeyBundle } from '../api/keyBundle';
 import { checkKeyBundle, checkDeviceKeyConsistency } from '../api/keyBundle';
 import { getChatHistory, decryptMessage } from '../api/messages';
 import { getDeviceId } from '../util/deviceId.js';
+import {
+  registerGroupMemberAddedListener,
+  registerAddedToGroupListener,
+  registerNewGroupCreatedListener,
+  registerGroupMemberRemovedListener,
+} from '../api/socket';
 
 const AppContext = createContext();
 
@@ -22,6 +28,7 @@ export const AppProvider = ({ children }) => {
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [unreadBySender, setUnreadBySender] = useState({});
   const [decryptedMessages, setDecryptedMessages] = useState({});
+  const [groupChats, setGroupChats] = useState([]);
   
   const [theme, setTheme] = useState(() => {
     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
@@ -220,6 +227,33 @@ export const AppProvider = ({ children }) => {
     }
   }, [encryptionReady, messagesFetched, avatarsLoaded]);
 
+  // Add effect for global group event handling
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+
+    // Global handlers for group events that might affect the user across the app
+    const handleGroupEvents = () => {
+      registerAddedToGroupListener((data) => {
+        console.log('Global: Added to group', data.group.name);
+        // Could trigger a toast notification here
+      });
+
+      registerNewGroupCreatedListener((data) => {
+        console.log('Global: New group created', data.group.name);
+        // Could trigger a toast notification here
+      });
+
+      registerGroupMemberRemovedListener((data) => {
+        if (data.removedMember.uid === currentUser.uid) {
+          console.log('Global: Removed from group', data.groupName);
+          // Could trigger a toast notification here
+        }
+      });
+    };
+
+    handleGroupEvents();
+  }, [currentUser]);
+
   const login = async (email, password) => {
     const result = await loginUser(email, password);
     if (result.success) {
@@ -267,6 +301,8 @@ export const AppProvider = ({ children }) => {
         unreadBySender,
         markSenderMessagesAsRead,
         decryptedMessages,
+        groupChats,
+        setGroupChats,
         initStatus: {
           encryptionReady,
           messagesFetched,

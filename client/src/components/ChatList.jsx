@@ -9,6 +9,10 @@ import {
   registerUserOnlineListener,
   registerUserOfflineListener,
   registerInitialStatusListener,
+  registerGroupMemberAddedListener,
+  registerAddedToGroupListener,
+  registerNewGroupCreatedListener,
+  registerGroupMemberRemovedListener,
   requestInitialStatus,
   removeListener,
 } from "../api/socket";
@@ -88,14 +92,94 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
       setOnlineUsers(newState);
     });
 
+    const removeGroupMemberAddedListener = registerGroupMemberAddedListener((data) => {
+      console.log('Group member added:', data);
+      const { groupId, newMember, updatedGroup } = data;
+      
+      // Update the specific group in the groupChats state
+      setGroupChats(prevGroups => 
+        prevGroups.map(group => 
+          group._id === groupId 
+            ? { ...group, members: updatedGroup.members }
+            : group
+        )
+      );
+      
+      // Show notification
+      console.log(`${newMember.username} was added to ${data.groupName}`);
+    });
+
+    const removeAddedToGroupListener = registerAddedToGroupListener((data) => {
+      console.log('Added to new group:', data);
+      const { group } = data;
+      
+      // Add the new group to groupChats
+      setGroupChats(prevGroups => {
+        // Check if group already exists to avoid duplicates
+        const groupExists = prevGroups.some(g => g._id === group._id);
+        if (groupExists) {
+          return prevGroups.map(g => g._id === group._id ? group : g);
+        }
+        return [...prevGroups, group];
+      });
+      
+      // Show notification
+      console.log(`You were added to group: ${group.name}`);
+    });
+
+    const removeNewGroupCreatedListener = registerNewGroupCreatedListener((data) => {
+      console.log('New group created:', data);
+      const { group, createdBy } = data;
+      
+      // Add the new group to groupChats
+      setGroupChats(prevGroups => {
+        const groupExists = prevGroups.some(g => g._id === group._id);
+        if (groupExists) return prevGroups;
+        return [...prevGroups, group];
+      });
+      
+      // Show notification
+      console.log(`${createdBy.username} created a new group: ${group.name}`);
+    });
+
+    const removeGroupMemberRemovedListener = registerGroupMemberRemovedListener((data) => {
+      console.log('Group member removed:', data);
+      const { groupId, removedMember, updatedGroup } = data;
+      
+      if (removedMember.uid === getCurrentUser().uid) {
+        // Current user was removed from group - remove group from list
+        setGroupChats(prevGroups => 
+          prevGroups.filter(group => group._id !== groupId)
+        );
+        
+        // If this group was selected, deselect it
+        if (typeof selectedUser === 'object' && selectedUser.id === groupId) {
+          setSelectedUser(null);
+        }
+      } else {
+        // Another member was removed - update group members
+        setGroupChats(prevGroups => 
+          prevGroups.map(group => 
+            group._id === groupId 
+              ? { ...group, members: updatedGroup.members }
+              : group
+          )
+        );
+      }
+    });
+
     requestInitialStatus();
 
     return () => {
       removeListener("user_online");
       removeListener("user_offline");
       removeListener("initial_status");
+      removeGroupMemberAddedListener();
+      removeAddedToGroupListener();
+      removeNewGroupCreatedListener();
+      removeGroupMemberRemovedListener();
     };
-  }, [socketReady]);
+  }, [socketReady, selectedUser]);
 
   const filteredFriends = friends.filter((f) =>
     f.username.toLowerCase().includes(searchTerm.toLowerCase())

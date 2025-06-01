@@ -645,6 +645,7 @@ export const createGroup = async (req, res) => {
 
     const db = await connectDB();
     const groupsCollection = db.collection("groups");
+    const usersCollection = db.collection("users");
 
     // Create a new group
     const newGroup = {
@@ -654,8 +655,34 @@ export const createGroup = async (req, res) => {
     };
 
     const result = await groupsCollection.insertOne(newGroup);
+    const createdGroup = await groupsCollection.findOne({ _id: result.insertedId });
 
-    res.status(201).json({ success: true, groupId: result.insertedId });
+    // Get creator details
+    const creator = await usersCollection.findOne({ uid: userId });
+
+    // Send real-time notifications to all group members
+    const io = getSocketInstance();
+    const onlineUsers = getOnlineUsers();
+
+    if (io) {
+      for (const memberId of members) {
+        if (onlineUsers.has(memberId)) {
+          io.to(onlineUsers.get(memberId)).emit("new_group_created", {
+            group: createdGroup,
+            createdBy: {
+              uid: creator.uid,
+              username: creator.username
+            }
+          });
+        }
+      }
+    }
+
+    res.status(201).json({ 
+      success: true, 
+      groupId: result.insertedId,
+      group: createdGroup 
+    });
   } catch (err) {
     console.error("Error creating group:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -704,8 +731,21 @@ export const addMemberToGroup = async (req, res) => {
 
     const db = await connectDB();
     const groupsCollection = db.collection("groups");
+    const usersCollection = db.collection("users");
 
     console.log("Adding member to group:", groupId, memberId);
+
+    // Get the group details first
+    const group = await groupsCollection.findOne({ _id: new ObjectId(groupId) });
+    if (!group) {
+      return res.status(404).json({ error: "Group not found" });
+    }
+
+    // Get the new member's details
+    const newMember = await usersCollection.findOne({ uid: memberId });
+    if (!newMember) {
+      return res.status(404).json({ error: "User not found" });
+    }
 
     // Add the new member to the group
     const result = await groupsCollection.updateOne(
@@ -717,7 +757,55 @@ export const addMemberToGroup = async (req, res) => {
       return res.status(404).json({ error: "Group not found or member already in group" });
     }
 
-    res.status(200).json({ success: true, message: "Member added to group" });
+    // Get updated group with new member
+    const updatedGroup = await groupsCollection.findOne({ _id: new ObjectId(groupId) });
+
+    // Send real-time notifications
+    const io = getSocketInstance();
+    const onlineUsers = getOnlineUsers();
+
+    if (io) {
+      // Notify all existing group members about the new member
+      for (const existingMemberId of group.members) {
+        if (onlineUsers.has(existingMemberId) && existingMemberId !== memberId) {
+          io.to(onlineUsers.get(existingMemberId)).emit("group_member_added", {
+            groupId: groupId,
+            groupName: group.name,
+            newMember: {
+              uid: newMember.uid,
+              username: newMember.username
+            },
+            updatedGroup: {
+              _id: updatedGroup._id,
+              name: updatedGroup.name,
+              members: updatedGroup.members,
+              createdAt: updatedGroup.createdAt
+            }
+          });
+        }
+      }
+
+      // Notify the new member about being added to the group
+      if (onlineUsers.has(memberId)) {
+        io.to(onlineUsers.get(memberId)).emit("added_to_group", {
+          groupId: groupId,
+          groupName: group.name,
+          group: {
+            _id: updatedGroup._id,
+            name: updatedGroup.name,
+            members: updatedGroup.members,
+            createdAt: updatedGroup.createdAt
+          },
+          addedBy: userId
+        });
+      }
+    }
+
+    res.status(200).json({ 
+      success: true, 
+      message: "Member added to group",
+      group: updatedGroup 
+    });
   } catch (err) {
     console.error("Error adding member to group:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -740,8 +828,17 @@ export const removeMemberFromGroup = async (req, res) => {
 
     const db = await connectDB();
     const groupsCollection = db.collection("groups");
+    const usersCollection = db.collection("users");
 
     console.log("Removing member from group:", groupId, memberId);
+
+    // Get group and member details before removal
+    const group = await groupsCollection.findOne({ _id: new ObjectId(groupId) });
+    const removedMember = await usersCollection.findOne({ uid: memberId });
+
+    if (!group || !removedMember) {
+      return res.status(404).json({ error: "Group or member not found" });
+    }
 
     // Remove the member from the group
     const result = await groupsCollection.updateOne(
@@ -753,12 +850,49 @@ export const removeMemberFromGroup = async (req, res) => {
       return res.status(404).json({ error: "Group not found or member not in group" });
     }
 
-    // delete the group if it has no members left
-    const group = await groupsCollection.findOne({ _id: new ObjectId(groupId) });
-    if (group && group.members.length === 0) {
+    // Get updated group
+    const updatedGroup = await groupsCollection.findOne({ _id: new ObjectId(groupId) });
+
+    // Delete the group if it has no members left
+    if (updatedGroup && updatedGroup.members.length === 0) {
       await groupsCollection.deleteOne({ _id: new ObjectId(groupId) });
     }
 
+    // Send real-time notifications
+    const io = getSocketInstance();
+    const onlineUsers = getOnlineUsers();
+
+    if (io) {
+      // Notify remaining group members
+      if (updatedGroup && updatedGroup.members.length > 0) {
+        for (const remainingMemberId of updatedGroup.members) {
+          if (onlineUsers.has(remainingMemberId)) {
+            io.to(onlineUsers.get(remainingMemberId)).emit("group_member_removed", {
+              groupId: groupId,
+              groupName: group.name,
+              removedMember: {
+                uid: removedMember.uid,
+                username: removedMember.username
+              },
+              updatedGroup: updatedGroup
+            });
+          }
+        }
+      }
+
+      // Notify the removed member
+      if (onlineUsers.has(memberId)) {
+        io.to(onlineUsers.get(memberId)).emit("group_member_removed", {
+          groupId: groupId,
+          groupName: group.name,
+          removedMember: {
+            uid: removedMember.uid,
+            username: removedMember.username
+          },
+          updatedGroup: null // Group is gone for this user
+        });
+      }
+    }
 
     res.status(200).json({ success: true, message: "Member removed from group" });
   } catch (err) {
