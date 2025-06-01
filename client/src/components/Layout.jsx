@@ -34,6 +34,9 @@ export default function Layout({ children }) {
     uid: null
   });
 
+  const [isRemovedFromGroup, setIsRemovedFromGroup] = useState(false);
+  const [removalNotification, setRemovalNotification] = useState(null);
+
   const prevSelectedUser = useRef(null);
   const hasMounted = useRef(false);
 
@@ -358,6 +361,46 @@ export default function Layout({ children }) {
     }
   };
 
+  useEffect(() => {
+    const handleUserRemovedFromGroup = (event) => {
+      const { groupId, groupName, removedBy } = event.detail;
+      
+      console.log('User removed from group event received:', { groupId, groupName });
+      
+      // Check if the currently selected conversation is the group we were removed from
+      if (typeof selectedUser === 'object' && selectedUser.type === 'group' && selectedUser.id === groupId) {
+        console.log('Currently viewing the group we were removed from');
+        
+        // Set state to show removal notification and disable messaging
+        setIsRemovedFromGroup(true);
+        setRemovalNotification({
+          groupName,
+          removedBy,
+          timestamp: new Date()
+        });
+        
+        // Clear the selected user after a delay to let user see the notification
+        setTimeout(() => {
+          setSelectedUser(null);
+          setIsRemovedFromGroup(false);
+          setRemovalNotification(null);
+        }, 5000);
+      }
+    };
+
+    // Listen for group removal events
+    window.addEventListener('userRemovedFromGroup', handleUserRemovedFromGroup);
+
+    return () => {
+      window.removeEventListener('userRemovedFromGroup', handleUserRemovedFromGroup);
+    };
+  }, [selectedUser]);
+
+  useEffect(() => {
+    setIsRemovedFromGroup(false);
+    setRemovalNotification(null);
+  }, [selectedUser]);
+
   if (!appReady) {
     return (
       <div className="flex items-center justify-center h-screen"
@@ -414,6 +457,21 @@ export default function Layout({ children }) {
             }
           </h2>
         </div>
+        {/* Show removal notification if user was removed from current group */}
+        {isRemovedFromGroup && removalNotification && (
+          <div className="mx-4 mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+            <div className="flex items-center">
+              <span className="text-2xl mr-2">🚫</span>
+              <div>
+                <p className="font-semibold">You have been removed from "{removalNotification.groupName}"</p>
+                <p className="text-sm">You can no longer send messages to this group.</p>
+                <p className="text-xs text-gray-600 mt-1">
+                  {removalNotification.timestamp.toLocaleTimeString()}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         {!selectedUser ? (
           <EmptyChat />
         ) : view === 'archive' ? (
@@ -432,7 +490,12 @@ export default function Layout({ children }) {
             <MessageInput
               sendMessage={sendMessage}
               onTyping={handleTyping}
-              disabled={!selectedUser}
+              disabled={!selectedUser || isRemovedFromGroup}
+              placeholder={
+                isRemovedFromGroup 
+                  ? `You cannot send messages to this group` 
+                  : undefined
+              }
             />
           </>
         )}

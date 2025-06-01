@@ -235,18 +235,53 @@ export const AppProvider = ({ children }) => {
     const handleGroupEvents = () => {
       registerAddedToGroupListener((data) => {
         console.log('Global: Added to group', data.group.name);
-        // Could trigger a toast notification here
+        // Update groupChats state
+        setGroupChats(prev => {
+          const exists = prev.some(g => g._id === data.group._id);
+          if (exists) return prev;
+          return [...prev, data.group];
+        });
       });
 
       registerNewGroupCreatedListener((data) => {
         console.log('Global: New group created', data.group.name);
-        // Could trigger a toast notification here
+        // Update groupChats state
+        setGroupChats(prev => {
+          const exists = prev.some(g => g._id === data.group._id);
+          if (exists) return prev;
+          return [...prev, data.group];
+        });
       });
 
       registerGroupMemberRemovedListener((data) => {
+        console.log('Global: Group member removed event', data);
+        
         if (data.removedMember.uid === currentUser.uid) {
-          console.log('Global: Removed from group', data.groupName);
-          // Could trigger a toast notification here
+          console.log('You were removed from group:', data.groupName);
+          
+          // Remove group from groupChats state
+          setGroupChats(prev => prev.filter(group => group._id !== data.groupId));
+          
+          // Trigger custom event for UI components to handle
+          window.dispatchEvent(new CustomEvent('userRemovedFromGroup', {
+            detail: {
+              groupId: data.groupId,
+              groupName: data.groupName,
+              removedBy: data.removedBy || 'Admin'
+            }
+          }));
+          
+          // Could add toast notification here
+          console.log(`🚫 You have been removed from "${data.groupName}"`);
+        } else {
+          // Another member was removed - update group members
+          setGroupChats(prev => 
+            prev.map(group => 
+              group._id === data.groupId && data.updatedGroup
+                ? { ...group, members: data.updatedGroup.members }
+                : group
+            )
+          );
         }
       });
     };

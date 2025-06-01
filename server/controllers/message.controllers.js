@@ -832,12 +832,13 @@ export const removeMemberFromGroup = async (req, res) => {
 
     console.log("Removing member from group:", groupId, memberId);
 
-    // Get group and member details before removal
+    // Get group, member, and remover details before removal
     const group = await groupsCollection.findOne({ _id: new ObjectId(groupId) });
     const removedMember = await usersCollection.findOne({ uid: memberId });
+    const remover = await usersCollection.findOne({ uid: userId });
 
-    if (!group || !removedMember) {
-      return res.status(404).json({ error: "Group or member not found" });
+    if (!group || !removedMember || !remover) {
+      return res.status(404).json({ error: "Group, member, or remover not found" });
     }
 
     // Remove the member from the group
@@ -874,6 +875,10 @@ export const removeMemberFromGroup = async (req, res) => {
                 uid: removedMember.uid,
                 username: removedMember.username
               },
+              removedBy: {
+                uid: remover.uid,
+                username: remover.username
+              },
               updatedGroup: updatedGroup
             });
           }
@@ -888,6 +893,10 @@ export const removeMemberFromGroup = async (req, res) => {
           removedMember: {
             uid: removedMember.uid,
             username: removedMember.username
+          },
+          removedBy: {
+            uid: remover.uid,
+            username: remover.username
           },
           updatedGroup: null // Group is gone for this user
         });

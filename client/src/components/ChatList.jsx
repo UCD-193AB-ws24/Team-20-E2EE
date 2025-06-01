@@ -22,6 +22,7 @@ import { motion } from "motion/react";
 import GroupCreationPopUp from "./GroupChat/GroupCreationPopUp";
 import GroupInfoPopUp from "./GroupChat/GroupInfoPopUp";
 import SettingsIcon from "@mui/icons-material/Settings";
+import getCurrentUser from '../util/getCurrentUser.js';
 
 export default function ChatList({ selectedUser, setSelectedUser }) {
   const [friends, setFriends] = useState([]);
@@ -144,7 +145,7 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
 
     const removeGroupMemberRemovedListener = registerGroupMemberRemovedListener((data) => {
       console.log('Group member removed:', data);
-      const { groupId, removedMember, updatedGroup } = data;
+      const { groupId, removedMember, updatedGroup, removedBy } = data;
       
       if (removedMember.uid === getCurrentUser().uid) {
         // Current user was removed from group - remove group from list
@@ -156,6 +157,8 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
         if (typeof selectedUser === 'object' && selectedUser.id === groupId) {
           setSelectedUser(null);
         }
+        
+        console.log(`You were removed from "${data.groupName}" by ${removedBy?.username || 'Admin'}`);
       } else {
         // Another member was removed - update group members
         setGroupChats(prevGroups => 
@@ -165,6 +168,8 @@ export default function ChatList({ selectedUser, setSelectedUser }) {
               : group
           )
         );
+        
+        console.log(`${removedMember.username} was removed from "${data.groupName}"`);
       }
     });
 
