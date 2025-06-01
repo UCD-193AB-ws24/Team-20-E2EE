@@ -13,6 +13,7 @@ export default function Profile({ onClose, onManagePasskeys }) {
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
   const [userInfo, setUserInfo] = useState(null);
   const [description, setDescription] = useState("");
+  const [originalDescription, setOriginalDescription] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [avatar, setAvatar] = useState(null);
   const [tempAvatar, setTempAvatar] = useState(null);
@@ -43,6 +44,7 @@ export default function Profile({ onClose, onManagePasskeys }) {
         }
         if (data.user.description) {
           setDescription(data.user.description);
+          setOriginalDescription(data.user.description);
         }
       }
     };
@@ -133,8 +135,19 @@ export default function Profile({ onClose, onManagePasskeys }) {
     if (response.ok) {
       const data = await response.json();
       setUserInfo(data.user);
+      setOriginalDescription(description);
       setIsEditing(false);
     }
+  };
+
+  const handleStartEditing = () => {
+    setOriginalDescription(description);
+    setIsEditing(true);
+  };
+
+  const handleCancelEditing = () => {
+    setDescription(originalDescription);
+    setIsEditing(false);
   };
 
   const onCropComplete = useCallback((_, croppedPixels) => {
@@ -263,54 +276,48 @@ export default function Profile({ onClose, onManagePasskeys }) {
             {userInfo ? userInfo.username : "Profile"}
           </h1>
 
-          <div className="mt-4">
+          <div className="mt-4 w-full">
             {isEditing ? (
-              <textarea
-                className="w-full p-2 border border-gray-300 rounded"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows="4"
-              />
+              <div className="flex flex-col gap-2">
+                <textarea
+                  className="w-full p-2 border border-gray-300 rounded text-center"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows="4"
+                  autoFocus
+                />
+                <div className="flex gap-2 justify-center">
+                  <button
+                    onClick={handleCancelEditing}
+                    className="text-gray-600 font-medium py-2 px-4 rounded-lg text-sm shadow-md cursor-pointer hover:translate-y-[-2px] transition-transform"
+                    style={{
+                      backgroundColor: theme.colors.background.accent,
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveDescription}
+                    className="text-white font-medium py-2 px-4 rounded-lg text-sm shadow-md cursor-pointer hover:translate-y-[-2px] transition-transform"
+                    style={{
+                      backgroundColor: theme.colors.button.primary,
+                      color: theme.colors.text.primary
+                    }}
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
             ) : (
-              <p className="text-lg text-gray-600 mt-4">{description || "Your profile description goes here..."}</p>
-            )}
-          </div>
-
-          <div className="mt-4">
-            {isEditing ? (
-              <button
-                onClick={handleSaveDescription}
-                className="text-white font-bold py-2 px-6 rounded-lg text-lg shadow-md cursor-pointer hover:translate-y-[-2px] transition-transform"
-                style={{
-                  backgroundColor: theme.colors.button.primary,
-                  color: theme.colors.text.primary
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = theme.colors.button.primaryHover;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = theme.colors.button.primary;
-                }}
+              <div 
+                onClick={handleStartEditing}
+                className="cursor-pointer group text-center"
               >
-                Save Description
-              </button>
-            ) : (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="text-medium font-medium py-2 px-6 rounded-lg text-lg shadow-md cursor-pointer hover:translate-y-[-2px] transition-transform"
-                style={{
-                  backgroundColor: theme.colors.button.primary,
-                  color: theme.colors.text.primary
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = theme.colors.button.primaryHover;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = theme.colors.button.primary;
-                }}
-              >
-                Edit Description
-              </button>
+                <p className="text-lg text-gray-600 mt-4 group-hover:text-gray-800 transition-colors">
+                  {description || "Click to add a description..."}
+                </p>
+                <p className="text-sm text-gray-400 mt-1">Click to edit</p>
+              </div>
             )}
           </div>
 

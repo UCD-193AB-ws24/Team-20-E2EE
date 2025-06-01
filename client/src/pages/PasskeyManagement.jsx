@@ -266,22 +266,10 @@ export default function PasskeyManagement({ onClose, onBack }) {
           </h1>
 
           <div className="mt-4">
-            <h1 className="text-xl font-semibold mb-2">Manage your Passkeys</h1>
             <PasskeyList />
           </div>
 
-          <div className="mt-4">
-            {isEditing ? (
-              <textarea
-                className="w-full p-2 border border-gray-300 rounded"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows="4"
-              />
-            ) : (
-              <p className="text-lg text-gray-600 mt-4">{description || "Your profile description goes here..."}</p>
-            )}
-          </div>
+          
             {/* Back Button (to Profile) */}
           <div className="mt-4">
             <button

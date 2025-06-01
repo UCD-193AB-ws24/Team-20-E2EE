@@ -130,7 +130,7 @@ export const resetPassword = async (req, res) => {
       html: `
         <p>You requested a password reset.</p>
         <p><a href="${customLink}">Click here to reset your password</a></p>
-        <p>This link will expire soon. If you didn’t request this, please ignore it.</p>
+        <p>This link will expire soon. If you didn't request this, please ignore it.</p>
       `,
     });
 

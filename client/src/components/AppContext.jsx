@@ -22,12 +22,7 @@ export const AppProvider = ({ children }) => {
   const [unreadBySender, setUnreadBySender] = useState({});
   const [decryptedMessages, setDecryptedMessages] = useState({});
   
-  const [theme, setTheme] = useState(() => {
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      return darkTheme;
-    }
-    return lightTheme;
-  });
+  const [theme, setTheme] = useState(lightTheme);
 
   useEffect(() => {
     const storedUser = getCurrentUser();

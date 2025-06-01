@@ -439,13 +439,14 @@ export const updateDescription = async (req, res) => {
       { $set: { description: description } }
     );
 
-    if (result.modifiedCount === 0) {
-      return res
-        .status(404)
-        .json({ error: "User not found or description unchanged" });
-    }
+    // Get the updated user document
+    const updatedUser = await usersCollection.findOne({ uid: uid });
 
-    res.json({ message: "Description updated successfully" });
+    // Always return success with the updated user data
+    res.json({ 
+      message: "Description updated successfully",
+      user: updatedUser 
+    });
   } catch (error) {
     console.error("Error updating description:", error);
     res.status(500).json({ error: "Internal server error" });
