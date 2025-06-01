@@ -8,6 +8,14 @@ import { generateSignalProtocolKeys, createKeyBundle, getKeys } from '../util/en
 import { uploadKeyBundle } from '../api/keyBundle';
 import { checkKeyBundle, checkDeviceKeyConsistency } from '../api/keyBundle';
 import { getChatHistory, decryptMessage } from '../api/messages';
+import { getDeviceId } from '../util/deviceId.js';
+import {
+  registerGroupMemberAddedListener,
+  registerAddedToGroupListener,
+  registerNewGroupCreatedListener,
+  registerGroupMemberRemovedListener,
+} from '../api/socket';
+import { showToast } from './ToastManager';
 
 const AppContext = createContext();
 
@@ -21,6 +29,7 @@ export const AppProvider = ({ children }) => {
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [unreadBySender, setUnreadBySender] = useState({});
   const [decryptedMessages, setDecryptedMessages] = useState({});
+  const [groupChats, setGroupChats] = useState([]);
   
   const [theme, setTheme] = useState(lightTheme);
 
@@ -108,20 +117,31 @@ export const AppProvider = ({ children }) => {
           
           for (const msg of messages) {
             const username = msg.sender !== 'Me' ? msg.sender : msg.recipientUsername;
+            
             countByUsername[username] = (countByUsername[username] || 0) + 1;
             
             try {
-              // Group messages by sender for session management
               if (!decryptedMessagesByUsername[username]) {
                 decryptedMessagesByUsername[username] = [];
               }
               
-              // Only decrypt if the message is encrypted
               if (msg.encryptedMessage) {
-                // Decrypt the message
-                const decryptedText = await decryptMessage(msg);
+                // Check if message is for current device before attempting decryption
+                const currentDeviceId = getDeviceId();
+                if (msg.recipientDeviceId && msg.recipientDeviceId !== currentDeviceId) {
+                  console.log(`Skipping message for device ${msg.recipientDeviceId} (we are ${currentDeviceId})`);
+                  continue;
+                }
                 
-                // Create processed message object
+                const decryptedText = await decryptMessage(msg);
+
+                console.log(`Decrypted message from ${username}:`, decryptedText);
+
+                if (decryptedText === null) {
+                  console.log(`Skipping message for device ${msg.recipientDeviceId}`);
+                  continue; // Move to next message
+                }
+                
                 const processedMsg = {
                   ...msg,
                   text: decryptedText,
@@ -129,17 +149,20 @@ export const AppProvider = ({ children }) => {
                   timestamp: new Date(msg.timestamp || Date.now())
                 };
                 
-                // Add to both collections
                 decryptedMessagesByUsername[username].push(processedMsg);
                 processedMessages.push(processedMsg);
               } else {
-                // Non-encrypted message handling if needed
                 decryptedMessagesByUsername[username].push(msg);
                 processedMessages.push(msg);
               }
             } catch (error) {
+              if (error.message === 'MESSAGE_NOT_FOR_THIS_DEVICE') {
+                console.log(`Message filtered out for device - not counting in unread`);
+                countByUsername[username] = Math.max(0, (countByUsername[username] || 1) - 1);
+                continue;
+              }
+              
               console.warn(`Failed to decrypt message from ${username}:`, error);
-              // Add to UI with error indicator
               const errorMsg = {
                 ...msg,
                 text: "⚠️ Could not decrypt this message",
@@ -200,6 +223,75 @@ export const AppProvider = ({ children }) => {
     }
   }, [encryptionReady, messagesFetched, avatarsLoaded]);
 
+  // Add effect for global group event handling
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+
+    // Global handlers for group events that might affect the user across the app
+    const handleGroupEvents = () => {
+      registerAddedToGroupListener((data) => {
+        console.log('Global: Added to group', data.group.name);
+        // Update groupChats state
+        setGroupChats(prev => {
+          const exists = prev.some(g => g._id === data.group._id);
+          if (exists) return prev;
+          return [...prev, data.group];
+        });
+        
+        // Show global toast notification
+        showToast(`You were added to "${data.group.name}" by ${data.addedBy?.username || 'someone'}!`, 'success');
+      });
+
+      registerNewGroupCreatedListener((data) => {
+        console.log('Global: New group created', data.group.name);
+        // Update groupChats state
+        setGroupChats(prev => {
+          const exists = prev.some(g => g._id === data.group._id);
+          if (exists) return prev;
+          return [...prev, data.group];
+        });
+
+        showToast(`A new group "${data.group.name}" was created by ${data.createdBy?.username || 'someone'}`, 'info');
+      });
+
+      registerGroupMemberRemovedListener((data) => {
+        console.log('Global: Group member removed event', data);
+        
+        if (data.removedMember.uid === currentUser.uid) {
+          console.log('You were removed from group:', data.groupName);
+          
+          // Remove group from groupChats state
+          setGroupChats(prev => prev.filter(group => group._id !== data.groupId));
+          
+          // Trigger custom event for UI components to handle
+          window.dispatchEvent(new CustomEvent('userRemovedFromGroup', {
+            detail: {
+              groupId: data.groupId,
+              groupName: data.groupName,
+              removedBy: data.removedBy || 'Admin'
+            }
+          }));
+          
+          // Show global toast notification
+          showToast(`You were removed from group "${data.groupName}" by ${data.removedBy?.username || 'Admin'}`, 'error', 6000);
+        } else {
+          // Another member was removed - update group members
+          setGroupChats(prev => 
+            prev.map(group => 
+              group._id === data.groupId && data.updatedGroup
+                ? { ...group, members: data.updatedGroup.members }
+                : group
+            )
+          );
+
+          showToast(`${data.removedMember.username} was removed from "${data.groupName}" by ${data.removedBy?.username || 'Admin'}`, 'warning', 5000);
+        }
+      });
+    };
+
+    handleGroupEvents();
+  }, [currentUser]);
+
   const login = async (email, password) => {
     const result = await loginUser(email, password);
     if (result.success) {
@@ -247,6 +339,8 @@ export const AppProvider = ({ children }) => {
         unreadBySender,
         markSenderMessagesAsRead,
         decryptedMessages,
+        groupChats,
+        setGroupChats,
         initStatus: {
           encryptionReady,
           messagesFetched,

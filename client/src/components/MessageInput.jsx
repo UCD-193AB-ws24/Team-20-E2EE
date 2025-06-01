@@ -2,9 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAppContext } from './AppContext';
 import { motion } from "motion/react";
 
-export default function MessageInput({ sendMessage, onTyping, disabled = false }) {
-  const [text, setText] = useState('');
-  const [isSending, setIsSending] = useState(false);
+export default function MessageInput({ sendMessage, onTyping, disabled = false, placeholder }) {
+  const [message, setMessage] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
   const { theme } = useAppContext();
   const inputRef = useRef(null);
   const formRef = useRef(null);
@@ -16,57 +16,63 @@ export default function MessageInput({ sendMessage, onTyping, disabled = false }
     }
   }, [disabled]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (text.trim() && !isSending) {
-      setIsSending(true);
-      try {
-        await sendMessage(text);
-        setText('');
-        // Refocus the input after sending
-        setTimeout(() => {
-          inputRef.current?.focus();
-        }, 0);
-      } catch (error) {
-        console.error('Error sending message:', error);
-      } finally {
-        setIsSending(false);
-      }
-    }
+  const handleSendMessage = async () => {
+    if (disabled || !message.trim()) return;
+
+    try {
+      await sendMessage(message);
+      setMessage("");
+      // Refocus the input after sending
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 0);
+    } catch (error) {
+      console.error('Error sending message:', error);
+    } 
   };
 
   const handleChange = (e) => {
-    setText(e.target.value);
+    if (disabled) return;
+
+    setMessage(e.target.value);
+
     // Trigger typing indicator
-    if (onTyping && e.target.value.trim()) {
-      onTyping();
+    if (onTyping && !isTyping) {
+      onTyping(true);
+      setIsTyping(true);
     }
   };
 
-  const handleKeyDown = (e) => {
+  const handleKeyPress = (e) => {
+    if (disabled) return;
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit(e);
+      handleSendMessage();
     }
   };
+
+  const defaultPlaceholder = disabled 
+    ? "You cannot send messages to this conversation" 
+    : "Type a message...";
 
   return (
     <form 
       ref={formRef}
-      onSubmit={handleSubmit} 
+      onSubmit={handleSendMessage} 
       className="p-4 rounded-lg m-4 flex"
       onClick={() => inputRef.current?.focus()}
     >
       <input
         ref={inputRef}
         type="text"
-        value={text}
+        value={message}
         onChange={handleChange}
-        onKeyDown={handleKeyDown}
+        onKeyPress={handleKeyPress}
         className={`flex-1 p-2 rounded-lg focus:outline-none ${disabled ? 'bg-gray-100' : ''}`}
         style={{backgroundColor: theme.colors.background.primary}}
-        placeholder={disabled ? "Select a user to chat" : "Type your message..."}
-        disabled={disabled || isSending}
+        placeholder={placeholder || defaultPlaceholder}
+        disabled={disabled}
       />
         <motion.button 
           type="submit" 
@@ -80,9 +86,9 @@ export default function MessageInput({ sendMessage, onTyping, disabled = false }
           whileHover={{
             backgroundColor: theme.colors.button.primaryHover,
           }}
-          disabled={isSending}
+          disabled={disabled}
         >
-          {isSending ? 'Sending...' : 'Send'}
+          {disabled ? 'Disabled' : 'Send'}
         </motion.button>
     </form>
   );

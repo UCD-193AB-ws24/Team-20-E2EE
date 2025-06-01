@@ -14,6 +14,8 @@ import { getChatHistory, getGroupHistory, getArchivedChatHistory, sendPrivateMes
 import { useAppContext } from './AppContext';
 import { BACKEND_URL } from '../config/config';
 import LoadingEffect from './LoadingEffect';
+import { getDeviceId } from '../util/deviceId.js';
+import ToastManager from './ToastManager';
 
 export default function Layout({ children }) {
   const [selectedUser, setSelectedUser] = useState(null);
@@ -32,6 +34,9 @@ export default function Layout({ children }) {
     deviceId: null,
     uid: null
   });
+
+  const [isRemovedFromGroup, setIsRemovedFromGroup] = useState(false);
+  const [removalNotification, setRemovalNotification] = useState(null);
 
   const prevSelectedUser = useRef(null);
   const hasMounted = useRef(false);
@@ -158,34 +163,7 @@ export default function Layout({ children }) {
       return;
     }
 
-    registerMessageListener((message) => {
-      decryptMessage(message)
-        .then(text => {
-          const sender = message.sender;
-          const time = message.time;
-          const metadata = message.metadata || {};
-
-          if (!selectedUser) {
-            console.log('Message received but no user selected, ignoring');
-            return; // Skip processing if no user is selected
-          }
-
-          // Check if this is a direct message or group message
-          if (metadata && metadata.isGroupMessage && typeof selectedUser === 'object' && selectedUser.type === 'group') {
-            // For group messages, check if this message belongs to the currently selected group
-            if (metadata.groupId === selectedUser.id) {
-              setMessages(prev => [...prev, { sender, text, time }]);
-            }
-          }
-          // For direct messages, check if sender matches selected user
-          else if (typeof selectedUser === 'string' && sender === selectedUser) {
-            setMessages(prev => [...prev, { sender, text, time }]);
-          }
-        })
-        .catch(error => {
-          console.error("Failed to decrypt message:", error);
-        });
-    });
+    registerMessageListener(handleReceiveMessage);
 
     registerTypingListener((data) => {
       const { username, isTyping: typing } = data;
@@ -259,6 +237,171 @@ export default function Layout({ children }) {
     setShowProfileModal(false);
   };
 
+  const handleSelectUser = async (selectedUserId) => {
+    try {
+      setSelectedUser(selectedUserId);
+      
+      // Don't establish session preemptively - let the first message do it
+      console.log(`Selected user ${selectedUserId}, waiting for messages to establish session`);
+      
+      // Just fetch the key bundle for caching purposes
+      const username = usernames[selectedUserId];
+      if (username) {
+        try {
+          console.log(`Fetching key bundle for ${username} for caching`);
+          const keyBundleResult = await fetchKeyBundle(username);
+          if (keyBundleResult.success) {
+            console.log(`Successfully cached key bundle for ${username}`);
+          }
+        } catch (error) {
+          console.warn(`Failed to fetch key bundle for ${username}:`, error);
+        }
+      }
+      
+      // Load existing messages
+      const messages = await getMessagesFromConversation(user.uid, selectedUserId);
+      console.log("Loaded messages from local storage", messages);
+      setMessages(messages);
+    } catch (error) {
+      console.error("Error selecting user:", error);
+    }
+  };
+
+  const handleReceiveMessage = async (data) => {
+    try {
+      console.log('Received encrypted message:', data);
+      
+      const {
+        _id,
+        senderUid,
+        sender: senderUsername,
+        senderDeviceId,
+        recipientDeviceId,
+        encryptedMessage,
+        time,
+        timestamp,
+        metadata
+      } = data;
+
+      // Device filtering at socket level
+      const currentDeviceId = getDeviceId();
+      if (recipientDeviceId && recipientDeviceId !== currentDeviceId) {
+        console.log(`Message for device ${recipientDeviceId}, but we are ${currentDeviceId}. Ignoring.`);
+        return;
+      }
+
+      try {
+        // Pass complete message data including recipientDeviceId
+        const decryptedText = await decryptMessage({
+          _id,
+          senderUid,
+          senderDeviceId,
+          recipientDeviceId,
+          encryptedMessage,
+          time,
+          timestamp,
+          metadata
+        });
+
+        // Check if message was filtered out (null return)
+        if (decryptedText === null) {
+          console.log('Message filtered out - not for this device');
+          return; // Exit early, don't update UI
+        }
+
+        if (!selectedUser) {
+          console.log('Message received but no user selected, ignoring');
+          return; // Skip processing if no user is selected
+        }
+
+        // Handle group messages
+        if (metadata && metadata.isGroupMessage && typeof selectedUser === 'object' && selectedUser.type === 'group') {
+          // For group messages, check if this message belongs to the currently selected group
+          if (metadata.groupId === selectedUser.id) {
+            const groupMessage = {
+              sender: senderUsername,
+              text: decryptedText,
+              time: time
+            };
+            setMessages(prev => [...prev, groupMessage]);
+          }
+        }
+        // Handle direct messages
+        else if (typeof selectedUser === 'string' && senderUsername === selectedUser) {
+          const directMessage = {
+            sender: senderUsername,
+            text: decryptedText,
+            time: time
+          };
+          setMessages(prev => [...prev, directMessage]);
+        }
+
+        console.log(`Successfully decrypted and processed message from ${senderUsername}:${senderDeviceId}`);
+
+      } catch (decryptError) {
+        console.error('Failed to decrypt message:', decryptError);
+        
+        // Only show error message if it's for the currently selected conversation
+        const shouldShowError = (
+          (metadata && metadata.isGroupMessage && typeof selectedUser === 'object' && selectedUser.type === 'group' && metadata.groupId === selectedUser.id) ||
+          (typeof selectedUser === 'string' && senderUsername === selectedUser)
+        );
+
+        if (shouldShowError) {
+          const errorMessage = {
+            sender: senderUsername,
+            text: `[Failed to decrypt message]`,
+            time: time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            error: true
+          };
+          setMessages(prev => [...prev, errorMessage]);
+        }
+      }
+    } catch (error) {
+      console.error('Error in handleReceiveMessage:', error);
+    }
+  };
+
+  useEffect(() => {
+    const handleUserRemovedFromGroup = (event) => {
+      const { groupId, groupName, removedBy } = event.detail;
+      
+      console.log('User removed from group event received:', { groupId, groupName });
+      
+      // Check if the currently selected conversation is the group we were removed from
+      if (typeof selectedUser === 'object' && selectedUser.type === 'group' && selectedUser.id === groupId) {
+        console.log('Currently viewing the group we were removed from');
+        
+        // Set state to show removal notification and disable messaging
+        setIsRemovedFromGroup(true);
+        setRemovalNotification({
+          groupName,
+          removedBy,
+          timestamp: new Date()
+        });
+        
+        // Clear the selected user after a delay to let user see the notification
+        setTimeout(() => {
+          setSelectedUser(null);
+          setIsRemovedFromGroup(false);
+          setRemovalNotification(null);
+        }, 5000);
+      }
+    };
+
+    // Listen for group removal events
+    window.addEventListener('userRemovedFromGroup', handleUserRemovedFromGroup);
+
+    return () => {
+      window.removeEventListener('userRemovedFromGroup', handleUserRemovedFromGroup);
+    };
+  }, [selectedUser]);
+
+  useEffect(() => {
+    setIsRemovedFromGroup(false);
+    setRemovalNotification(null);
+  }, [selectedUser]);
+
   if (!appReady) {
     return (
       <div className="flex items-center justify-center h-screen"
@@ -315,6 +458,21 @@ export default function Layout({ children }) {
             }
           </h2>
         </div>
+        {/* Show removal notification if user was removed from current group */}
+        {isRemovedFromGroup && removalNotification && (
+          <div className="mx-4 mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+            <div className="flex items-center">
+              <span className="text-2xl mr-2">🚫</span>
+              <div>
+                <p className="font-semibold">You have been removed from "{removalNotification.groupName}"</p>
+                <p className="text-sm">You can no longer send messages to this group.</p>
+                <p className="text-xs text-gray-600 mt-1">
+                  {removalNotification.timestamp.toLocaleTimeString()}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         {!selectedUser ? (
           <EmptyChat />
         ) : view === 'archive' ? (
@@ -333,7 +491,12 @@ export default function Layout({ children }) {
             <MessageInput
               sendMessage={sendMessage}
               onTyping={handleTyping}
-              disabled={!selectedUser}
+              disabled={!selectedUser || isRemovedFromGroup}
+              placeholder={
+                isRemovedFromGroup 
+                  ? `You cannot send messages to this group` 
+                  : undefined
+              }
             />
           </>
         )}
@@ -358,6 +521,8 @@ export default function Layout({ children }) {
           }}
         />
       )}
+
+      <ToastManager />
     </div>
   );
 }

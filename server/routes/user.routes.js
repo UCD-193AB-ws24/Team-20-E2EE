@@ -15,7 +15,8 @@ import {
   getFriendIdByUsername,
   searchFriendUid,
   searchFriendUsernameByUid,
-  matchedUsers
+  matchedUsers,
+  getUserInfo
 } from "../controllers/user.controllers.js";
 import { authenticateUser } from "../middlewares/authMiddleware.js"; // Import middleware
 
@@ -27,6 +28,7 @@ router.get("/get-user", authenticateUser, getUser);
 router.put("/update-description", authenticateUser, updateDescription);
 router.put("/update-avatar", authenticateUser, updateAvatar);
 router.get("/get-avatar/:username", getAvatar); // Removed authentication as avatars may need to be public
+router.get('/info/:userId', authenticateUser, getUserInfo);
 
 // Friend management routes
 router.get("/searchUser", searchUser);

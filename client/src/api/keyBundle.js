@@ -107,3 +107,48 @@ export const checkDeviceKeyConsistency = async () => {
     return { hasKeysOnServer: false, success: false };
   }
 };
+
+// Fetch key bundles for ALL devices of a user
+export const fetchAllUserKeyBundles = async (username) => {
+  try {
+    const response = await fetchWithAuth(`${BACKEND_URL}/api/keys/${username}/all-devices`, {
+      method: 'GET',
+    });
+
+    const data = await response.json();
+
+    if (response.status === 410) {
+      console.error(`User ${username} has no prekeys available on any device.`);
+      return { 
+        success: false, 
+        error: `${username} has no prekeys available for secure communication. Please ask them to restart their app.` 
+      };
+    }
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to fetch key bundles');
+    }
+
+    // Process each device's key bundle
+    const processedBundles = data.keyBundles.map(bundle => {
+      if (typeof bundle.signedPreKeySignature === 'string') {
+        const binary = atob(bundle.signedPreKeySignature);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        bundle.signedPreKeySignature = bytes.buffer;
+      }
+      return bundle;
+    });
+
+    return { 
+      success: true, 
+      keyBundles: processedBundles,
+      deviceCount: data.deviceCount 
+    };
+  } catch (error) {
+    console.error('Error fetching key bundles:', error);
+    return { success: false, error: error.message };
+  }
+};

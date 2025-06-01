@@ -12,6 +12,8 @@ import { getAvatar } from "../api/user";
 import { motion } from "motion/react";
 import { BACKEND_URL } from "../config/config";
 import fetchWithAuth from "../util/FetchWithAuth";
+import { fetchKeyBundle } from '../api/keyBundle';
+import { showToast } from "../components";
 
 export default function Requests() {
   const [friendRequests, setFriendRequests] = useState([]);
@@ -71,9 +73,24 @@ export default function Requests() {
     try {
       await acceptFriendRequest(username);
       setFriendRequests(friendRequests.filter((request) => request.username !== username));
-      alert(`Friend request from ${username} accepted`);
+      
+      // Fetch the new friend's key bundle for future encrypted messaging
+      try {
+        console.log(`Fetching key bundle for new friend: ${username}`);
+        const keyBundleResult = await fetchKeyBundle(username);
+        if (keyBundleResult.success) {
+          console.log(`Successfully fetched key bundle for ${username}`);
+        } else {
+          console.warn(`Failed to fetch key bundle for ${username}:`, keyBundleResult.error);
+        }
+      } catch (keyBundleError) {
+        console.error(`Error fetching key bundle for ${username}:`, keyBundleError);
+        // Don't fail the friend acceptance, just log the warning
+      }
+      
+      showToast(`Friend request from ${username} accepted`, "success");
     } catch (err) {
-      alert(err.message || "Failed to accept friend request");
+      showToast(err.message || "Failed to accept friend request", "error");
     }
   };
 
@@ -81,9 +98,9 @@ export default function Requests() {
     try {
       await deleteFriendRequest(username);
       setFriendRequests(friendRequests.filter((request) => request.username !== username));
-      alert(`Friend request from ${username} declined`);
+      showToast(`Friend request from ${username} declined`, "info");
     } catch (err) {
-      alert(err.message || "Failed to decline friend request");
+      showToast(err.message || "Failed to decline friend request", "error");
     }
   };
 

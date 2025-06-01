@@ -69,24 +69,141 @@ export const getKeyBundle = async (req, res) => {
     const usersCollection = db.collection("users");
     const keyBundlesCollection = db.collection("keyBundles");
 
-    // First, find the user by username
+    // Find the user by username
     const user = await usersCollection.findOne({ username });
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Then, get their key bundle
-    const keyBundle = await keyBundlesCollection.findOne({ uid: user.uid });
-    if (!keyBundle) {
-      return res.status(404).json({ error: "Key bundle not found for this user" });
+    // Get their key bundle with atomic prekey removal
+    const keyBundle = await keyBundlesCollection.findOneAndUpdate(
+      { 
+        uid: user.uid,
+        preKeys: { $exists: true, $not: { $size: 0 } } // Only if preKeys array exists and is not empty
+      },
+      {
+        $pop: { preKeys: -1 }, // Remove the first prekey atomically
+        $set: { updatedAt: new Date() }
+      },
+      {
+        returnDocument: 'before' // Return the document before modification
+      }
+    );
+
+    if (!keyBundle || !keyBundle.preKeys || keyBundle.preKeys.length === 0) {
+      return res.status(410).json({ 
+        error: "No prekeys available - user needs to replenish prekeys" 
+      });
     }
 
-    // Remove MongoDB specific fields
-    delete keyBundle._id;
+    // Create response bundle with the consumed prekey
+    const consumedPrekey = keyBundle.preKeys[0];
+    const responseBundle = {
+      uid: keyBundle.uid,
+      deviceId: keyBundle.deviceId,
+      registrationId: keyBundle.registrationId,
+      identityPubKey: keyBundle.identityPubKey,
+      signedPreKeyId: keyBundle.signedPreKeyId,
+      signedPreKeyPub: keyBundle.signedPreKeyPub,
+      signedPreKeySignature: keyBundle.signedPreKeySignature,
+      preKeys: [consumedPrekey] // Only return the consumed prekey
+    };
 
-    return res.status(200).json({ keyBundle });
+    console.log(`Consumed prekey ${consumedPrekey.keyId} for user ${username}. Remaining prekeys: ${keyBundle.preKeys.length - 1}`);
+
+    // Remove MongoDB specific fields
+    delete responseBundle._id;
+
+    return res.status(200).json({ keyBundle: responseBundle });
   } catch (error) {
     console.error("Error retrieving key bundle:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// Get ALL key bundles for a user (for multi-device support)
+export const getUserKeyBundles = async (req, res) => {
+  try {
+    const { username } = req.params;
+    
+    if (!username) {
+      return res.status(400).json({ error: "Username is required" });
+    }
+
+    const db = await connectDB();
+    const usersCollection = db.collection("users");
+    const keyBundlesCollection = db.collection("keyBundles");
+
+    // Find the user by username
+    const user = await usersCollection.findOne({ username });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Get ALL key bundles for this user (all devices)
+    const keyBundles = await keyBundlesCollection.find({ uid: user.uid }).toArray();
+    
+    if (!keyBundles || keyBundles.length === 0) {
+      return res.status(404).json({ error: "No key bundles found for this user" });
+    }
+
+    // Process each device's key bundle and consume one prekey
+    const deviceBundles = [];
+    
+    for (const bundle of keyBundles) {
+      if (!bundle.preKeys || bundle.preKeys.length === 0) {
+        console.warn(`No prekeys available for device ${bundle.deviceId} of user ${username}`);
+        continue; // Skip devices with no prekeys
+      }
+
+      // Atomically remove one prekey from this device
+      const updatedBundle = await keyBundlesCollection.findOneAndUpdate(
+        { 
+          _id: bundle._id,
+          preKeys: { $exists: true, $not: { $size: 0 } }
+        },
+        {
+          $pop: { preKeys: -1 },
+          $set: { updatedAt: new Date() }
+        },
+        {
+          returnDocument: 'before'
+        }
+      );
+
+      if (updatedBundle && updatedBundle.preKeys && updatedBundle.preKeys.length > 0) {
+        const consumedPrekey = updatedBundle.preKeys[0];
+        
+        const deviceBundle = {
+          uid: updatedBundle.uid,
+          deviceId: updatedBundle.deviceId,
+          registrationId: updatedBundle.registrationId,
+          identityPubKey: updatedBundle.identityPubKey,
+          signedPreKeyId: updatedBundle.signedPreKeyId,
+          signedPreKeyPub: updatedBundle.signedPreKeyPub,
+          signedPreKeySignature: updatedBundle.signedPreKeySignature,
+          preKeys: [consumedPrekey]
+        };
+
+        delete deviceBundle._id;
+        deviceBundles.push(deviceBundle);
+        
+        console.log(`Consumed prekey ${consumedPrekey.keyId} for device ${updatedBundle.deviceId} of user ${username}`);
+      }
+    }
+
+    if (deviceBundles.length === 0) {
+      return res.status(410).json({ 
+        error: "No prekeys available on any device - user needs to replenish prekeys" 
+      });
+    }
+
+    return res.status(200).json({ 
+      keyBundles: deviceBundles,
+      deviceCount: deviceBundles.length 
+    });
+  } catch (error) {
+    console.error("Error retrieving user key bundles:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
