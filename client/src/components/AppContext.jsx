@@ -8,6 +8,7 @@ import { generateSignalProtocolKeys, createKeyBundle, getKeys } from '../util/en
 import { uploadKeyBundle } from '../api/keyBundle';
 import { checkKeyBundle, checkDeviceKeyConsistency } from '../api/keyBundle';
 import { getChatHistory, decryptMessage } from '../api/messages';
+import { getDeviceId } from '../util/deviceId.js';
 
 const AppContext = createContext();
 
@@ -130,6 +131,8 @@ export const AppProvider = ({ children }) => {
                 }
                 
                 const decryptedText = await decryptMessage(msg);
+
+                console.log(`Decrypted message from ${username}:`, decryptedText);
 
                 if (decryptedText === null) {
                   console.log(`Skipping message for device ${msg.recipientDeviceId}`);
