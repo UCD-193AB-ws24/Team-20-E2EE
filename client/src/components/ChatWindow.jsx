@@ -12,11 +12,29 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
   const [archiveEnabled, setArchiveEnabled] = useState(false);
   const [mutualArchive, setMutualArchive] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [avatarsLoading, setAvatarsLoading] = useState(true); 
+  const [avatarsLoading, setAvatarsLoading] = useState(true);
+  const [messagesLoading, setMessagesLoading] = useState(true);
   const currentUsername = JSON.parse(localStorage.getItem('user'))?.username;
   const currentUserId = JSON.parse(localStorage.getItem('user'))?.uid;
   const { theme } = useAppContext();
   const isGroupChat = (typeof selectedUser === 'object' && selectedUser.type === 'group');
+
+  // Unified loading state - true if either avatars or messages are loading
+  const isLoading = avatarsLoading || messagesLoading;
+
+  // Track messages loading state
+  useEffect(() => {
+    if (selectedUser) {
+      setMessagesLoading(true);
+      // Reset messages loading after a brief delay to allow new messages to load
+      const timer = setTimeout(() => {
+        setMessagesLoading(false);
+      }, 300); // Increased delay to ensure messages are fully loaded
+      return () => clearTimeout(timer);
+    } else {
+      setMessagesLoading(false);
+    }
+  }, [selectedUser]);
 
   useEffect(() => {
     const loadAvatars = async () => {
@@ -33,34 +51,61 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
         }
 
         if (isGroupChat) {
-          // Load avatars for all group members
-          const avatarPromises = selectedUser.members.map(async (userId) => {
+          // Get all unique sender IDs from messages
+          const allSenderIds = [...new Set(messages.map(msg => msg.sender).filter(sender => sender !== 'Me'))];
+          
+          // Load avatars for all senders (including those who may have left the group)
+          const avatarPromises = allSenderIds.map(async (senderId) => {
             try {
-              // Get username from userId
-              const response = await searchUsername(userId);
+              // Get username from senderId
+              const response = await searchUsername(senderId);
               const { username } = response;
-
-              console.log("username:", username);
 
               if (username) {
                 const avatar = await getAvatar(username);
-                // Store with userId as key, since messages contain userId as sender
                 newAvatars[username] = avatar;
-                newUsernames[userId] = username;
+                newUsernames[senderId] = username;
+              } else {
+                // Fallback for users who left or can't be found
+                newUsernames[senderId] = `User ${senderId.slice(0, 8)}`;
               }
             } catch (err) {
-              console.error(`Error loading avatar for user ID ${userId}:`, err);
+              console.error(`Error loading avatar for user ID ${senderId}:`, err);
+              // Fallback for users who left or can't be found
+              newUsernames[senderId] = `User ${senderId.slice(0, 8)}`;
             }
           });
 
-          // Wait for all avatar promises to complete
-          await Promise.all(avatarPromises);
+          // Also load avatars for current group members
+          if (selectedUser.members) {
+            const memberPromises = selectedUser.members.map(async (userId) => {
+              if (!allSenderIds.includes(userId)) {
+                try {
+                  const response = await searchUsername(userId);
+                  const { username } = response;
+
+                  if (username) {
+                    const avatar = await getAvatar(username);
+                    newAvatars[username] = avatar;
+                    newUsernames[userId] = username;
+                  }
+                } catch (err) {
+                  console.error(`Error loading avatar for member ${userId}:`, err);
+                }
+              }
+            });
+
+            await Promise.all([...avatarPromises, ...memberPromises]);
+          } else {
+            await Promise.all(avatarPromises);
+          }
         } else {
           // Single user chat - selectedUser is already a username
           const otherUserAvatar = await getAvatar(selectedUser);
           newAvatars[selectedUser] = otherUserAvatar;
         }
 
+        // Only update state once all data is loaded
         setAvatars(newAvatars);
         setUsernames(newUsernames);
       } catch (error) {
@@ -70,7 +115,10 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
       }
     };
 
+    // Reset states when switching chats to prevent showing old data
     if (selectedUser) {
+      setAvatars({});
+      setUsernames({});
       loadAvatars();
     } else {
       setAvatarsLoading(false);
@@ -78,20 +126,18 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
   }, [selectedUser, currentUsername, isGroupChat]);
 
   useEffect(() => {
-  const fetchStatuses = async () => {
-    if (!selectedUserID || !currentUserId) return;
+    const fetchStatuses = async () => {
+      if (!selectedUserID || !currentUserId) return;
 
-    const userOptIn = await checkUserOptInStatus(currentUserId, selectedUserID);
-    const isMutual = await archiveEnabledCheck(selectedUser);
+      const userOptIn = await checkUserOptInStatus(currentUserId, selectedUserID);
+      const isMutual = await archiveEnabledCheck(selectedUser);
 
-    setArchiveEnabled(userOptIn);
-    setMutualArchive(isMutual);
-  };
+      setArchiveEnabled(userOptIn);
+      setMutualArchive(isMutual);
+    };
 
-  fetchStatuses();
-}, [selectedUserID]);
-
-
+    fetchStatuses();
+  }, [selectedUserID]);
 
   const handleArchiveToggle = async () => {
     if (!selectedUserID || !currentUserId) return;
@@ -103,7 +149,7 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
 
   // Auto-scroll to bottom on initial load
   useEffect(() => {
-    if (!chatContainerRef.current || avatarsLoading) return;
+    if (!chatContainerRef.current || isLoading) return;
     
     const container = chatContainerRef.current;
     const isInitialLoad =
@@ -113,17 +159,17 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
     if (isInitialLoad) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
     }
-  }, [messages, avatarsLoading]);
+  }, [messages, isLoading]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
-    if (!avatarsLoading) {
+    if (!isLoading) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages, avatarsLoading]);
+  }, [messages, isLoading]);
 
-  // Show loading state 
-  if (avatarsLoading) {
+  // Show unified loading state 
+  if (isLoading) {
     return (
       <div 
         className="flex-1 flex items-center justify-center rounded-lg m-4"
@@ -152,6 +198,7 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
               alt="Loading" 
             />
           </div>
+          <p style={{ color: theme.colors.text.primary }}>Loading chat...</p>
         </div>
       </div>
     );
@@ -182,58 +229,72 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
             </label>
           </div>
         )}
-        {messages.map((msg, index) => {
-          const showAvatar =
-            index === 0 || messages[index - 1].sender !== msg.sender;
-          const isMe = msg.sender === 'Me';
+        
+        {/* No messages placeholder */}
+        {messages.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-center">
+            <p className="text-lg font-medium mb-2" style={{ color: theme.colors.text.secondary }}>
+              No messages yet
+            </p>
+            <p className="text-sm" style={{ color: theme.colors.text.tertiary }}>
+              Start a conversation with {selectedUser}
+            </p>
+          </div>
+        ) : (
+          // Existing messages rendering
+          messages.map((msg, index) => {
+            const showAvatar =
+              index === 0 || messages[index - 1].sender !== msg.sender;
+            const isMe = msg.sender === 'Me';
 
-          return (
-            <div
-              key={index}
-              className={`flex items-start mb-2 ${isMe ? 'justify-end' : 'justify-start'
-                }`}
-            >
-              {!isMe && (
-                <div className="flex items-center">
-                  {showAvatar ? (
-                    <img
-                      src={avatars[selectedUser] || 'https://via.placeholder.com/40'}
-                      className="w-8 h-8 rounded-full mr-2"
-                      alt={`${selectedUser}'s avatar`}
-                    />
-                  ) : (
-                    <div className="w-8 h-8 mr-2" />
-                  )}
-                </div>
-              )}
-
-              {/* Message bubble */}
+            return (
               <div
-                className={'p-3 max-w-[75%] rounded-lg'}
-                style={{ backgroundColor: isMe ? theme.colors.chatBubble.primary : theme.colors.chatBubble.secondary }}
+                key={index}
+                className={`flex items-start mb-2 ${isMe ? 'justify-end' : 'justify-start'
+                  }`}
               >
-                <p>{msg.text}</p>
-                <span className="text-xs block mt-1">
-                  {msg.time}
-                </span>
-              </div>
+                {!isMe && (
+                  <div className="flex items-center">
+                    {showAvatar ? (
+                      <img
+                        src={avatars[selectedUser] || 'https://via.placeholder.com/40'}
+                        className="w-8 h-8 rounded-full mr-2"
+                        alt={`${selectedUser}'s avatar`}
+                      />
+                    ) : (
+                      <div className="w-8 h-8 mr-2" />
+                    )}
+                  </div>
+                )}
 
-              {isMe && (
-                <div className="flex items-center">
-                  {showAvatar ? (
-                    <img
-                      src={avatars[currentUsername] || 'https://via.placeholder.com/40'}
-                      className="w-8 h-8 rounded-full ml-2"
-                      alt="My avatar"
-                    />
-                  ) : (
-                    <div className="w-8 h-8 ml-2" />
-                  )}
+                {/* Message bubble */}
+                <div
+                  className={'p-3 max-w-[75%] rounded-lg'}
+                  style={{ backgroundColor: isMe ? theme.colors.chatBubble.primary : theme.colors.chatBubble.secondary }}
+                >
+                  <p>{msg.text}</p>
+                  <span className="text-xs block mt-1">
+                    {msg.time}
+                  </span>
                 </div>
-              )}
-            </div>
-          );
-        })}
+
+                {isMe && (
+                  <div className="flex items-center">
+                    {showAvatar ? (
+                      <img
+                        src={avatars[currentUsername] || 'https://via.placeholder.com/40'}
+                        className="w-8 h-8 rounded-full ml-2"
+                        alt="My avatar"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 ml-2" />
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
         <div ref={messagesEndRef} />
       </div>
     );
@@ -245,71 +306,91 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
         className="flex-1 flex flex-col p-4 overflow-y-auto rounded-lg m-4"
         style={{ backgroundColor: theme.colors.background.secondary }}
       >
-        {messages.map((msg, index) => {
-          const showAvatar =
-            index === 0 || messages[index - 1].sender !== msg.sender;
-          const isMe = msg.sender === 'Me';
-          const senderId = isMe ? 'Me' : msg.sender;
+        {/* No messages placeholder for group chat */}
+        {messages.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-center">
+            <div className="w-16 h-16 mb-4 opacity-50">
+              <img 
+                src="/images/ema-logo.png" 
+                alt="No messages" 
+                className="w-full h-full"
+              />
+            </div>
+            <p className="text-lg font-medium mb-2" style={{ color: theme.colors.text.secondary }}>
+              No messages yet
+            </p>
+            <p className="text-sm" style={{ color: theme.colors.text.tertiary }}>
+              Start the conversation in {selectedUser.name || 'this group'}
+            </p>
+          </div>
+        ) : (
+          // Existing group messages rendering
+          messages.map((msg, index) => {
+            const showAvatar =
+              index === 0 || messages[index - 1].sender !== msg.sender;
+            const isMe = msg.sender === 'Me';
+            const senderId = isMe ? 'Me' : msg.sender;
 
-          // Get the username for this sender ID, or fallback to the ID itself
-          const senderUsername = usernames[senderId] || senderId;
+            // Get the username for this sender ID, or fallback to a truncated ID
+            const senderUsername = usernames[senderId] || `User ${senderId.slice(0, 8)}`;
 
-          return (
-            <div
-              key={index}
-              className={`flex items-start mb-2 ${isMe ? 'justify-end' : 'justify-start'
-                }`}
-            >
-              {!isMe && (
-                <div className="flex items-center">
-                  {showAvatar ? (
-                    <img
-                      src={avatars[senderUsername] || 'https://via.placeholder.com/40'}
-                      className="w-8 h-8 rounded-full mr-2"
-                      alt={`${typeof senderUsername === 'string' ? senderUsername : 'User'}'s avatar`}
-                    />
-                  ) : (
-                    <div className="w-8 h-8 mr-2" />
-                  )}
-                </div>
-              )}
-
-              <div className="flex flex-col">
-                {/* Username above bubble for non-me messages */}
-                {!isMe && showAvatar && (
-                  <span className="text-xs font-semibold text-gray-700 ml-1 mb-1">
-                    {typeof senderUsername === 'string' ? senderUsername : 'Unknown User'}
-                  </span>
+            return (
+              <div
+                key={index}
+                className={`flex items-start mb-2 ${isMe ? 'justify-end' : 'justify-start'
+                  }`}
+              >
+                {!isMe && (
+                  <div className="flex items-center">
+                    {showAvatar ? (
+                      <img
+                        src={avatars[senderUsername] || avatars[senderId] || 'https://via.placeholder.com/40'}
+                        className="w-8 h-8 rounded-full mr-2"
+                        alt={`${senderUsername}'s avatar`}
+                      />
+                    ) : (
+                      <div className="w-8 h-8 mr-2" />
+                    )}
+                  </div>
                 )}
 
-                {/* Message bubble */}
-                <div
-                  className={'p-3 max-w-[100%] rounded-lg'}
-                  style={{ backgroundColor: isMe ? theme.colors.chatBubble.primary : theme.colors.chatBubble.secondary }}
-                >
-                  <p>{msg.text}</p>
-                  <span className="text-xs block mt-1">
-                    {msg.time}
-                  </span>
-                </div>
-              </div>
-
-              {isMe && (
-                <div className="flex items-center">
-                  {showAvatar ? (
-                    <img
-                      src={avatars[currentUsername] || 'https://via.placeholder.com/40'}
-                      className="w-8 h-8 rounded-full ml-2"
-                      alt="My avatar"
-                    />
-                  ) : (
-                    <div className="w-8 h-8 ml-2" />
+                <div className="flex flex-col">
+                  {/* Username above bubble for non-me messages */}
+                  {!isMe && showAvatar && (
+                    <span className="text-xs font-semibold text-gray-700 ml-1 mb-1">
+                      {senderUsername}
+                    </span>
                   )}
+
+                  {/* Message bubble */}
+                  <div
+                    className={'p-3 max-w-[100%] rounded-lg'}
+                    style={{ backgroundColor: isMe ? theme.colors.chatBubble.primary : theme.colors.chatBubble.secondary }}
+                  >
+                    <p>{msg.text}</p>
+                    <span className="text-xs block mt-1">
+                      {msg.time}
+                    </span>
+                  </div>
                 </div>
-              )}
-            </div>
-          );
-        })}
+
+                {isMe && (
+                  <div className="flex items-center">
+                    {showAvatar ? (
+                      <img
+                        src={avatars[currentUsername] || 'https://via.placeholder.com/40'}
+                        className="w-8 h-8 rounded-full ml-2"
+                        alt="My avatar"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 ml-2" />
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
         <div ref={messagesEndRef} />
       </div>
     );

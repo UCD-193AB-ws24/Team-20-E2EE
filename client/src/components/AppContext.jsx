@@ -31,7 +31,12 @@ export const AppProvider = ({ children }) => {
   const [decryptedMessages, setDecryptedMessages] = useState({});
   const [groupChats, setGroupChats] = useState([]);
   
-  const [theme, setTheme] = useState(lightTheme);
+  const [theme, setTheme] = useState(() => {
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return darkTheme;
+    }
+    return lightTheme;
+  });
 
   useEffect(() => {
     const storedUser = getCurrentUser();
