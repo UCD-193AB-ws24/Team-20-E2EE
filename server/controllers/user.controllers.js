@@ -635,3 +635,36 @@ export const matchedUsers = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+export const getUserInfo = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    if (!userId) {
+      return res.status(400).json({ error: "User ID is required" });
+    }
+
+    const db = await connectDB();
+    const usersCollection = db.collection("users");
+
+    const user = await usersCollection.findOne(
+      { uid: userId },
+      { projection: { username: 1, uid: 1, email: 1 } } // Only return safe fields
+    );
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    return res.status(200).json({ 
+      user: {
+        uid: user.uid,
+        username: user.username,
+        email: user.email
+      }
+    });
+  } catch (error) {
+    console.error("Error retrieving user info:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};

@@ -12,6 +12,7 @@ export const getChatHistory = async (req, res) => {
   try {
     const { username } = req.query;
     const currentUserId = req.user?.uid;
+    const currentDeviceId = req.query.deviceId || req.headers['x-device-id']; // Get device ID from query or header
 
     if (!currentUserId) {
       return res.status(401).json({ error: "Unauthorized - No user ID found" });
@@ -21,20 +22,22 @@ export const getChatHistory = async (req, res) => {
     const usersCollection = db.collection("users");
     const messagesCollection = db.collection("messages");
 
-    // If no username is provided, fetch ALL unread messages for the current user
     if (!username) {
-      // Query for all unread messages where current user is the recipient
+      // Fetch all unread messages for current device
       const query = {
         recipientUid: currentUserId,
         read: false
       };
 
+      // If device ID provided, filter by device
+      if (currentDeviceId) {
+        query.recipientDeviceId = currentDeviceId;
+      }
+
       const messages = await messagesCollection.find(query)
         .sort({ timestamp: 1 }).toArray();
 
-      // Format messages for client
       const formattedMessages = await Promise.all(messages.map(async (msg) => {
-        // Get sender username if needed
         let senderUsername = msg.senderUsername;
         if (!senderUsername) {
           const sender = await usersCollection.findOne({ uid: msg.sender });
@@ -47,6 +50,7 @@ export const getChatHistory = async (req, res) => {
           senderUid: msg.sender,
           senderDeviceId: msg.senderDeviceId,
           recipientUid: currentUserId,
+          recipientDeviceId: msg.recipientDeviceId,
           recipientUsername: msg.recipientUsername,
           encryptedMessage: msg.encryptedMessage,
           isEncrypted: msg.isEncrypted,
@@ -55,33 +59,39 @@ export const getChatHistory = async (req, res) => {
         };
       }));
 
-      // Return all unread messages without marking them as read
       return res.json({ messages: formattedMessages });
     }
 
-    // Normal conversation history logic for when username is provided
+    // Normal conversation history for specific user
     const recipientUser = await usersCollection.findOne({ username });
-
     if (!recipientUser) {
       return res.status(404).json({ error: "User not found" });
     }
 
     const recipientId = recipientUser.uid;
 
-    // Build the query for conversation history
     const query = {
       $or: [
-        { sender: currentUserId, recipientUid: recipientId },
-        { sender: recipientId, recipientUid: currentUserId }
+        { 
+          sender: currentUserId, 
+          recipientUid: recipientId 
+        },
+        { 
+          sender: recipientId, 
+          recipientUid: currentUserId
+        }
       ]
     };
+
+    // If device ID provided, filter incoming messages by device
+    if (currentDeviceId) {
+      query.$or[1].recipientDeviceId = currentDeviceId;
+    }
 
     const messages = await messagesCollection.find(query)
       .sort({ timestamp: 1 }).toArray();
 
-    // Format messages for client
     const formattedMessages = await Promise.all(messages.map(async (msg) => {
-      // Get sender username if needed
       let senderUsername = msg.senderUsername;
       if (!senderUsername) {
         const sender = await usersCollection.findOne({ uid: msg.sender });
@@ -91,22 +101,31 @@ export const getChatHistory = async (req, res) => {
       return {
         _id: msg._id,
         sender: msg.sender === currentUserId ? "Me" : senderUsername,
+        senderUid: msg.sender,
+        senderDeviceId: msg.senderDeviceId,
         encryptedMessage: msg.encryptedMessage,
         isEncrypted: msg.isEncrypted,
         time: msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
     }));
 
-    // Mark messages as read when fetching a specific conversation
-    await messagesCollection.updateMany(
-      { sender: recipientId, recipientUid: currentUserId, read: false },
-      { $set: { read: true } }
-    );
+    // Mark messages as read for current device only
+    const markReadQuery = { 
+      sender: recipientId, 
+      recipientUid: currentUserId, 
+      read: false 
+    };
+    
+    if (currentDeviceId) {
+      markReadQuery.recipientDeviceId = currentDeviceId;
+    }
+
+    await messagesCollection.updateMany(markReadQuery, { $set: { read: true } });
 
     res.json({ messages: formattedMessages });
   } catch (error) {
     console.error("Error fetching chat history:", error);
-    res.status(500).json({ error: "Internal server error" })
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -214,11 +233,9 @@ export const getMessagePreviews = async (req, res) => {
 
 export const sendPrivateMessage = async (req, res) => {
   try {
-    // Check for current user
     const uid = req.user?.uid;
-
     if (!uid) {
-      return res.status(401).json({ error: "Unauthorized - No user ID found" })
+      return res.status(401).json({ error: "Unauthorized - No user ID found" });
     }
 
     const db = await connectDB();
@@ -229,80 +246,80 @@ export const sendPrivateMessage = async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    const { recipientUsername, encryptedMessage, senderDeviceId } = req.body;
+    const { recipientUsername, encryptedMessages, senderDeviceId, metadata } = req.body;
 
-    // Validate the request body
-    if (!recipientUsername) {
-      return res.status(406).json({ error: "Recipient username is required" });
-    }
-
-    if (!encryptedMessage || !encryptedMessage.type || !encryptedMessage.body) {
-      return res.status(406).json({ error: "Invalid message format - encrypted message required" });
+    // Validate that we have encrypted messages for multiple devices
+    if (!recipientUsername || !encryptedMessages || !Array.isArray(encryptedMessages)) {
+      return res.status(400).json({ error: "Invalid message format - encryptedMessages array required" });
     }
 
     const recipientUser = await usersCollection.findOne({ username: recipientUsername });
+    if (!recipientUser) {
+      return res.status(404).json({ error: "Recipient not found" });
+    }
 
     const recipientId = recipientUser.uid;
     const onlineUsers = getOnlineUsers();
-
-    // Check if recipient is online
-    const isRecipientOnline = onlineUsers.has(recipientId);
-    const metadata = req.body.metadata;
-
-    // Store the encrypted message
-    const message = {
-      sender: uid,
-      recipientUid: recipientId,
-      senderUsername: senderUser.username,
-      senderDeviceId,
-      recipientUsername,
-      encryptedMessage: {
-        type: encryptedMessage.type,
-        body: encryptedMessage.body
-      },
-      isEncrypted: true,
-      timestamp: new Date(),
-      read: isRecipientOnline, // Mark as read immediately if recipient is online
-      metadata: metadata,
-    }
-
     const messagesCollection = db.collection("messages");
-    const result = await messagesCollection.insertOne(message);
 
-    // Format message for sending
-    const formattedMessage = {
-      _id: result.insertedId,
-      senderUid: uid,
-      sender: senderUser.username,
-      senderDeviceId,
-      encryptedMessage: encryptedMessage,
-      isEncrypted: true,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      timestamp: new Date(),
-      read: isRecipientOnline, // Include read status in the response
-      metadata
-    };
+    // Store a separate message record for each recipient device
+    const messagePromises = encryptedMessages.map(async (deviceMessage) => {
+      const message = {
+        sender: uid,
+        recipientUid: recipientId,
+        recipientDeviceId: deviceMessage.deviceId, // Store target device ID
+        senderUsername: senderUser.username,
+        senderDeviceId,
+        recipientUsername,
+        encryptedMessage: {
+          type: deviceMessage.encryptedMessage.type,
+          body: deviceMessage.encryptedMessage.body
+        },
+        isEncrypted: true,
+        timestamp: new Date(),
+        read: false,
+        metadata: metadata,
+      };
 
+      return await messagesCollection.insertOne(message);
+    });
+
+    const results = await Promise.all(messagePromises);
+
+    // Send real-time notification to recipient if they're online
+    // Let the client handle device-specific filtering
     const io = getSocketInstance();
+    
+    if (onlineUsers.has(recipientId)) {
+      // Send ALL device messages to the online user
+      // The client will filter which ones are for their current device
+      encryptedMessages.forEach((deviceMessage, index) => {
+        const formattedMessage = {
+          _id: results[index].insertedId,
+          senderUid: uid,
+          sender: senderUser.username,
+          senderDeviceId,
+          recipientDeviceId: deviceMessage.deviceId,
+          encryptedMessage: deviceMessage.encryptedMessage,
+          isEncrypted: true,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          timestamp: new Date(),
+          metadata
+        };
 
-    // Send encrypted message to recipient if online
-    if (isRecipientOnline) {
-      io.to(onlineUsers.get(recipientId)).emit("receive_message", {
-        ...formattedMessage,
-        sender: senderUser.username
+        io.to(onlineUsers.get(recipientId)).emit("receive_message", formattedMessage);
       });
     }
 
     return res.status(200).json({
       success: true,
-      message: "Encrypted message sent successfully",
-      messageId: result.insertedId,
-      read: isRecipientOnline,
-      delivered: isRecipientOnline
+      message: "Encrypted message sent to all devices successfully",
+      deviceCount: encryptedMessages.length,
+      messageIds: results.map(r => r.insertedId)
     });
   } catch (error) {
     console.error("Error sending message:", error);
-    res.status(500).json({ error: "Internal server error" })
+    res.status(500).json({ error: "Internal server error" });
   }
 }
 

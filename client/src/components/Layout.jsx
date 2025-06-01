@@ -289,6 +289,89 @@ export default function Layout({ children }) {
     }
   };
 
+  const handleReceiveMessage = async (data) => {
+    try {
+      console.log('Received encrypted message:', data);
+      
+      const {
+        _id,
+        senderUid,
+        sender: senderUsername,
+        senderDeviceId,
+        recipientDeviceId,
+        encryptedMessage,
+        time,
+        timestamp,
+        metadata
+      } = data;
+
+      // Check if this message is for our current device
+      const currentDeviceId = getDeviceId();
+      if (recipientDeviceId && recipientDeviceId !== currentDeviceId) {
+        console.log(`Message for device ${recipientDeviceId}, but we are ${currentDeviceId}. Ignoring.`);
+        return; // This message is for a different device
+      }
+
+      try {
+        // Use the enhanced decryptMessage function that handles unknown devices
+        const decryptedText = await decryptMessage({
+          _id,
+          senderUid,
+          senderDeviceId,
+          encryptedMessage,
+          time,
+          timestamp,
+          metadata
+        });
+
+        const messageObject = {
+          messageId: _id,
+          recipientId: user.uid,
+          senderId: senderUid,
+          text: decryptedText,
+          isOutgoing: false,
+          timestamp: timestamp || new Date().toISOString(),
+          time: time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          sender: senderUsername,
+          senderDeviceId,
+          metadata: metadata || {},
+        };
+
+        // Update UI if this is the active conversation
+        if (selectedUser === senderUid) {
+          setMessages(prevMessages => [...prevMessages, messageObject]);
+        }
+
+        console.log(`Successfully decrypted and processed message from ${senderUsername}:${senderDeviceId}`);
+
+      } catch (decryptError) {
+        console.error('Failed to decrypt message:', decryptError);
+        
+        // Store as undecryptable message for debugging
+        const errorMessage = {
+          messageId: _id,
+          recipientId: user.uid,
+          senderId: senderUid,
+          text: `[Failed to decrypt message from ${senderUsername}:${senderDeviceId}]`,
+          isOutgoing: false,
+          timestamp: timestamp || new Date().toISOString(),
+          time: time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          sender: senderUsername,
+          senderDeviceId,
+          error: decryptError.message,
+          metadata: metadata || {},
+        };
+
+        if (selectedUser === senderUid) {
+          setMessages(prevMessages => [...prevMessages, errorMessage]);
+        }
+      }
+
+    } catch (error) {
+      console.error('Error processing received message:', error);
+    }
+  };
+
   if (!appReady) {
     return (
       <div className="flex items-center justify-center h-screen"
