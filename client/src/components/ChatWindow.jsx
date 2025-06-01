@@ -12,15 +12,16 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
   const [archiveEnabled, setArchiveEnabled] = useState(false);
   const [mutualArchive, setMutualArchive] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [avatarsLoading, setAvatarsLoading] = useState(true); 
   const currentUsername = JSON.parse(localStorage.getItem('user'))?.username;
   const currentUserId = JSON.parse(localStorage.getItem('user'))?.uid;
   const { theme } = useAppContext();
   const isGroupChat = (typeof selectedUser === 'object' && selectedUser.type === 'group');
 
-  // Load avatars when selectedUser changes
   useEffect(() => {
     const loadAvatars = async () => {
       try {
+        setAvatarsLoading(true); 
         const newAvatars = {};
         const newUsernames = {};
 
@@ -33,11 +34,10 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
 
         if (isGroupChat) {
           // Load avatars for all group members
-          for (const userId of selectedUser.members) {
+          const avatarPromises = selectedUser.members.map(async (userId) => {
             try {
               // Get username from userId
               const response = await searchUsername(userId);
-
               const { username } = response;
 
               console.log("username:", username);
@@ -51,23 +51,30 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
             } catch (err) {
               console.error(`Error loading avatar for user ID ${userId}:`, err);
             }
-          }
+          });
+
+          // Wait for all avatar promises to complete
+          await Promise.all(avatarPromises);
         } else {
           // Single user chat - selectedUser is already a username
           const otherUserAvatar = await getAvatar(selectedUser);
-
           newAvatars[selectedUser] = otherUserAvatar;
-
         }
 
         setAvatars(newAvatars);
         setUsernames(newUsernames);
       } catch (error) {
         console.error('Error loading avatars:', error);
+      } finally {
+        setAvatarsLoading(false);
       }
     };
 
-    loadAvatars();
+    if (selectedUser) {
+      loadAvatars();
+    } else {
+      setAvatarsLoading(false);
+    }
   }, [selectedUser, currentUsername, isGroupChat]);
 
   useEffect(() => {
@@ -96,25 +103,59 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
 
   // Auto-scroll to bottom on initial load
   useEffect(() => {
+    if (!chatContainerRef.current || avatarsLoading) return;
+    
+    const container = chatContainerRef.current;
     const isInitialLoad =
-      chatContainerRef.current.scrollTop === 0 &&
-      chatContainerRef.current.scrollHeight > chatContainerRef.current.clientHeight;
+      container.scrollTop === 0 &&
+      container.scrollHeight > container.clientHeight;
 
     if (isInitialLoad) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
     }
-  });
-
-  useEffect(() => {
-    console.log("Avatars:", avatars);
-    console.log("Usernames:", usernames);
-    console.log("Messages:", messages);
-  }, [avatars, usernames, selectedUser]);
+  }, [messages, avatarsLoading]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (!avatarsLoading) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, avatarsLoading]);
+
+  // Show loading state 
+  if (avatarsLoading) {
+    return (
+      <div 
+        className="flex-1 flex items-center justify-center rounded-lg m-4"
+        style={{ backgroundColor: theme.colors.background.secondary }}
+      >
+        <div className="text-center">
+          <div className="w-20 h-20 mb-4">
+            <style>{`
+              @keyframes pulse {
+                0%, 100% { 
+                  transform: scale(1);
+                  opacity: 1;
+                }
+                50% { 
+                  transform: scale(1.1);
+                  opacity: 0.7;
+                }
+              }
+              .pulse-logo {
+                animation: pulse 1.5s ease-in-out infinite;
+              }
+            `}</style>
+            <img 
+              className="w-full h-full pulse-logo" 
+              src="/images/ema-logo.png" 
+              alt="Loading" 
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!isGroupChat) {
     return (
