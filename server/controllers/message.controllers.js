@@ -651,10 +651,11 @@ export const createGroup = async (req, res) => {
     const groupsCollection = db.collection("groups");
     const usersCollection = db.collection("users");
 
-    // Create a new group
+    // Create a new group with admin field
     const newGroup = {
       name: groupName,
       members: [userId, ...members],
+      admin: userId, // Set creator as admin
       createdAt: new Date(),
     };
 
@@ -745,10 +746,20 @@ export const addMemberToGroup = async (req, res) => {
       return res.status(404).json({ error: "Group not found" });
     }
 
+    // Check if the current user is the admin
+    if (group.admin !== userId) {
+      return res.status(403).json({ error: "Only the group admin can add members" });
+    }
+
     // Get the new member's details
     const newMember = await usersCollection.findOne({ uid: memberId });
     if (!newMember) {
       return res.status(404).json({ error: "User not found" });
+    }
+
+    // Check if member is already in the group
+    if (group.members.includes(memberId)) {
+      return res.status(400).json({ error: "User is already a member of this group" });
     }
 
     // Add the new member to the group
@@ -758,7 +769,7 @@ export const addMemberToGroup = async (req, res) => {
     );
 
     if (result.modifiedCount === 0) {
-      return res.status(404).json({ error: "Group not found or member already in group" });
+      return res.status(404).json({ error: "Failed to add member to group" });
     }
 
     // Get updated group with new member
@@ -783,6 +794,7 @@ export const addMemberToGroup = async (req, res) => {
               _id: updatedGroup._id,
               name: updatedGroup.name,
               members: updatedGroup.members,
+              admin: updatedGroup.admin,
               createdAt: updatedGroup.createdAt
             }
           });
@@ -798,6 +810,7 @@ export const addMemberToGroup = async (req, res) => {
             _id: updatedGroup._id,
             name: updatedGroup.name,
             members: updatedGroup.members,
+            admin: updatedGroup.admin,
             createdAt: updatedGroup.createdAt
           },
           addedBy: userId
@@ -845,6 +858,28 @@ export const removeMemberFromGroup = async (req, res) => {
       return res.status(404).json({ error: "Group, member, or remover not found" });
     }
 
+    // Check permissions:
+    // 1. Admin can remove anyone (except themselves - they need to transfer admin first)
+    // 2. Any member can remove themselves (leave group)
+    const isAdmin = group.admin === userId;
+    const isSelfRemoval = memberId === userId;
+
+    if (!isAdmin && !isSelfRemoval) {
+      return res.status(403).json({ error: "Only the group admin can remove other members" });
+    }
+
+    // Prevent admin from removing themselves (they should transfer admin first)
+    if (isAdmin && isSelfRemoval) {
+      return res.status(400).json({ 
+        error: "Admin cannot leave the group. Please transfer admin privileges to another member first or delete the group." 
+      });
+    }
+
+    // Cannot remove the admin (unless they're removing themselves, handled above)
+    if (memberId === group.admin && !isSelfRemoval) {
+      return res.status(400).json({ error: "Cannot remove the group admin" });
+    }
+
     // Remove the member from the group
     const result = await groupsCollection.updateOne(
       { _id: new ObjectId(groupId) },
@@ -883,7 +918,8 @@ export const removeMemberFromGroup = async (req, res) => {
                 uid: remover.uid,
                 username: remover.username
               },
-              updatedGroup: updatedGroup
+              updatedGroup: updatedGroup,
+              isAdminAction: isAdmin && !isSelfRemoval
             });
           }
         }
@@ -902,12 +938,17 @@ export const removeMemberFromGroup = async (req, res) => {
             uid: remover.uid,
             username: remover.username
           },
-          updatedGroup: null // Group is gone for this user
+          updatedGroup: null, // Group is gone for this user
+          isAdminAction: isAdmin && !isSelfRemoval
         });
       }
     }
 
-    res.status(200).json({ success: true, message: "Member removed from group" });
+    const actionType = isSelfRemoval ? "left" : "removed from";
+    res.status(200).json({ 
+      success: true, 
+      message: `Member ${actionType} group successfully` 
+    });
   } catch (err) {
     console.error("Error removing member from group:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -934,19 +975,194 @@ export const updateGroupName = async (req, res) => {
 
     console.log("Updating group name:", groupId, newGroupName);
 
-    // Update the group's name
-    const result = await groupsCollection.updateOne(
-      { _id: new ObjectId(groupId) },
-      { $set: { name: newGroupName } }
-    );
-
-    if (result.modifiedCount === 0) {
+    // Get the group first to check admin permissions
+    const group = await groupsCollection.findOne({ _id: new ObjectId(groupId) });
+    if (!group) {
       return res.status(404).json({ error: "Group not found" });
     }
 
-    res.status(200).json({ success: true, message: "Group name updated" });
+    // Check if the current user is the admin
+    if (group.admin !== userId) {
+      return res.status(403).json({ error: "Only the group admin can update the group name" });
+    }
+
+    // Update the group's name
+    const result = await groupsCollection.updateOne(
+      { _id: new ObjectId(groupId) },
+      { $set: { name: newGroupName.trim() } }
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(404).json({ error: "Failed to update group name" });
+    }
+
+    // Send real-time notification to all group members
+    const io = getSocketInstance();
+    const onlineUsers = getOnlineUsers();
+
+    if (io) {
+      for (const memberId of group.members) {
+        if (onlineUsers.has(memberId)) {
+          io.to(onlineUsers.get(memberId)).emit("group_name_updated", {
+            groupId: groupId,
+            oldName: group.name,
+            newName: newGroupName.trim(),
+            updatedBy: userId
+          });
+        }
+      }
+    }
+
+    res.status(200).json({ success: true, message: "Group name updated successfully" });
   } catch (err) {
     console.error("Error updating group name:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// transfer group admin
+export const transferGroupAdmin = async (req, res) => {
+  try {
+    const { groupId, newAdminId } = req.body;
+    const userId = req.user?.uid;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized - No user ID found" });
+    }
+
+    if (!groupId || !newAdminId) {
+      return res.status(400).json({ error: "Group ID and new admin ID are required" });
+    }
+
+    const db = await connectDB();
+    const groupsCollection = db.collection("groups");
+    const usersCollection = db.collection("users");
+
+    // Get the group
+    const group = await groupsCollection.findOne({ _id: new ObjectId(groupId) });
+    if (!group) {
+      return res.status(404).json({ error: "Group not found" });
+    }
+
+    // Check if current user is admin
+    if (group.admin !== userId) {
+      return res.status(403).json({ error: "Only the current admin can transfer admin privileges" });
+    }
+
+    // Check if new admin is a member of the group
+    if (!group.members.includes(newAdminId)) {
+      return res.status(400).json({ error: "New admin must be a member of the group" });
+    }
+
+    // Update admin
+    const result = await groupsCollection.updateOne(
+      { _id: new ObjectId(groupId) },
+      { $set: { admin: newAdminId } }
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(404).json({ error: "Failed to transfer admin privileges" });
+    }
+
+    // Get user details for notifications
+    const [oldAdmin, newAdmin] = await Promise.all([
+      usersCollection.findOne({ uid: userId }),
+      usersCollection.findOne({ uid: newAdminId })
+    ]);
+
+    // Send real-time notifications
+    const io = getSocketInstance();
+    const onlineUsers = getOnlineUsers();
+
+    if (io) {
+      for (const memberId of group.members) {
+        if (onlineUsers.has(memberId)) {
+          io.to(onlineUsers.get(memberId)).emit("group_admin_transferred", {
+            groupId: groupId,
+            groupName: group.name,
+            oldAdmin: { uid: oldAdmin.uid, username: oldAdmin.username },
+            newAdmin: { uid: newAdmin.uid, username: newAdmin.username }
+          });
+        }
+      }
+    }
+
+    res.status(200).json({ 
+      success: true, 
+      message: "Admin privileges transferred successfully" 
+    });
+  } catch (err) {
+    console.error("Error transferring admin:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// delete group
+export const deleteGroup = async (req, res) => {
+  try {
+    const { groupId } = req.body;
+    const userId = req.user?.uid;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized - No user ID found" });
+    }
+
+    if (!groupId) {
+      return res.status(400).json({ error: "Group ID is required" });
+    }
+
+    const db = await connectDB();
+    const groupsCollection = db.collection("groups");
+    const messagesCollection = db.collection("messages");
+
+    // Get the group
+    const group = await groupsCollection.findOne({ _id: new ObjectId(groupId) });
+    if (!group) {
+      return res.status(404).json({ error: "Group not found" });
+    }
+
+    // Check if current user is admin
+    if (group.admin !== userId) {
+      return res.status(403).json({ error: "Only the group admin can delete the group" });
+    }
+
+    // Delete all group messages
+    await messagesCollection.deleteMany({ 
+      metadata: { 
+        isGroupMessage: true, 
+        groupId: groupId 
+      } 
+    });
+
+    // Delete the group
+    const result = await groupsCollection.deleteOne({ _id: new ObjectId(groupId) });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: "Failed to delete group" });
+    }
+
+    // Send real-time notifications to all members
+    const io = getSocketInstance();
+    const onlineUsers = getOnlineUsers();
+
+    if (io) {
+      for (const memberId of group.members) {
+        if (onlineUsers.has(memberId)) {
+          io.to(onlineUsers.get(memberId)).emit("group_deleted", {
+            groupId: groupId,
+            groupName: group.name,
+            deletedBy: userId
+          });
+        }
+      }
+    }
+
+    res.status(200).json({ 
+      success: true, 
+      message: "Group deleted successfully" 
+    });
+  } catch (err) {
+    console.error("Error deleting group:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 };
