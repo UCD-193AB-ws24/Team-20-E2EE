@@ -153,7 +153,7 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
       className="flex-1 flex flex-col p-4 overflow-y-auto rounded-lg m-4"
       style={{ backgroundColor: theme.colors.background.secondary }}
     >
-      {!isGroupChat && selectedUser && (
+      {/* {!isGroupChat && selectedUser && (
         <div className="absolute top-2 right-4 flex items-center mt-2 space-x-2 text-sm" style={{ color: theme.colors.text }}>
           <label htmlFor="blur-toggle" className="text-black">Blur Expired Messages</label>
           <label className="relative inline-flex items-center cursor-pointer">
@@ -168,7 +168,7 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
             <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform duration-100 peer-checked:translate-x-5" />
           </label>
         </div>
-      )}
+      )} */}
 
       {messages.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center text-center">
