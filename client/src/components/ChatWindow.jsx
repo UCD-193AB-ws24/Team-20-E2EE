@@ -209,7 +209,7 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
                   </span>
                 )}
                 <div
-                  className="p-3 max-w-[75%] rounded-lg"
+                  className="p-3 max-w-[100%] rounded-lg"
                   style={{ backgroundColor: isMe ? theme.colors.chatBubble.primary : theme.colors.chatBubble.secondary }}
                 >
                   <p

@@ -60,7 +60,10 @@ export default function MessageInput({ sendMessage, onTyping, disabled = false, 
   return (
     <form 
       ref={formRef}
-      onSubmit={handleSendMessage} 
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleSendMessage();
+      }} 
       className="p-4 rounded-lg m-4 flex"
       onClick={() => inputRef.current?.focus()}
     >
