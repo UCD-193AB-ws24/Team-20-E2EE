@@ -1,5 +1,5 @@
 import express from 'express';
-import { getChatHistory, getMessagePreviews, sendPrivateMessage, getBlurStatus, toggleBlurStatus, getBlurStatus, createGroup, getGroupMessages, getAllGroupChat, addMemberToGroup, removeMemberFromGroup, updateGroupName, getBlurStatus, toggleBlurStatus } from '../controllers/message.controllers.js';
+import { getChatHistory, getMessagePreviews, sendPrivateMessage, getBlurStatus, toggleBlurStatus, getUserBlurOptInStatus, createGroup, getGroupMessages, getAllGroupChat, addMemberToGroup, removeMemberFromGroup, updateGroupName } from '../controllers/message.controllers.js';
 
 import { authenticateUser } from '../middlewares/authMiddleware.js';
 
@@ -10,7 +10,7 @@ router.get('/history', authenticateUser, getChatHistory);
 router.get('/previews', authenticateUser, getMessagePreviews);
 router.get('/blurStatus', authenticateUser, getBlurStatus);
 router.post('/toggleBlur', authenticateUser, toggleBlurStatus);
-router.get('/userBlur', authenticateUser, getBlurStatus);
+router.get('/userBlur', authenticateUser, getUserBlurOptInStatus);
 
 
 
