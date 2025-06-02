@@ -1,5 +1,5 @@
 import express from 'express';
-import { getChatHistory, getMessagePreviews, sendPrivateMessage, getChatArchive, deleteMessages, storeMessage, getArchiveStatus, toggleArchiveStatus, getUserOptInStatus, createGroup, getGroupMessages, getAllGroupChat, addMemberToGroup, removeMemberFromGroup, updateGroupName } from '../controllers/message.controllers.js';
+import { getChatHistory, getMessagePreviews, sendPrivateMessage, getBlurStatus, toggleBlurStatus, getBlurStatus, createGroup, getGroupMessages, getAllGroupChat, addMemberToGroup, removeMemberFromGroup, updateGroupName, getBlurStatus, toggleBlurStatus } from '../controllers/message.controllers.js';
 
 import { authenticateUser } from '../middlewares/authMiddleware.js';
 
@@ -7,13 +7,10 @@ const router = express.Router();
 
 router.post('/send', authenticateUser, sendPrivateMessage);
 router.get('/history', authenticateUser, getChatHistory);
-router.get('/archive', authenticateUser, getChatArchive);
 router.get('/previews', authenticateUser, getMessagePreviews);
-router.post('/vanish', authenticateUser, deleteMessages);
-router.post('/store', authenticateUser, storeMessage);
-router.get('/archiveStatus', authenticateUser, getArchiveStatus);
-router.post('/toggleArchive', authenticateUser, toggleArchiveStatus);
-router.get('/userArchive', authenticateUser, getUserOptInStatus);
+router.get('/blurStatus', authenticateUser, getBlurStatus);
+router.post('/toggleBlur', authenticateUser, toggleBlurStatus);
+router.get('/userBlur', authenticateUser, getBlurStatus);
 
 
 

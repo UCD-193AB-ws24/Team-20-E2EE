@@ -110,39 +110,6 @@ export const getChatHistory = async (req, res) => {
   }
 };
 
-export const getChatArchive = async (req, res) => {
-  try {
-    const { chatId } = req.query;
-    console.log("chatId: ", chatId);
-    if (!chatId) {
-      return res.status(400).json({ error: "Missing chatId parameter" });
-    }
-
-    const db = await connectDB();
-    const messagesCollection = db.collection("archive");
-
-    const messages = await messagesCollection
-      .find({ chatId })
-      .sort({ timestamp: 1 })
-      .toArray();
-
-    const formattedMessages = messages.map((msg) => ({
-      _id: msg._id,
-      senderUid: msg.senderUid,
-      recipientUid: msg.recipientUid,
-      text: msg.text,
-      timestamp: msg.timestamp,
-    }));
-
-    res.json({ messages: formattedMessages });
-
-  } catch (error) {
-    console.error("Error fetching chat archive:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-};
-
-
 export const getMessagePreviews = async (req, res) => {
   try {
     const currentUserId = req.user?.uid;
@@ -351,127 +318,36 @@ export const sendGroupMessage = async (groupId, text, members) => {
   }
 };
 
-export const deleteMessages = async (req, res) => {
-  try {
-    console.log("Received request to vanish messages with:", req.body.username);
-    const userId = req.user?.uid;
-    const { username } = req.body;
-
-    if (!userId || !username) {
-      return res.status(400).json({ error: "Missing user ID or username" });
-    }
-
-    const db = await connectDB();
-    const users = db.collection("users");
-
-    const recipientUser = await users.findOne({ username });
-    if (!recipientUser) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    const otherUserId = recipientUser.uid;
-
-    const messages = db.collection("messages");
-    const deleted = db.collection("deleted_messages");
-
-    const chatMessages = await messages
-      .find({
-        $or: [
-          { sender: userId, recipient: otherUserId },
-          { sender: otherUserId, recipient: userId },
-        ],
-      })
-      .toArray();
-
-    console.log(`Found ${chatMessages.length} messages to archive`);
-
-    if (chatMessages.length > 0) {
-      await deleted.insertMany(chatMessages);
-      await messages.deleteMany({
-        _id: { $in: chatMessages.map((m) => m._id) },
-      });
-      console.log(`Archived and deleted ${chatMessages.length} messages`);
-    }
-
-    res.status(200).json({ success: true, count: chatMessages.length });
-  } catch (err) {
-    console.error("Error in deleteMessages:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-};
-
-export const storeMessage = async (req, res) => {
-  try {
-    const { chatId, senderUid, recipientUid, text, timestamp } = req.body;
-    if (!chatId || !senderUid || !recipientUid || !text || !timestamp) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
-    const db = await connectDB();
-    const prefsCollection = db.collection("archivePreferences");
-    const messagesCollection = db.collection("archive");
-    const prefs = await prefsCollection.findOne({ chatId });
-
-    const AOptedIn = prefs[`${prefs.userA}OptedIn`]
-    const BOptedIn = prefs[`${prefs.userB}OptedIn`]
-
-    const bothOptedIn = AOptedIn && BOptedIn;
-
-    console.log("storeMessage: User A opted in status: ", AOptedIn);
-    console.log("storeMessage: User B opted in status: ", BOptedIn);
-    console.log("storeMessage: Both opted in status: ", bothOptedIn);
-
-    if (bothOptedIn) {
-      console.log("Archiving message: ", text);
-      const result = await messagesCollection.insertOne({
-        chatId,
-        senderUid,
-        recipientUid,
-        text,
-        timestamp: new Date(timestamp),
-      });
-      return res.status(200).json({ success: true, messageId: result.insertedId });
-    } else {
-      return res.status(403).json({ error: "Both users must opt in to archive" });
-    }
-
-
-  } catch (err) {
-    console.error("Error storing archived message:", err);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-
-};
-
-export const getArchiveStatus = async (req, res) => {
+export const getBlurStatus = async (req, res) => {
   try {
     const { chatId } = req.query;
     if (!chatId) return res.status(400).json({ error: "Missing chatId" });
 
     const db = await connectDB();
-    const prefs = await db.collection("archivePreferences").findOne({ chatId });
+    const prefs = await db.collection("blurPreferences").findOne({ chatId });
 
-    if (!prefs) return res.status(200).json({ archiveEnabled: false });
+    if (!prefs) return res.status(200).json({ blurEnabled: false });
 
-    const AOptedIn = prefs[`${prefs.userA}OptedIn`]
-    const BOptedIn = prefs[`${prefs.userB}OptedIn`]
+    const AOptedIn = prefs[`${prefs.userA}OptedIn`];
+    const BOptedIn = prefs[`${prefs.userB}OptedIn`];
 
     const bothOptedIn = AOptedIn && BOptedIn;
-    console.log("getArchiveStatus: User A opted in status: ", AOptedIn);
-    console.log("getArchiveStatus: User B opted in status: ", BOptedIn);
-    console.log("getArchiveStatus: Both opted in status: ", bothOptedIn);
+    console.log("getBlurStatus: User A opted in:", AOptedIn);
+    console.log("getBlurStatus: User B opted in:", BOptedIn);
+    console.log("getBlurStatus: Both opted in:", bothOptedIn);
 
-    return res.status(200).json({ archiveEnabled: bothOptedIn });
+    return res.status(200).json({ blurEnabled: bothOptedIn });
   } catch (err) {
-    console.error("Error fetching archive status:", err);
+    console.error("Error fetching blur status:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 };
 
-export const toggleArchiveStatus = async (req, res) => {
+export const toggleBlurStatus = async (req, res) => {
   try {
     const { chatId, uid, optIn } = req.body;
     const db = await connectDB();
-    const prefsCollection = db.collection("archivePreferences");
+    const prefsCollection = db.collection("blurPreferences");
     let prefs = await prefsCollection.findOne({ chatId });
 
     if (typeof chatId !== "string" || !chatId.includes("-")) {
@@ -479,7 +355,6 @@ export const toggleArchiveStatus = async (req, res) => {
     }
 
     if (!prefs) {
-      console.log("No preferences found. Creating preferences:");
       const [userA, userB] = chatId.split("-");
       prefs = {
         chatId,
@@ -487,76 +362,56 @@ export const toggleArchiveStatus = async (req, res) => {
         userB,
         [`${userA}OptedIn`]: optIn,
         [`${userB}OptedIn`]: false,
-        archiveEnabled: false
+        blurEnabled: false
       };
-      console.log(prefs);
       await prefsCollection.insertOne(prefs);
-    }
-    else {
-      console.log("Preferences found.");
+    } else {
       await prefsCollection.updateOne(
         { chatId },
         { $set: { [`${uid}OptedIn`]: optIn } }
       );
     }
+
     const updated = await prefsCollection.findOne({ chatId });
-
-    const AOptedIn = updated[`${updated.userA}OptedIn`]
-    const BOptedIn = updated[`${updated.userB}OptedIn`]
-
+    const AOptedIn = updated[`${updated.userA}OptedIn`];
+    const BOptedIn = updated[`${updated.userB}OptedIn`];
     const bothOptedIn = AOptedIn && BOptedIn;
-
-    console.log("A Opted In: ", AOptedIn);
-    console.log("B Opted In: ", BOptedIn);
-    console.log("Both Opted In: ", bothOptedIn);
-
 
     await prefsCollection.updateOne(
       { chatId },
-      { $set: { archiveEnabled: bothOptedIn } }
+      { $set: { blurEnabled: bothOptedIn } }
     );
 
-    if (!bothOptedIn && updated.archiveEnabled) {
-      console.log("User opted out of archive. Deleting archive.");
-      console.log(chatId);
-      await db.collection("archive").deleteMany({ chatId });
-    }
-
     const io = getSocketInstance();
-
     if (io) {
-      io.to(chatId).emit("archiveStatusChanged", {
+      io.to(chatId).emit("blurStatusChanged", {
         chatId,
-        mutualArchive: bothOptedIn
+        mutualBlur: bothOptedIn
       });
     }
 
-
-    return res.status(200).json({ archiveEnabled: bothOptedIn });
-  }
-
-  catch (err) {
-    console.error("Archive toggle error:", err);
+    return res.status(200).json({ blurEnabled: bothOptedIn });
+  } catch (err) {
+    console.error("Blur toggle error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 };
 
-export const getUserOptInStatus = async (req, res) => {
+export const getUserBlurOptInStatus = async (req, res) => {
   try {
     const { chatId, uid } = req.query;
     const db = await connectDB();
-    const prefs = await db.collection("archivePreferences").findOne({ chatId });
+    const prefs = await db.collection("blurPreferences").findOne({ chatId });
 
     if (!prefs) return res.status(200).json({ optedIn: false });
 
     const optedIn = prefs[`${uid}OptedIn`] || false;
     return res.status(200).json({ optedIn });
   } catch (err) {
-    console.error("Error checking user opt-in status:", err);
+    console.error("Error checking user blur opt-in status:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 };
-
 
 export const getGroupMessages = async (req, res) => {
   try {

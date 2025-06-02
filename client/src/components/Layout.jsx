@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import NavBar from './NavBar';
-import { ChatWindow, MessageInput, ProfileModal, ArchiveWindow, useSocket, EmptyChat } from './index';
-import { Archive, Friends, Requests } from '../pages';
+import { ChatWindow, MessageInput, ProfileModal, useSocket, EmptyChat } from './index';
+import { Friends, Requests } from '../pages';
 import {
   registerMessageListener, removeListener,
   sendTypingStatus, registerTypingListener
@@ -10,14 +10,13 @@ import getCurrentUser from '../util/getCurrentUser';
 import { establishSession, hasSession } from '../util/encryption/sessionManager';
 import { fetchKeyBundle } from '../api/keyBundle';
 import { getConversationMessages, getGroupMessages, blurMessages } from '../util/messagesStore';
-import { getChatHistory, getGroupHistory, getArchivedChatHistory, sendPrivateMessage, sendGroupMessage, decryptMessage, buildChatId } from '../api/messages';
+import { getChatHistory, getGroupHistory, sendPrivateMessage, sendGroupMessage, decryptMessage, buildChatId } from '../api/messages';
 import { useAppContext } from './AppContext';
 import { BACKEND_URL } from '../config/config';
 
 export default function Layout({ children }) {
   const [selectedUser, setSelectedUser] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [archivedMessages, setArchivedMessages] = useState([]);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [view, setView] = useState();
   const [isTyping, setIsTyping] = useState({});
@@ -44,9 +43,7 @@ export default function Layout({ children }) {
   // Get initial view on mount
   useEffect(() => {
     const path = location.pathname;
-    if (path === '/archive') {
-      setView('archive');
-    } else if (path === '/friends') {
+    if (path === '/friends') {
       setView('friends');
     } else if (path === '/requests') {
       setView('requests');
@@ -128,7 +125,7 @@ export default function Layout({ children }) {
       }
     };
 
-    if (selectedUser && (view === 'chat' || view === 'friends' || view === 'archive')) {
+    if (selectedUser && (view === 'chat' || view === 'friends')) {
       loadChatHistory();
     }
   }, [selectedUser, view, refreshKey]);
@@ -161,37 +158,6 @@ export default function Layout({ children }) {
     return () => clearInterval(interval);
   }, []);
 
-
-
-  // useEffect(() => {
-  //   const loadChatArchive = async () => {
-  //     if (!selectedUser) return;
-  //     if (!user) return;
-
-  //     const chatId = buildChatId(userId, selectedUserInfo.uid);
-
-  //     try {
-  //       const { messages: archivedMessages } = await getArchivedChatHistory(chatId);
-
-  //       const formattedMessages = archivedMessages.map(msg => ({
-  //         sender: msg.senderUid === userId ? 'Me' : msg.senderUid,
-  //         text: msg.text,
-  //         time: new Date(msg.timestamp).toLocaleTimeString([], {
-  //           hour: '2-digit',
-  //           minute: '2-digit',
-  //         }),
-  //       }));
-
-  //       console.log("messages: ", formattedMessages);
-
-  //       setArchivedMessages(formattedMessages || []);
-  //     } catch (err) {
-  //       console.error("Error fetching archived chat history:", err);
-  //     }
-  //   };
-
-  //   loadChatArchive();
-  // }, [selectedUserInfo.uid]);
 
   useEffect(() => {
     if (!socketReady) {
@@ -324,9 +290,7 @@ export default function Layout({ children }) {
       <NavBar onProfileClick={() => setShowProfileModal(true)} setView={setView} />
 
       <div className="min-w-[250px] w-[25%] m-3 flex flex-col">
-        {view === 'archive' ? (
-          <Archive selectedUser={selectedUser} setSelectedUser={setSelectedUser} />
-        ) : view === 'friends' ? (
+        {view === 'friends' ? (
           <Friends selectedUser={selectedUser} setSelectedUser={setSelectedUser} />
         ) : view === 'requests' ? (
           <Requests selectedUser={selectedUser} setSelectedUser={setSelectedUser} />
@@ -346,7 +310,6 @@ export default function Layout({ children }) {
         <div className="p-4">
           <h2 className="text-xl font-bold">
             {selectedKey}
-            {selectedUser && view === 'archive' && ' (Archive)'}
             {selectedUser && isTyping[selectedKey] &&
               <span className="ml-2 text-sm text-gray-500 italic">typing...</span>
             }
@@ -354,12 +317,6 @@ export default function Layout({ children }) {
         </div>
         {!selectedUser ? (
           <EmptyChat />
-        ) : view === 'archive' ? (
-          <ArchiveWindow
-            messages={archivedMessages}
-            selectedUser={selectedUser || ""}
-            selectedUserID={selectedUserInfo.uid || ""}
-          />
         ) : (
           <>
             <ChatWindow

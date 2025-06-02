@@ -1,7 +1,7 @@
 import React, { use, useEffect, useRef, useState } from 'react';
 import { getAvatar } from '../api/user';
 import { useAppContext } from './AppContext';
-import { toggleArchive, archiveEnabledCheck, checkUserOptInStatus } from '../api/messages';
+import { toggleBlur, blurEnabledCheck, checkUserBlurOptInStatus } from '../api/messages';
 import { searchUsername, searchFriendUid } from '../api/friends';
 
 export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
@@ -9,24 +9,19 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
   const chatContainerRef = useRef(null);
   const [avatars, setAvatars] = useState({});
   const [usernames, setUsernames] = useState({});
-  const [archiveEnabled, setArchiveEnabled] = useState(false);
-  const [mutualArchive, setMutualArchive] = useState(false);
+  const [blurEnabled, setBlurEnabled] = useState(false);
+  const [mutualBlur, setMutualBlur] = useState(false);
   const [loading, setLoading] = useState(false);
   const currentUsername = JSON.parse(localStorage.getItem('user'))?.username;
   const currentUserId = JSON.parse(localStorage.getItem('user'))?.uid;
   const { theme } = useAppContext();
   const isGroupChat = (typeof selectedUser === 'object' && selectedUser.type === 'group');
 
-  
-
-  // Load avatars when selectedUser changes
   useEffect(() => {
     const loadAvatars = async () => {
       try {
         const newAvatars = {};
         const newUsernames = {};
-
-        // Load current user's avatar
         if (currentUsername) {
           const myAvatar = await getAvatar(currentUsername);
           newAvatars[currentUsername] = myAvatar;
@@ -34,10 +29,8 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
         }
 
         if (isGroupChat) {
-          // Load avatars for all group members
           for (const userId of selectedUser.members) {
             try {
-              // Get username from userId
               const response = await searchUsername(userId);
 
               const { username } = response;
@@ -46,7 +39,6 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
 
               if (username) {
                 const avatar = await getAvatar(username);
-                // Store with userId as key, since messages contain userId as sender
                 newAvatars[username] = avatar;
                 newUsernames[userId] = username;
               }
@@ -55,20 +47,15 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
             }
           }
         } else {
-          // Single user chat - selectedUser is already a username
           const otherUserAvatar = await getAvatar(selectedUser);
-
           newAvatars[selectedUser] = otherUserAvatar;
-
         }
-
         setAvatars(newAvatars);
         setUsernames(newUsernames);
       } catch (error) {
         console.error('Error loading avatars:', error);
       }
     };
-
     loadAvatars();
   }, [selectedUser, currentUsername, isGroupChat]);
 
@@ -76,23 +63,26 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
     const fetchStatuses = async () => {
       if (!selectedUserID || !currentUserId) return;
 
-      const userOptIn = await checkUserOptInStatus(currentUserId, selectedUserID);
-      const isMutual = await archiveEnabledCheck(selectedUser);
+      const userOptIn = await checkUserBlurOptInStatus(currentUserId, selectedUserID);
+      const isMutual = await blurEnabledCheck(selectedUserID);
 
-      setArchiveEnabled(userOptIn);
-      setMutualArchive(isMutual);
+      setBlurEnabled(userOptIn);
+      setMutualBlur(isMutual);
     };
 
     fetchStatuses();
   }, [selectedUserID]);
 
-
-
-  const handleArchiveToggle = async () => {
+  const handleBlurToggle = async () => {
     if (!selectedUserID || !currentUserId) return;
     setLoading(true);
-    const result = await toggleArchive(selectedUserID, !archiveEnabled);
-    setArchiveEnabled(result);
+
+    const result = await toggleBlur(selectedUserID, !blurEnabled);
+    setBlurEnabled(result);
+
+    const mutual = await blurEnabledCheck(selectedUserID);
+    setMutualBlur(mutual);
+
     setLoading(false);
   };
 
@@ -129,14 +119,14 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
           <div
             className="absolute top-2 right-4 flex items-center mt-2 space-x-2 text-sm"
             style={{ color: theme.colors.text }}>
-            <label htmlFor="archive-toggle text-black">Archive On/Off</label>
+            <label htmlFor="blur-toggle" className="text-black">Blur Expired Messages</label>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
                 type="checkbox"
                 className="sr-only peer"
-                checked={archiveEnabled ?? false}
-                onChange={handleArchiveToggle}
-                disabled={loading}
+                id="blur-toggle"
+                checked={blurEnabled}
+                onChange={handleBlurToggle}
               />
               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:bg-blue-500 transition-all duration-300"></div>
               <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform duration-100 peer-checked:translate-x-5"></div>
@@ -178,9 +168,8 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
                 style={{ backgroundColor: isMe ? theme.colors.chatBubble.primary : theme.colors.chatBubble.secondary }}
               >
                 <p
-                  title="This message is archived. Hover to reveal."
-                  className={`transition duration-300 ${msg.blur ? 'blur-sm hover:blur-none text-gray-500 cursor-pointer' : 'text-inherit'
-                    }`}
+                  title={msg.blur ? "This message is blurred. Hover to reveal." : ""}
+                  className={`transition duration-300 ${msg.blur && mutualBlur ? 'blur-sm hover:blur-none text-gray-500 cursor-pointer' : 'text-inherit'}`}
                 >
                   {msg.text}
                 </p>
