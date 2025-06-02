@@ -269,7 +269,12 @@ export const sendPrivateMessage = async (req, res) => {
           recipientDeviceId: deviceMessage.deviceId,
           encryptedMessage: deviceMessage.encryptedMessage,
           isEncrypted: true,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          time: new Date().toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            hour12: true,
+            timeZone: 'America/Los_Angeles'
+          }),
           timestamp: new Date(),
           metadata
         };
