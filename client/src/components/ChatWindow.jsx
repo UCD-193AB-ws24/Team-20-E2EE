@@ -116,16 +116,16 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
     setLoading(false);
   };
 
-  useEffect(() => {
-    if (!chatContainerRef.current || isLoading) return;
-    const container = chatContainerRef.current;
-    const isInitial = container.scrollTop === 0 && container.scrollHeight > container.clientHeight;
-    if (isInitial) messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-  }, [messages, isLoading]);
+  // useEffect(() => {
+  //   if (!chatContainerRef.current || isLoading) return;
+  //   const container = chatContainerRef.current;
+  //   const isInitial = container.scrollTop === 0 && container.scrollHeight > container.clientHeight;
+  //   if (isInitial) messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+  // }, [messages, isLoading]);
 
-  useEffect(() => {
-    if (!isLoading) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isLoading]);
+  // useEffect(() => {
+  //   if (!isLoading) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  // }, [messages, isLoading]);
 
   if (isLoading) {
     return (
