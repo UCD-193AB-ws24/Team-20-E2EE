@@ -312,7 +312,7 @@ export default function Profile({ onClose, onManagePasskeys }) {
                 </div>
               </div>
             ) : (
-              <div 
+              <div
                 onClick={handleStartEditing}
                 className="cursor-pointer group text-center"
               >
@@ -343,24 +343,27 @@ export default function Profile({ onClose, onManagePasskeys }) {
             </button>
           </div>
 
-          <div className="mt-4">
-            <button
-              onClick={() => onManagePasskeys()}
-              className="font-medium py-2 px-6 rounded-lg text-md shadow-md cursor-pointer hover:translate-y-[-2px] transition-transform"
-              style={{
-                color: theme.colors.text.primary,
-                backgroundColor: theme.colors.button.primary
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = theme.colors.button.primaryHover;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = theme.colors.button.primary;
-              }}
-            >
-              Manage Passkeys
-            </button>
-          </div>
+          {loginMethod !== "traditional" && (
+            <div className="mt-4">
+              <button
+                onClick={() => onManagePasskeys()}
+                className="font-medium py-2 px-6 rounded-lg text-md shadow-md cursor-pointer hover:translate-y-[-2px] transition-transform"
+                style={{
+                  color: theme.colors.text.primary,
+                  backgroundColor: theme.colors.button.primary
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = theme.colors.button.primaryHover;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = theme.colors.button.primary;
+                }}
+              >
+                Manage Passkeys
+              </button>
+            </div>
+          )}
+
         </div>
 
         {showLogoutConfirmation && (

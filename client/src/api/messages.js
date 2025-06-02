@@ -734,6 +734,7 @@ const getSenderInfo = async (senderId) => {
     return null;
   }
 };
+
 export const toggleBlur = async (otherUserId, optIn) => {
   const user = getCurrentUser();
   if (!user || !otherUserId) return false;

@@ -23,11 +23,11 @@ export const initializeSocket = (httpServer) => {
 
       const rawCookies = socket.handshake.headers.cookie;
       const refreshToken = rawCookies
-      .split(';')
-      .map(c => c.trim())
-      .find(c => c.startsWith('refreshToken='))
-      ?.split('=')[1];  
-      
+        .split(';')
+        .map(c => c.trim())
+        .find(c => c.startsWith('refreshToken='))
+        ?.split('=')[1];
+
       console.log("Socket authentication token:", refreshToken);
       if (!refreshToken) {
         return next(new Error("Authentication error: No token provided"));
@@ -88,56 +88,66 @@ export const initializeSocket = (httpServer) => {
 };
 
 const registerSocketEvents = (socket, usersCollection, currentUser) => {
-    // Handle typing events
+  // Handle typing events
 
-    socket.on("typing", async (data) => {
-      try {
-          const { recipientUsername, isTyping } = data;
-          
-          // Get recipient from database
-          const recipientUser = await usersCollection.findOne({ username: recipientUsername });
-          
-          if (recipientUser && onlineUsers.has(recipientUser.uid)) {
-            io.to(onlineUsers.get(recipientUser.uid)).emit("user_typing", {
-                username: currentUser.username,
-                isTyping
-            });
-          }
-      } catch (error) {
-          console.error("Error with typing event:", error);
+  socket.on("typing", async (data) => {
+    try {
+      const { recipientUsername, isTyping } = data;
+
+      // Get recipient from database
+      const recipientUser = await usersCollection.findOne({ username: recipientUsername });
+
+      if (recipientUser && onlineUsers.has(recipientUser.uid)) {
+        io.to(onlineUsers.get(recipientUser.uid)).emit("user_typing", {
+          username: currentUser.username,
+          isTyping
+        });
       }
-    });
+    } catch (error) {
+      console.error("Error with typing event:", error);
+    }
+  });
 
-    socket.on('get_initial_status', async () => {
-      try {
-        const friends = currentUser?.friends || [];
-        const onlineFriends = [];
+  socket.on('get_initial_status', async () => {
+    try {
+      const friends = currentUser?.friends || [];
+      const onlineFriends = [];
 
-        for (const friendId of friends) {
-          const isOnline = onlineUsers.has(friendId);    
-          const friendUser = await usersCollection.findOne({ uid: friendId });
+      for (const friendId of friends) {
+        const isOnline = onlineUsers.has(friendId);
+        const friendUser = await usersCollection.findOne({ uid: friendId });
 
-          if (!friendUser) {
-            console.error(`Friend user not found for ID: ${friendId}`);
-            continue;
-          }
-
-          const friendUsername = friendUser.username;
-
-          if (friendUsername) {
-            onlineFriends.push({
-              username: friendUsername,
-              online: isOnline,
-            });
-          }
+        if (!friendUser) {
+          console.error(`Friend user not found for ID: ${friendId}`);
+          continue;
         }
-        socket.emit('initial_status', { friends: onlineFriends });
-      } catch (error) {
-        console.error("Error handling initial status request:", error);
-      }
-    });
 
-    socket.emit('socket_event_listeners_ready');
+        const friendUsername = friendUser.username;
+
+        if (friendUsername) {
+          onlineFriends.push({
+            username: friendUsername,
+            online: isOnline,
+          });
+        }
+      }
+      socket.emit('initial_status', { friends: onlineFriends });
+    } catch (error) {
+      console.error("Error handling initial status request:", error);
+    }
+  });
+
+  socket.on("message_blur", async ({ chatId, messageId }) => {
+    const recipientUid = chatId.split("-").find(uid => uid !== socket.user.uid);
+    const recipientSocketId = onlineUsers.get(recipientUid);
+    if (recipientSocketId) {
+      io.to(recipientSocketId).emit("apply_blur", { messageId });
+    }
+  });
+
+
+
+  socket.emit('socket_event_listeners_ready');
 };
 
 const handleDisconnection = async (socket, usersCollection) => {

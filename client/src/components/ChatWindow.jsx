@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { getAvatar } from '../api/user';
 import { useAppContext } from './AppContext';
-import { toggleBlur, blurEnabledCheck, checkUserBlurOptInStatus } from '../api/messages';
 import { searchUsername, searchFriendUid } from '../api/friends';
 
 export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
@@ -9,8 +8,6 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
   const chatContainerRef = useRef(null);
   const [avatars, setAvatars] = useState({});
   const [usernames, setUsernames] = useState({});
-  const [blurEnabled, setBlurEnabled] = useState(false);
-  const [mutualBlur, setMutualBlur] = useState(false);
   const [loading, setLoading] = useState(false);
   const [avatarsLoading, setAvatarsLoading] = useState(true);
   const [messagesLoading, setMessagesLoading] = useState(true);
@@ -95,28 +92,6 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
   }, [selectedUser]);
 
   useEffect(() => {
-    if (!selectedUserID || !currentUserId) return;
-
-    const fetchStatus = async () => {
-      const userOptIn = await checkUserBlurOptInStatus(currentUserId, selectedUserID);
-      const mutual = await blurEnabledCheck(selectedUserID);
-      setBlurEnabled(userOptIn);
-      setMutualBlur(mutual);
-    };
-
-    fetchStatus();
-  }, [selectedUserID]);
-
-  const handleBlurToggle = async () => {
-    if (!selectedUserID || !currentUserId) return;
-    setLoading(true);
-    const updated = await toggleBlur(selectedUserID, !blurEnabled);
-    setBlurEnabled(updated);
-    setMutualBlur(await blurEnabledCheck(selectedUserID));
-    setLoading(false);
-  };
-
-  useEffect(() => {
     if (!chatContainerRef.current || isLoading) return;
     const container = chatContainerRef.current;
     const isInitial = container.scrollTop === 0 && container.scrollHeight > container.clientHeight;
@@ -153,22 +128,6 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
       className="flex-1 flex flex-col p-4 overflow-y-auto rounded-lg m-4"
       style={{ backgroundColor: theme.colors.background.secondary }}
     >
-      {!isGroupChat && selectedUser && (
-        <div className="absolute top-2 right-4 flex items-center mt-2 space-x-2 text-sm" style={{ color: theme.colors.text }}>
-          <label htmlFor="blur-toggle" className="text-black">Blur Expired Messages</label>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              className="sr-only peer"
-              id="blur-toggle"
-              checked={blurEnabled}
-              onChange={handleBlurToggle}
-            />
-            <div className="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:bg-blue-500 transition-all duration-300" />
-            <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform duration-100 peer-checked:translate-x-5" />
-          </label>
-        </div>
-      )}
 
       {messages.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center text-center">
@@ -213,8 +172,8 @@ export default function ChatWindow({ messages, selectedUser, selectedUserID }) {
                   style={{ backgroundColor: isMe ? theme.colors.chatBubble.primary : theme.colors.chatBubble.secondary }}
                 >
                   <p
-                    title={msg.blur && mutualBlur ? 'This message is blurred. Hover to reveal.' : ''}
-                    className={`transition duration-300 ${msg.blur && mutualBlur ? 'blur-sm hover:blur-none text-gray-500 cursor-pointer' : ''}`}
+                    title={msg.blur ? 'This message is blurred. Hover to reveal.' : ''}
+                    className={`transition duration-300 ${msg.blur ? 'blur-sm hover:blur-none text-gray-500 cursor-pointer' : ''}`}
                   >
                     {msg.text}
                   </p>

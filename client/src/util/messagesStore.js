@@ -1,4 +1,5 @@
 import getCurrentUser from './getCurrentUser';
+import { getSocket } from './socket';
 
 const DB_NAME = 'UserMessagesDB';
 const DB_VERSION = 1;
@@ -256,9 +257,13 @@ export const blurMessages = async () => {
     );
 
     expiredMessages.forEach(msg => {
-      const newlyBlurred = { ...msg, blur: true };
-      console.log("Blurring: ", newlyBlurred);
-      store.put(newlyBlurred);
+      const updatedMsg = { ...msg, blur: true };
+      store.put(updatedMsg);
+
+      socket.emit("message_blur", {
+        chatId: msg.chatId,
+        messageId: msg._id
+      });
     });
   };
 

@@ -73,9 +73,7 @@ export default function Layout({ children }) {
       try {
         // if private user
         console.log("Blurring messages");
-
-
-
+        
         await blurMessages();
 
         if (typeof selectedUser === 'string') {
@@ -172,6 +170,15 @@ export default function Layout({ children }) {
 
     registerMessageListener(handleReceiveMessage);
 
+    socket.on("apply_blur", ({ messageId }) => {
+      setMessages(prev =>
+        prev.map(msg =>
+          msg._id === messageId ? { ...msg, blur: true } : msg
+        )
+      );
+    });
+
+
     registerTypingListener((data) => {
       const { username, isTyping: typing } = data;
       setIsTyping(prev => ({
@@ -251,10 +258,10 @@ export default function Layout({ children }) {
   const handleSelectUser = async (selectedUserId) => {
     try {
       setSelectedUser(selectedUserId);
-      
+
       // Don't establish session preemptively - let the first message do it
       console.log(`Selected user ${selectedUserId}, waiting for messages to establish session`);
-      
+
       // Just fetch the key bundle for caching purposes
       const username = usernames[selectedUserId];
       if (username) {
@@ -268,7 +275,7 @@ export default function Layout({ children }) {
           console.warn(`Failed to fetch key bundle for ${username}:`, error);
         }
       }
-      
+
       // Load existing messages
       const messages = await getMessagesFromConversation(user.uid, selectedUserId);
       console.log("Loaded messages from local storage", messages);
@@ -281,7 +288,7 @@ export default function Layout({ children }) {
   const handleReceiveMessage = async (data) => {
     try {
       console.log('Received encrypted message:', data);
-      
+
       const {
         _id,
         senderUid,
@@ -351,7 +358,7 @@ export default function Layout({ children }) {
 
       } catch (decryptError) {
         console.error('Failed to decrypt message:', decryptError);
-        
+
         // Only show error message if it's for the currently selected conversation
         const shouldShowError = (
           (metadata && metadata.isGroupMessage && typeof selectedUser === 'object' && selectedUser.type === 'group' && metadata.groupId === selectedUser.id) ||
@@ -376,13 +383,13 @@ export default function Layout({ children }) {
   useEffect(() => {
     const handleUserRemovedFromGroup = (event) => {
       const { groupId, groupName, removedBy } = event.detail;
-      
+
       console.log('User removed from group event received:', { groupId, groupName });
-      
+
       // Check if the currently selected conversation is the group we were removed from
       if (typeof selectedUser === 'object' && selectedUser.type === 'group' && selectedUser.id === groupId) {
         console.log('Currently viewing the group we were removed from');
-        
+
         // Set state to show removal notification and disable messaging
         setIsRemovedFromGroup(true);
         setRemovalNotification({
@@ -390,7 +397,7 @@ export default function Layout({ children }) {
           removedBy,
           timestamp: new Date()
         });
-        
+
         // Clear the selected user after a delay to let user see the notification
         setTimeout(() => {
           setSelectedUser(null);
@@ -495,8 +502,8 @@ export default function Layout({ children }) {
               onTyping={handleTyping}
               disabled={!selectedUser || isRemovedFromGroup}
               placeholder={
-                isRemovedFromGroup 
-                  ? `You cannot send messages to this group` 
+                isRemovedFromGroup
+                  ? `You cannot send messages to this group`
                   : undefined
               }
             />
@@ -512,7 +519,7 @@ export default function Layout({ children }) {
       )}
 
       {showPasskeyManagement && (
-        <PasskeyManagement 
+        <PasskeyManagement
           onClose={() => {
             setShowPasskeyManagement(false);
             setShowProfileModal(false);
