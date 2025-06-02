@@ -6,7 +6,6 @@ export { default as ForgotPassword } from './ForgotPassword';
 export { default as ResetPassword } from './ResetPassword';
 
 // Main Application Pages
-export { default as Archive } from './Archive';
 export { default as Friends } from './Friends';
 export { default as Profile } from './Profile';
 export { default as Requests } from './Requests';

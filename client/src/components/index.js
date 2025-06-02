@@ -1,7 +1,6 @@
 // Components
 export { default as ChatList } from './ChatList';
 export { default as ChatWindow } from './ChatWindow';
-export { default as ArchiveWindow } from './ArchiveWindow';
 export { default as EmailVerificationMessage } from './EmailVerificationMessage';
 export { default as Layout } from './Layout';
 export { default as LoadingAnimation } from './LoadingAnimation';

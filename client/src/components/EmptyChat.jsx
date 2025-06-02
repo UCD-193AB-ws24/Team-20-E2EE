@@ -22,7 +22,7 @@ export default function EmptyChat() {
           Select a chat from the list to start messaging
         </p>
         <p className="text-lg mb-6" style={{ color: theme.type === 'light' ? '#000000' : theme.colors.text.secondary }}>
-          Warning: Activating archive will disable encryption temporarily as messages will be stored. Deselect it to delete all archive.
+          Both users activating blur will keep messages but blur them. Keeping it off will lead to messages being deleted after 24 hours.
         </p>
         <div className="flex flex-col items-center space-y-4">
           <div className="flex items-center space-x-2">

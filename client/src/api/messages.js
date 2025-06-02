@@ -71,31 +71,6 @@ export const getGroupHistory = async (groupId) => {
     return { messages: [] };
   }
 };
-
-export const getArchivedChatHistory = async ( chatId ) => {
-  try {
-    console.log("chatId: ", chatId);
-    const response = await fetchWithAuth(`${BACKEND_URL}/api/message/archive?chatId=${chatId}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to fetch archive");
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error("Error fetching archive:", error);
-    return { messages: [] };
-  }
-};
-
-
 // Get message previews for all friends
 export const getAllMessagePreviews = async () => {
   try {
@@ -251,7 +226,10 @@ export const sendPrivateMessage = async (recipientUsername, text, recipientInfo,
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           sender: 'Me',
           metadata: metadata,
+          blur: false
         };
+
+        console.log("Message Object: ", messageObject);
 
         await storeMessage(messageObject);
       } catch (error) {
@@ -701,26 +679,12 @@ export const decryptMessage = async (msg) => {
         time: msg.time,
         timestamp: msg.timestamp,
         status: 'received',
-        metadata: msg.metadata
+        metadata: msg.metadata,
+        blur: msg.blur
       });
+      console.log("blur: ", msg.blur);
     } catch (error) {
       console.log("Error saving decrypted Message to storage:", error);
-    }
-
-    // Archive if enabled
-    if (await archiveEnabledCheck(senderId)) {
-      console.log("Archiving message: ", decryptedText);
-      fetchWithAuth(`${BACKEND_URL}/api/message/store`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chatId: buildChatId(userId, senderId),
-          senderUid: senderId,
-          recipientUid: userId,
-          text: decryptedText,
-          timestamp: msg.timestamp,
-        })
-      });
     }
 
     return decryptedText;
@@ -770,52 +734,51 @@ const getSenderInfo = async (senderId) => {
     return null;
   }
 };
-
-export const archiveEnabledCheck = async (otherUserId) => {
-  const currentUser = getCurrentUser();
-  if (!currentUser || !otherUserId) return false;
-
-  const chatId = buildChatId(currentUser.uid, otherUserId);
-
-  try {
-    const res = await fetchWithAuth(`${BACKEND_URL}/api/message/archiveStatus?chatId=${chatId}`);
-    const data = await res.json();
-    return res.ok && data.archiveEnabled;
-  } catch (err) {
-    console.error("Failed to fetch archive status:", err);
-    return false;
-  }
-};
-
-export const toggleArchive = async (otherUserId, optIn) => {
+export const toggleBlur = async (otherUserId, optIn) => {
   const user = getCurrentUser();
   if (!user || !otherUserId) return false;
 
   const chatId = buildChatId(user.uid, otherUserId);
 
   try {
-    const res = await fetchWithAuth(`${BACKEND_URL}/api/message/toggleArchive`, {
+    const res = await fetchWithAuth(`${BACKEND_URL}/api/message/toggleBlur`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chatId, uid: user.uid, optIn })
     });
 
     const data = await res.json();
-    return res.ok && data.archiveEnabled;
+    return res.ok && data.blurEnabled;
   } catch (err) {
-    console.error("Archive toggle failed:", err);
+    console.error("Blur toggle failed:", err);
     return false;
   }
 };
 
-export const checkUserOptInStatus = async (currentUid, otherUid) => {
+export const blurEnabledCheck = async (otherUserId) => {
+  const currentUser = getCurrentUser();
+  if (!currentUser || !otherUserId) return false;
+
+  const chatId = buildChatId(currentUser.uid, otherUserId);
+
+  try {
+    const res = await fetchWithAuth(`${BACKEND_URL}/api/message/blurStatus?chatId=${chatId}`);
+    const data = await res.json();
+    return res.ok && data.blurEnabled;
+  } catch (err) {
+    console.error("Failed to fetch blur status:", err);
+    return false;
+  }
+};
+
+export const checkUserBlurOptInStatus = async (currentUid, otherUid) => {
   const chatId = buildChatId(currentUid, otherUid);
   try {
-    const res = await fetchWithAuth(`${BACKEND_URL}/api/message/userArchive?chatId=${chatId}&uid=${currentUid}`);
+    const res = await fetchWithAuth(`${BACKEND_URL}/api/message/userBlurOptIn?chatId=${chatId}&uid=${currentUid}`);
     const data = await res.json();
     return res.ok && data.optedIn;
   } catch (err) {
-    console.error("Failed to fetch opt-in status:", err);
+    console.error("Failed to fetch user blur opt-in status:", err);
     return false;
   }
 };

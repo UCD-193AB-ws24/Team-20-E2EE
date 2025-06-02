@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import NavBar from './NavBar';
-import { ChatWindow, MessageInput, ProfileModal, ArchiveWindow, useSocket, EmptyChat } from './index';
-import { Archive, Friends, Requests, Profile, PasskeyManagement } from '../pages';
+import { ChatWindow, MessageInput, ProfileModal, useSocket, EmptyChat } from './index';
+import { Friends, Requests, Profile, PasskeyManagement } from '../pages';
 import {
   registerMessageListener, removeListener,
   sendTypingStatus, registerTypingListener
@@ -9,8 +9,8 @@ import {
 import getCurrentUser from '../util/getCurrentUser';
 import { establishSession, hasSession } from '../util/encryption/sessionManager';
 import { fetchKeyBundle } from '../api/keyBundle';
-import { getConversationMessages, getGroupMessages } from '../util/messagesStore';
-import { getChatHistory, getGroupHistory, getArchivedChatHistory, sendPrivateMessage, sendGroupMessage, decryptMessage, buildChatId } from '../api/messages';
+import { getConversationMessages, getGroupMessages, blurMessages } from '../util/messagesStore';
+import { getChatHistory, getGroupHistory, sendPrivateMessage, sendGroupMessage, decryptMessage, buildChatId } from '../api/messages';
 import { useAppContext } from './AppContext';
 import { BACKEND_URL } from '../config/config';
 import LoadingEffect from './LoadingEffect';
@@ -20,13 +20,13 @@ import ToastManager from './ToastManager';
 export default function Layout({ children }) {
   const [selectedUser, setSelectedUser] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [archivedMessages, setArchivedMessages] = useState([]);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showPasskeyManagement, setShowPasskeyManagement] = useState(false);
   const [view, setView] = useState();
   const [isTyping, setIsTyping] = useState({});
   const [typingTimeout, setTypingTimeout] = useState(null);
   const { socketReady } = useSocket();
+  const [refreshKey, setRefreshKey] = useState(0);
   const { appReady, theme } = useAppContext();
   const user = getCurrentUser();
   const userId = user?.uid;
@@ -44,12 +44,11 @@ export default function Layout({ children }) {
   const identifyChatType = (user = selectedUser) =>
     typeof user === 'string' ? user : user?.name;
 
+
   // Get initial view on mount
   useEffect(() => {
     const path = location.pathname;
-    if (path === '/archive') {
-      setView('archive');
-    } else if (path === '/friends') {
+    if (path === '/friends') {
       setView('friends');
     } else if (path === '/requests') {
       setView('requests');
@@ -64,15 +63,21 @@ export default function Layout({ children }) {
         setMessages([]); // Clear messages when no user selected
         return;
       }
-    
+
       setMessages([]);
-      
+
       console.log(selectedUser)
 
       let localMessages = [];
 
       try {
         // if private user
+        console.log("Blurring messages");
+
+
+
+        await blurMessages();
+
         if (typeof selectedUser === 'string') {
           const recipientKeyBundle = await fetchKeyBundle(selectedUser);
           const recipientUid = recipientKeyBundle.keyBundle.uid;
@@ -92,6 +97,7 @@ export default function Layout({ children }) {
           const metadata = { isGroup: false, groupdId: null }
 
           localMessages = await getConversationMessages(recipientUid, metadata);
+          console.log("Local messages: ", localMessages);
         } // group chat
         else if (typeof selectedUser === 'object' && selectedUser.type === 'group') {
           setSelectedUserInfo({
@@ -109,7 +115,9 @@ export default function Layout({ children }) {
             sender: msg.isOutgoing ? 'Me' : msg.senderId,
             text: msg.text,
             time: msg.time,
-            status: msg.status || 'sent'
+            status: msg.status || 'sent',
+            timestamp: msg.timestamp,
+            blur: msg.blur ?? false
           }));
           setMessages(formattedMessages);
         } else {
@@ -118,44 +126,43 @@ export default function Layout({ children }) {
 
       } catch (error) {
         console.error('Error loading chat messages:', error);
-        setMessages([]); // Clear messages on error
+        setMessages([]);
       }
     };
 
-    if (selectedUser && (view === 'chat' || view === 'friends' || view === 'archive')) {
+    if (selectedUser && (view === 'chat' || view === 'friends')) {
       loadChatHistory();
     }
-  }, [selectedUser, view]);
+  }, [selectedUser, view, refreshKey]);
 
   useEffect(() => {
-    const loadChatArchive = async () => {
-      if (!selectedUser) return;
-      if (!user) return;
+    const interval = setInterval(async () => {
 
-      const chatId = buildChatId(userId, selectedUserInfo.uid);
+      const now = Date.now();
 
-      try {
-        const { messages: archivedMessages } = await getArchivedChatHistory(chatId);
+      await blurMessages();
 
-        const formattedMessages = archivedMessages.map(msg => ({
-          sender: msg.senderUid === userId ? 'Me' : msg.senderUid,
-          text: msg.text,
-          time: new Date(msg.timestamp).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-          }),
-        }));
+      setMessages(prevMessages => {
+        let blurCount = 0;
 
-        console.log("messages: ", formattedMessages);
+        const updated = prevMessages.map((msg, index) => {
+          const msgTime = new Date(msg.timestamp).getTime();
+          const isExpired = msgTime < now - 30 * 1000;
 
-        setArchivedMessages(formattedMessages || []);
-      } catch (err) {
-        console.error("Error fetching archived chat history:", err);
-      }
-    };
+          if (!msg.blur && isExpired) {
+            blurCount++;
+            return { ...msg, blur: true };
+          }
+          return msg;
+        });
 
-    loadChatArchive();
-  }, [selectedUserInfo.uid]);
+        return updated;
+      });
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, []);
+
 
   useEffect(() => {
     if (!socketReady) {
@@ -207,10 +214,14 @@ export default function Layout({ children }) {
 
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+    const timestamp = new Date().toISOString();
+
     const newMessage = {
       sender: 'Me',
       text,
       time,
+      timestamp,
+      blur: false
     };
 
     setMessages(prev => [...prev, newMessage]);
@@ -430,9 +441,7 @@ export default function Layout({ children }) {
       }} setView={setView} />
 
       <div className="min-w-[250px] w-[25%] m-3 flex flex-col">
-        {view === 'archive' ? (
-          <Archive selectedUser={selectedUser} setSelectedUser={setSelectedUser} />
-        ) : view === 'friends' ? (
+        {view === 'friends' ? (
           <Friends selectedUser={selectedUser} setSelectedUser={setSelectedUser} />
         ) : view === 'requests' ? (
           <Requests selectedUser={selectedUser} setSelectedUser={setSelectedUser} />
@@ -452,7 +461,6 @@ export default function Layout({ children }) {
         <div className="p-4">
           <h2 className="text-xl font-bold">
             {selectedKey}
-            {selectedUser && view === 'archive' && ' (Archive)'}
             {selectedUser && isTyping[selectedKey] &&
               <span className="ml-2 text-sm text-gray-500 italic">typing...</span>
             }
@@ -475,12 +483,6 @@ export default function Layout({ children }) {
         )}
         {!selectedUser ? (
           <EmptyChat />
-        ) : view === 'archive' ? (
-          <ArchiveWindow
-            messages={archivedMessages}
-            selectedUser={selectedUser || ""}
-            selectedUserID={selectedUserInfo.uid || ""}
-          />
         ) : (
           <>
             <ChatWindow

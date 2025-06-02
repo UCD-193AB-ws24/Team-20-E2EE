@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { MdMessage, MdPeople, MdPersonAdd, MdArchive, MdPerson } from 'react-icons/md';
+import { MdMessage, MdPeople, MdPersonAdd, MdPerson } from 'react-icons/md';
 import { FiSun, FiMoon } from "react-icons/fi";
 import { TbLayoutSidebarLeftExpandFilled, TbLayoutSidebarRightExpand } from "react-icons/tb";
 import { registerFriendRequestListener, registerFriendRequestHandledListener } from '../api/socket';
@@ -168,17 +168,6 @@ export default function NavBar({ onProfileClick, setView }) {
             </div>
             {!isCollapsed && <span className="text-lg align-middle pl-[15px]">Requests</span>}
           </Link>
-
-          {/* Archive Link */}
-          <NavItem
-            to="/archive"
-            icon={<MdArchive />}
-            label="Archive"
-            isActive={location.pathname === '/archive'}
-            onClick={() => setView('archive')}
-            isCollapsed={isCollapsed}
-            theme={theme}
-          />
         </div>
 
         <div className={`flex flex-col items-start mt-[10px] ml-[10px] mb-4`}>
