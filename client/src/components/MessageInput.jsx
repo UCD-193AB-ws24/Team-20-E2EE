@@ -16,7 +16,8 @@ export default function MessageInput({ sendMessage, onTyping, disabled = false, 
     }
   }, [disabled]);
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = async (e) => {
+    if (e) e.preventDefault();
     if (disabled || !message.trim()) return;
 
     try {
